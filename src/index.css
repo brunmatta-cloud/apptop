@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --background: 220 20% 7%;
+    --foreground: 220 20% 95%;
+
+    --card: 220 20% 10%;
+    --card-foreground: 220 20% 95%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 220 20% 95%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 220 20% 98%;
+
+    --secondary: 220 20% 15%;
+    --secondary-foreground: 220 20% 85%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 220 20% 18%;
+    --accent-foreground: 220 20% 90%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Status colors */
+    --status-completed: 142 71% 45%;
+    --status-completed-foreground: 142 71% 95%;
+    --status-executing: 217 91% 60%;
+    --status-executing-foreground: 217 91% 95%;
+    --status-alert: 38 92% 50%;
+    --status-alert-foreground: 38 92% 10%;
+    --status-delay: 0 72% 51%;
+    --status-delay-foreground: 0 0% 100%;
+    --status-next: 270 60% 55%;
+    --status-next-foreground: 270 60% 95%;
+    --status-future: 220 10% 40%;
+    --status-future-foreground: 220 10% 70%;
+
+    /* Glass effect */
+    --glass-bg: 220 20% 12% / 0.6;
+    --glass-border: 220 15% 25% / 0.3;
+
+    --sidebar-background: 220 20% 9%;
+    --sidebar-foreground: 220 20% 85%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 220 20% 98%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 220 20% 90%;
+    --sidebar-border: 220 15% 16%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent layout shifts from scrollbar */
+    overflow-y: scroll;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-border/30 rounded-xl;
+    /* GPU layer for smooth animations */
+    transform: translateZ(0);
+  }
+
+  .status-completed {
+    @apply bg-[hsl(var(--status-completed))] text-[hsl(var(--status-completed-foreground))];
+  }
+  .status-executing {
+    @apply bg-[hsl(var(--status-executing))] text-[hsl(var(--status-executing-foreground))];
+  }
+  .status-alert {
+    @apply bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))];
+  }
+  .status-delay {
+    @apply bg-[hsl(var(--status-delay))] text-[hsl(var(--status-delay-foreground))];
+  }
+  .status-next {
+    @apply bg-[hsl(var(--status-next))] text-[hsl(var(--status-next-foreground))];
+  }
+  .status-future {
+    @apply bg-[hsl(var(--status-future))] text-[hsl(var(--status-future-foreground))];
+  }
+
+  .progress-bar {
+    @apply h-1.5 rounded-full bg-muted overflow-hidden;
+    transform: translateZ(0);
+  }
+  .progress-bar-fill {
+    @apply h-full rounded-full bg-[hsl(var(--status-executing))];
+    transition: transform 1s linear;
+    will-change: transform;
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-family: var(--font-display);
+  }
+}
