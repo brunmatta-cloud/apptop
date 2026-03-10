@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import type { Culto, MomentoProgramacao, ExecutionMode, MomentStatus } from '@/types/culto';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
+import type { Culto, ExecutionMode, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import { calcularHorarioTermino } from '@/types/culto';
 
 interface CultoContextType {
@@ -35,6 +37,22 @@ interface CultoContextType {
   removeMomento: (id: string) => void;
   adjustCurrentMomentDuration: (deltaSeconds: number) => void;
 }
+
+type SyncRow = Tables<'culto_sync_state'>;
+
+interface CultoSyncState {
+  cultos: Culto[];
+  allMomentos: Record<string, MomentoProgramacao[]>;
+  activeCultoId: string;
+  currentIndex: number;
+  executionMode: ExecutionMode;
+  isPaused: boolean;
+  elapsedBaseSeconds: number;
+  momentElapsedBaseSeconds: number;
+  timerStartedAt: string | null;
+}
+
+const SYNC_ROW_ID = 'main';
 
 const CultoContext = createContext<CultoContextType | null>(null);
 
@@ -74,328 +92,647 @@ const SAMPLE_MOMENTOS: Record<string, MomentoProgramacao[]> = {
   ],
 };
 
+const defaultSyncState: CultoSyncState = {
+  cultos: SAMPLE_CULTOS,
+  allMomentos: SAMPLE_MOMENTOS,
+  activeCultoId: SAMPLE_CULTOS[0]?.id ?? '',
+  currentIndex: -1,
+  executionMode: 'manual',
+  isPaused: false,
+  elapsedBaseSeconds: 0,
+  momentElapsedBaseSeconds: 0,
+  timerStartedAt: null,
+};
+
+const isExecutionMode = (value: unknown): value is ExecutionMode => value === 'manual' || value === 'automatico';
+
+const normalizeCulto = (value: Partial<Culto> | null | undefined, fallbackId: string): Culto => ({
+  id: typeof value?.id === 'string' && value.id.trim() ? value.id : fallbackId,
+  nome: typeof value?.nome === 'string' ? value.nome : '',
+  data: typeof value?.data === 'string' && value.data ? value.data : new Date().toISOString().split('T')[0],
+  horarioInicial: typeof value?.horarioInicial === 'string' && value.horarioInicial.includes(':') ? value.horarioInicial : '00:00',
+  duracaoPrevista: Number.isFinite(value?.duracaoPrevista) ? Math.max(0, Number(value?.duracaoPrevista)) : 0,
+  status: value?.status === 'em_andamento' || value?.status === 'finalizado' ? value.status : 'planejado',
+});
+
+const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefined, index: number, cultoId = ''): MomentoProgramacao => ({
+  id: typeof momento?.id === 'string' && momento.id.trim() ? momento.id : `momento-${cultoId || 'sem-culto'}-${index}`,
+  cultoId: typeof momento?.cultoId === 'string' && momento.cultoId.trim() ? momento.cultoId : cultoId,
+  ordem: Number.isFinite(momento?.ordem) ? Number(momento?.ordem) : index,
+  bloco: typeof momento?.bloco === 'string' ? momento.bloco : '',
+  horarioInicio: typeof momento?.horarioInicio === 'string' && momento.horarioInicio.includes(':') ? momento.horarioInicio : '00:00',
+  duracao: Number.isFinite(momento?.duracao) ? Math.max(0, Number(momento?.duracao)) : 0,
+  atividade: typeof momento?.atividade === 'string' ? momento.atividade : '',
+  responsavel: typeof momento?.responsavel === 'string' ? momento.responsavel : '',
+  ministerio: typeof momento?.ministerio === 'string' ? momento.ministerio : '',
+  funcao: typeof momento?.funcao === 'string' ? momento.funcao : '',
+  fotoUrl: typeof momento?.fotoUrl === 'string' ? momento.fotoUrl : '',
+  tipoMomento: momento?.tipoMomento ?? 'nenhum',
+  tipoMidia: momento?.tipoMidia ?? 'nenhum',
+  acaoSonoplastia: typeof momento?.acaoSonoplastia === 'string' ? momento.acaoSonoplastia : '',
+  observacao: typeof momento?.observacao === 'string' ? momento.observacao : '',
+  antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento?.antecedenciaChamada)) : 0,
+  chamado: Boolean(momento?.chamado),
+  duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento?.duracaoOriginal) : undefined,
+});
+
+const normalizeMomentosRecord = (value: unknown, cultos: Culto[]) => {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const result: Record<string, MomentoProgramacao[]> = {};
+
+  cultos.forEach((culto) => {
+    const rawMomentos = Array.isArray(source[culto.id]) ? source[culto.id] : [];
+    result[culto.id] = rawMomentos
+      .map((momento, index) => normalizeMomento(momento as Partial<MomentoProgramacao>, index, culto.id))
+      .sort((a, b) => a.ordem - b.ordem);
+  });
+
+  return result;
+};
+
+const clampCurrentIndex = (index: number, momentos: MomentoProgramacao[]) => {
+  if (!Number.isInteger(index)) return -1;
+  if (momentos.length === 0) return -1;
+  return Math.max(-1, Math.min(index, momentos.length - 1));
+};
+
+const normalizeSyncState = (row?: Partial<SyncRow> | Partial<CultoSyncState> | null): CultoSyncState => {
+  const rowState = row as Partial<CultoSyncState> | undefined;
+  const cultosSource = Array.isArray(row?.cultos)
+    ? row.cultos
+    : Array.isArray(rowState?.cultos)
+      ? rowState.cultos
+      : SAMPLE_CULTOS;
+  const cultos = (cultosSource as unknown[]).map((item, index) => normalizeCulto(item as Partial<Culto>, `culto-${index + 1}`));
+  const safeCultos = cultos.length > 0 ? cultos : SAMPLE_CULTOS;
+  const activeCultoIdRaw = typeof row?.active_culto_id === 'string'
+    ? row.active_culto_id
+    : typeof rowState?.activeCultoId === 'string'
+      ? rowState.activeCultoId
+      : safeCultos[0]?.id ?? '';
+  const activeCultoId = safeCultos.some((culto) => culto.id === activeCultoIdRaw) ? activeCultoIdRaw : (safeCultos[0]?.id ?? '');
+  const allMomentos = normalizeMomentosRecord(row?.all_momentos ?? rowState?.allMomentos ?? SAMPLE_MOMENTOS, safeCultos);
+  const activeMomentos = allMomentos[activeCultoId] || [];
+
+  return {
+    cultos: safeCultos,
+    allMomentos,
+    activeCultoId,
+    currentIndex: clampCurrentIndex(
+      typeof row?.current_index === 'number' ? row.current_index : Number(rowState?.currentIndex ?? -1),
+      activeMomentos,
+    ),
+    executionMode: isExecutionMode(row?.execution_mode) ? row.execution_mode : isExecutionMode(rowState?.executionMode) ? rowState.executionMode : 'manual',
+    isPaused: typeof row?.is_paused === 'boolean' ? row.is_paused : Boolean(rowState?.isPaused),
+    elapsedBaseSeconds: Number.isFinite(row?.elapsed_seconds) ? Math.max(0, Number(row.elapsed_seconds)) : Number.isFinite(rowState?.elapsedBaseSeconds) ? Math.max(0, Number(rowState?.elapsedBaseSeconds)) : 0,
+    momentElapsedBaseSeconds: Number.isFinite(row?.moment_elapsed_seconds) ? Math.max(0, Number(row.moment_elapsed_seconds)) : Number.isFinite(rowState?.momentElapsedBaseSeconds) ? Math.max(0, Number(rowState?.momentElapsedBaseSeconds)) : 0,
+    timerStartedAt: typeof row?.timer_started_at === 'string' ? row.timer_started_at : typeof rowState?.timerStartedAt === 'string' ? rowState.timerStartedAt : null,
+  };
+};
+
+const isTimerRunning = (state: CultoSyncState) => {
+  const activeCulto = state.cultos.find((item) => item.id === state.activeCultoId);
+  return activeCulto?.status === 'em_andamento' && !state.isPaused && state.currentIndex >= 0 && Boolean(state.timerStartedAt);
+};
+
+const computeElapsed = (state: CultoSyncState) => {
+  if (!isTimerRunning(state) || !state.timerStartedAt) {
+    return {
+      elapsed: Math.max(0, state.elapsedBaseSeconds),
+      momentElapsed: Math.max(0, state.momentElapsedBaseSeconds),
+    };
+  }
+
+  const startedAt = Date.parse(state.timerStartedAt);
+  if (!Number.isFinite(startedAt)) {
+    return {
+      elapsed: Math.max(0, state.elapsedBaseSeconds),
+      momentElapsed: Math.max(0, state.momentElapsedBaseSeconds),
+    };
+  }
+
+  const delta = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+  return {
+    elapsed: Math.max(0, state.elapsedBaseSeconds + delta),
+    momentElapsed: Math.max(0, state.momentElapsedBaseSeconds + delta),
+  };
+};
+
+const buildPayload = (state: CultoSyncState) => ({
+  id: SYNC_ROW_ID,
+  cultos: state.cultos,
+  all_momentos: state.allMomentos,
+  active_culto_id: state.activeCultoId,
+  current_index: state.currentIndex,
+  execution_mode: state.executionMode,
+  is_paused: state.isPaused,
+  elapsed_seconds: state.elapsedBaseSeconds,
+  moment_elapsed_seconds: state.momentElapsedBaseSeconds,
+  timer_started_at: state.timerStartedAt,
+  updated_at: new Date().toISOString(),
+});
+
+const recalcStartTimes = (moms: MomentoProgramacao[], fromIndex: number): MomentoProgramacao[] => {
+  const result = [...moms];
+  for (let i = fromIndex; i < result.length; i += 1) {
+    if (i === 0) continue;
+    const prev = result[i - 1];
+    result[i] = { ...result[i], horarioInicio: calcularHorarioTermino(prev.horarioInicio, prev.duracao) };
+  }
+  return result;
+};
+
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cultos, setCultos] = useState<Culto[]>(SAMPLE_CULTOS);
-  const [allMomentos, setAllMomentos] = useState<Record<string, MomentoProgramacao[]>>(SAMPLE_MOMENTOS);
-  const [activeCultoId, setActiveCultoId] = useState<string>(SAMPLE_CULTOS[0].id);
-  const [currentIndex, setCurrentIndex] = useState(-1);
-  const [executionMode, setExecutionMode] = useState<ExecutionMode>('manual');
-  const [isPaused, setIsPaused] = useState(false);
-  const [elapsedBase, setElapsedBase] = useState(0);
-  const [momentElapsedBase, setMomentElapsedBase] = useState(0);
-  const [timerStartedAt, setTimerStartedAt] = useState(0);
+  const [syncState, setSyncState] = useState<CultoSyncState>(defaultSyncState);
   const [displayElapsed, setDisplayElapsed] = useState(0);
   const [displayMomentElapsed, setDisplayMomentElapsed] = useState(0);
-
-  const rafRef = useRef<number>(0);
-  const momentosRef = useRef<MomentoProgramacao[]>([]);
-  const currentIndexRef = useRef(-1);
-  const executionModeRef = useRef<ExecutionMode>('manual');
-  const timerStartedAtRef = useRef(0);
-  const elapsedBaseRef = useRef(0);
-  const momentElapsedBaseRef = useRef(0);
-  const isRunningRef = useRef(false);
+  const syncStateRef = useRef(syncState);
   const doAvancarRef = useRef<() => void>(() => {});
-  const activeCultoIdRef = useRef(activeCultoId);
-  activeCultoIdRef.current = activeCultoId;
 
-  const safeCultos = Array.isArray(cultos) ? cultos : SAMPLE_CULTOS;
-  const safeAllMomentos = (allMomentos && typeof allMomentos === 'object' && !Array.isArray(allMomentos)) ? allMomentos : SAMPLE_MOMENTOS;
-  const culto = safeCultos.find((item) => item.id === activeCultoId) || safeCultos[0] || SAMPLE_CULTOS[0];
-  const momentos = (safeAllMomentos[activeCultoId] || []) as MomentoProgramacao[];
-
-  momentosRef.current = momentos;
-  currentIndexRef.current = currentIndex;
-  executionModeRef.current = executionMode;
-  timerStartedAtRef.current = timerStartedAt;
-  elapsedBaseRef.current = elapsedBase;
-  momentElapsedBaseRef.current = momentElapsedBase;
-
-  const isRunning = culto.status === 'em_andamento' && !isPaused && currentIndex >= 0;
-  isRunningRef.current = isRunning;
-
-  const computeElapsed = useCallback(() => {
-    const startedAt = timerStartedAtRef.current;
-    if (startedAt <= 0) {
-      return {
-        elapsed: Math.max(0, elapsedBaseRef.current),
-        momentElapsed: Math.max(0, momentElapsedBaseRef.current),
-      };
-    }
-
-    const now = Date.now();
-    if (now < startedAt) {
-      return {
-        elapsed: Math.max(0, elapsedBaseRef.current),
-        momentElapsed: Math.max(0, momentElapsedBaseRef.current),
-      };
-    }
-
-    const delta = Math.floor((now - startedAt) / 1000);
-    return {
-      elapsed: Math.max(0, elapsedBaseRef.current + delta),
-      momentElapsed: Math.max(0, momentElapsedBaseRef.current + delta),
-    };
+  const applySyncState = useCallback((next: CultoSyncState) => {
+    syncStateRef.current = next;
+    setSyncState(next);
+    const computed = computeElapsed(next);
+    setDisplayElapsed(computed.elapsed);
+    setDisplayMomentElapsed(computed.momentElapsed);
   }, []);
 
+  const publishState = useCallback(async (next: CultoSyncState) => {
+    const { error } = await supabase
+      .from('culto_sync_state')
+      .upsert(buildPayload(next), { onConflict: 'id' });
+
+    if (error) {
+      console.error('Falha ao sincronizar estado do culto:', error);
+    }
+  }, []);
+
+  const commitState = useCallback((updater: (current: CultoSyncState) => CultoSyncState) => {
+    const next = normalizeSyncState(updater(syncStateRef.current));
+    applySyncState(next);
+    void publishState(next);
+  }, [applySyncState, publishState]);
+
   useEffect(() => {
-    let lastSecond = -1;
     let active = true;
 
-    const tick = () => {
+    const bootstrap = async () => {
+      const { data, error } = await supabase
+        .from('culto_sync_state')
+        .select('*')
+        .eq('id', SYNC_ROW_ID)
+        .maybeSingle();
+
       if (!active) return;
 
-      if (isRunningRef.current) {
-        const startedAt = timerStartedAtRef.current;
-        if (startedAt > 0) {
-          const now = Date.now();
-          if (now >= startedAt) {
-            const delta = Math.floor((now - startedAt) / 1000);
-            const elapsed = Math.max(0, elapsedBaseRef.current + delta);
-            const momentElapsed = Math.max(0, momentElapsedBaseRef.current + delta);
-
-            if (Math.floor(momentElapsed) !== lastSecond) {
-              lastSecond = Math.floor(momentElapsed);
-              setDisplayElapsed(elapsed);
-              setDisplayMomentElapsed(momentElapsed);
-
-              if (executionModeRef.current === 'automatico') {
-                const idx = currentIndexRef.current;
-                const moms = momentosRef.current;
-                if (idx >= 0 && idx < moms.length && moms.length > 0) {
-                  const currentMom = moms[idx];
-                  if (currentMom && typeof currentMom.duracao === 'number') {
-                    const dur = currentMom.duracao * 60;
-                    if (momentElapsed >= dur && doAvancarRef.current) {
-                      doAvancarRef.current();
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+      if (error) {
+        console.error('Falha ao carregar estado sincronizado do culto:', error);
+        applySyncState(defaultSyncState);
+        return;
       }
 
-      rafRef.current = requestAnimationFrame(tick);
+      if (!data) {
+        const next = normalizeSyncState(defaultSyncState);
+        applySyncState(next);
+        await publishState(next);
+        return;
+      }
+
+      applySyncState(normalizeSyncState(data));
     };
 
-    rafRef.current = requestAnimationFrame(tick);
+    void bootstrap();
+
+    const channel = supabase
+      .channel('culto-sync-state')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'culto_sync_state',
+        filter: `id=eq.${SYNC_ROW_ID}`,
+      }, (payload) => {
+        if (!active || !payload.new) return;
+        applySyncState(normalizeSyncState(payload.new as Partial<SyncRow>));
+      })
+      .subscribe();
+
     return () => {
       active = false;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [applySyncState, publishState]);
 
   useEffect(() => {
-    if (!isRunning) {
-      setDisplayElapsed(elapsedBase);
-      setDisplayMomentElapsed(momentElapsedBase);
-    }
-  }, [isRunning, elapsedBase, momentElapsedBase]);
+    let lastAutoSecond = -1;
+    const interval = window.setInterval(() => {
+      const current = syncStateRef.current;
+      const computed = computeElapsed(current);
+      setDisplayElapsed((prev) => (prev === computed.elapsed ? prev : computed.elapsed));
+      setDisplayMomentElapsed((prev) => (prev === computed.momentElapsed ? prev : computed.momentElapsed));
 
-  const setCulto: React.Dispatch<React.SetStateAction<Culto>> = useCallback((valOrFn) => {
-    setCultos((prev) => prev.map((item) => {
-      if (item.id !== activeCultoIdRef.current) return item;
-      return typeof valOrFn === 'function' ? valOrFn(item) : valOrFn;
-    }));
+      if (
+        current.executionMode === 'automatico' &&
+        isTimerRunning(current) &&
+        Math.floor(computed.momentElapsed) !== lastAutoSecond
+      ) {
+        lastAutoSecond = Math.floor(computed.momentElapsed);
+        const activeMomentos = current.allMomentos[current.activeCultoId] || [];
+        const currentMoment = activeMomentos[current.currentIndex];
+        if (currentMoment && computed.momentElapsed >= currentMoment.duracao * 60) {
+          doAvancarRef.current();
+        }
+      }
+    }, 250);
+
+    return () => window.clearInterval(interval);
   }, []);
 
-  const setMomentos: React.Dispatch<React.SetStateAction<MomentoProgramacao[]>> = useCallback((valOrFn) => {
-    setAllMomentos((prev) => ({
-      ...prev,
-      [activeCultoIdRef.current]: typeof valOrFn === 'function' ? valOrFn(prev[activeCultoIdRef.current] || []) : valOrFn,
+  const cultos = syncState.cultos;
+  const activeCultoId = syncState.activeCultoId;
+  const culto = useMemo(
+    () => cultos.find((item) => item.id === activeCultoId) || cultos[0] || SAMPLE_CULTOS[0],
+    [cultos, activeCultoId],
+  );
+  const allMomentos = syncState.allMomentos;
+  const momentos = useMemo(
+    () => allMomentos[activeCultoId] || [],
+    [allMomentos, activeCultoId],
+  );
+
+  const setCulto: React.Dispatch<React.SetStateAction<Culto>> = useCallback((valueOrFn) => {
+    commitState((current) => ({
+      ...current,
+      cultos: current.cultos.map((item) => (
+        item.id === current.activeCultoId
+          ? typeof valueOrFn === 'function'
+            ? valueOrFn(item)
+            : valueOrFn
+          : item
+      )),
     }));
-  }, []);
+  }, [commitState]);
+
+  const setMomentos: React.Dispatch<React.SetStateAction<MomentoProgramacao[]>> = useCallback((valueOrFn) => {
+    commitState((current) => {
+      const currentMomentos = current.allMomentos[current.activeCultoId] || [];
+      const nextMomentos = typeof valueOrFn === 'function' ? valueOrFn(currentMomentos) : valueOrFn;
+      return {
+        ...current,
+        allMomentos: {
+          ...current.allMomentos,
+          [current.activeCultoId]: [...nextMomentos].sort((a, b) => a.ordem - b.ordem),
+        },
+      };
+    });
+  }, [commitState]);
 
   const addCulto = useCallback((c: Culto) => {
-    setCultos((prev) => [...prev, c]);
-    setAllMomentos((prev) => ({ ...prev, [c.id]: [] }));
-  }, []);
+    commitState((current) => ({
+      ...current,
+      cultos: [...current.cultos, normalizeCulto(c, c.id || crypto.randomUUID())],
+      allMomentos: {
+        ...current.allMomentos,
+        [c.id]: current.allMomentos[c.id] || [],
+      },
+      activeCultoId: c.id,
+      currentIndex: -1,
+      elapsedBaseSeconds: 0,
+      momentElapsedBaseSeconds: 0,
+      timerStartedAt: null,
+      isPaused: false,
+    }));
+  }, [commitState]);
 
   const updateCulto = useCallback((c: Culto) => {
-    setCultos((prev) => prev.map((existing) => existing.id === c.id ? c : existing));
-  }, []);
+    commitState((current) => ({
+      ...current,
+      cultos: current.cultos.map((existing) => existing.id === c.id ? normalizeCulto(c, c.id) : existing),
+    }));
+  }, [commitState]);
 
   const removeCulto = useCallback((id: string) => {
-    setCultos((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      if (activeCultoId === id && next.length > 0) {
-        setActiveCultoId(next[0].id);
-      }
-      return next;
+    commitState((current) => {
+      const nextCultos = current.cultos.filter((item) => item.id !== id);
+      const nextAllMomentos = { ...current.allMomentos };
+      delete nextAllMomentos[id];
+      const nextActiveCultoId = current.activeCultoId === id ? (nextCultos[0]?.id ?? current.activeCultoId) : current.activeCultoId;
+
+      return {
+        ...current,
+        cultos: nextCultos.length > 0 ? nextCultos : current.cultos,
+        allMomentos: Object.keys(nextAllMomentos).length > 0 ? nextAllMomentos : current.allMomentos,
+        activeCultoId: nextActiveCultoId,
+        currentIndex: current.activeCultoId === id ? -1 : current.currentIndex,
+        elapsedBaseSeconds: current.activeCultoId === id ? 0 : current.elapsedBaseSeconds,
+        momentElapsedBaseSeconds: current.activeCultoId === id ? 0 : current.momentElapsedBaseSeconds,
+        timerStartedAt: current.activeCultoId === id ? null : current.timerStartedAt,
+        isPaused: current.activeCultoId === id ? false : current.isPaused,
+      };
     });
-    setAllMomentos((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }, [activeCultoId]);
+  }, [commitState]);
 
   const duplicateCulto = useCallback((id: string) => {
-    setCultos((prev) => {
-      const original = prev.find((item) => item.id === id);
-      if (!original) return prev;
+    commitState((current) => {
+      const original = current.cultos.find((item) => item.id === id);
+      if (!original) return current;
+
       const newId = crypto.randomUUID();
-      const newCulto: Culto = { ...original, id: newId, nome: `${original.nome} (Copia)`, status: 'planejado' };
-      setAllMomentos((prevMomentos) => {
-        const originalMomentos = prevMomentos[id] || [];
-        const newMomentos = originalMomentos.map((momento) => ({ ...momento, id: crypto.randomUUID(), cultoId: newId, chamado: false }));
-        return { ...prevMomentos, [newId]: newMomentos };
-      });
-      return [...prev, newCulto];
+      const clonedCulto: Culto = {
+        ...original,
+        id: newId,
+        nome: `${original.nome} (Copia)`,
+        status: 'planejado',
+      };
+      const clonedMomentos = (current.allMomentos[id] || []).map((momento, index) => normalizeMomento({
+        ...momento,
+        id: crypto.randomUUID(),
+        cultoId: newId,
+        chamado: false,
+        duracaoOriginal: undefined,
+      }, index, newId));
+
+      return {
+        ...current,
+        cultos: [...current.cultos, clonedCulto],
+        allMomentos: {
+          ...current.allMomentos,
+          [newId]: clonedMomentos,
+        },
+      };
     });
-  }, []);
+  }, [commitState]);
 
   const doAvancar = useCallback(() => {
-    setCurrentIndex((prev) => {
-      const moms = momentosRef.current;
-      if (prev < moms.length - 1) {
-        setMomentElapsedBase(0);
-        setTimerStartedAt(Date.now());
-        return prev + 1;
+    commitState((current) => {
+      const activeMomentos = current.allMomentos[current.activeCultoId] || [];
+      const computed = computeElapsed(current);
+
+      if (current.currentIndex < activeMomentos.length - 1) {
+        return {
+          ...current,
+          currentIndex: current.currentIndex + 1,
+          elapsedBaseSeconds: computed.elapsed,
+          momentElapsedBaseSeconds: 0,
+          timerStartedAt: new Date().toISOString(),
+          isPaused: false,
+        };
       }
 
-      setCultos((prevCultos) => prevCultos.map((item) => {
-        if (item.id !== activeCultoIdRef.current) return item;
-        return { ...item, status: 'finalizado' as const };
-      }));
-      setTimerStartedAt(0);
-      return prev;
+      return {
+        ...current,
+        cultos: current.cultos.map((item) => item.id === current.activeCultoId ? { ...item, status: 'finalizado' } : item),
+        elapsedBaseSeconds: computed.elapsed,
+        momentElapsedBaseSeconds: computed.momentElapsed,
+        timerStartedAt: null,
+        isPaused: true,
+      };
     });
-  }, []);
+  }, [commitState]);
+
   doAvancarRef.current = doAvancar;
 
-  const avancar = useCallback(() => doAvancar(), [doAvancar]);
+  const avancar = useCallback(() => {
+    doAvancar();
+  }, [doAvancar]);
 
   const voltar = useCallback(() => {
-    setCurrentIndex((prev) => {
-      if (prev > 0) {
-        setMomentElapsedBase(0);
-        setTimerStartedAt(Date.now());
-        return prev - 1;
-      }
-      return prev;
+    commitState((current) => {
+      if (current.currentIndex <= 0) return current;
+      const computed = computeElapsed(current);
+      return {
+        ...current,
+        currentIndex: current.currentIndex - 1,
+        elapsedBaseSeconds: computed.elapsed,
+        momentElapsedBaseSeconds: 0,
+        timerStartedAt: new Date().toISOString(),
+        isPaused: false,
+      };
     });
-  }, []);
+  }, [commitState]);
 
   const pausar = useCallback(() => {
-    const { elapsed, momentElapsed } = computeElapsed();
-    setElapsedBase(elapsed);
-    setMomentElapsedBase(momentElapsed);
-    setTimerStartedAt(0);
-    setIsPaused(true);
-  }, [computeElapsed]);
+    commitState((current) => {
+      const computed = computeElapsed(current);
+      return {
+        ...current,
+        elapsedBaseSeconds: computed.elapsed,
+        momentElapsedBaseSeconds: computed.momentElapsed,
+        timerStartedAt: null,
+        isPaused: true,
+      };
+    });
+  }, [commitState]);
 
   const retomar = useCallback(() => {
-    setTimerStartedAt(Date.now());
-    setIsPaused(false);
-  }, []);
+    commitState((current) => {
+      const activeCultoItem = current.cultos.find((item) => item.id === current.activeCultoId);
+      if (activeCultoItem?.status !== 'em_andamento') return current;
+      return {
+        ...current,
+        timerStartedAt: new Date().toISOString(),
+        isPaused: false,
+      };
+    });
+  }, [commitState]);
 
-  const pular = useCallback(() => doAvancar(), [doAvancar]);
+  const pular = useCallback(() => {
+    doAvancar();
+  }, [doAvancar]);
 
   const iniciarCulto = useCallback(() => {
-    setMomentos((prev) => prev.map((momento) => ({ ...momento, duracaoOriginal: momento.duracaoOriginal ?? momento.duracao })));
-    setCulto((current) => ({ ...current, status: 'em_andamento' }));
-    setCurrentIndex(0);
-    setElapsedBase(0);
-    setMomentElapsedBase(0);
-    setTimerStartedAt(Date.now());
-    setIsPaused(false);
-  }, [setCulto, setMomentos]);
+    commitState((current) => {
+      const nextMomentos = (current.allMomentos[current.activeCultoId] || []).map((momento) => ({
+        ...momento,
+        duracaoOriginal: momento.duracaoOriginal ?? momento.duracao,
+        chamado: false,
+      }));
+
+      return {
+        ...current,
+        cultos: current.cultos.map((item) => item.id === current.activeCultoId ? { ...item, status: 'em_andamento' } : item),
+        allMomentos: {
+          ...current.allMomentos,
+          [current.activeCultoId]: nextMomentos,
+        },
+        currentIndex: nextMomentos.length > 0 ? 0 : -1,
+        elapsedBaseSeconds: 0,
+        momentElapsedBaseSeconds: 0,
+        timerStartedAt: nextMomentos.length > 0 ? new Date().toISOString() : null,
+        isPaused: false,
+      };
+    });
+  }, [commitState]);
 
   const finalizarCulto = useCallback(() => {
-    const { elapsed, momentElapsed } = computeElapsed();
-    setElapsedBase(elapsed);
-    setMomentElapsedBase(momentElapsed);
-    setTimerStartedAt(0);
-    setCulto((current) => ({ ...current, status: 'finalizado' }));
-    setIsPaused(true);
-  }, [computeElapsed, setCulto]);
+    commitState((current) => {
+      const computed = computeElapsed(current);
+      return {
+        ...current,
+        cultos: current.cultos.map((item) => item.id === current.activeCultoId ? { ...item, status: 'finalizado' } : item),
+        elapsedBaseSeconds: computed.elapsed,
+        momentElapsedBaseSeconds: computed.momentElapsed,
+        timerStartedAt: null,
+        isPaused: true,
+      };
+    });
+  }, [commitState]);
 
   const getMomentStatus = useCallback((index: number): MomentStatus => {
+    const currentIndex = syncState.currentIndex;
     if (currentIndex < 0) return index === 0 ? 'proximo' : 'futuro';
     if (index < currentIndex) return 'concluido';
     if (index === currentIndex) return 'executando';
     if (index === currentIndex + 1) return 'proximo';
     return 'futuro';
-  }, [currentIndex]);
+  }, [syncState.currentIndex]);
 
   const marcarChamado = useCallback((id: string) => {
-    setMomentos((prev) => prev.map((momento) => momento.id === id ? { ...momento, chamado: true } : momento));
-  }, [setMomentos]);
+    commitState((current) => ({
+      ...current,
+      allMomentos: {
+        ...current.allMomentos,
+        [current.activeCultoId]: (current.allMomentos[current.activeCultoId] || []).map((momento) => (
+          momento.id === id ? { ...momento, chamado: true } : momento
+        )),
+      },
+    }));
+  }, [commitState]);
 
   const addMomento = useCallback((m: MomentoProgramacao) => {
-    setMomentos((prev) => [...prev, m].sort((a, b) => a.ordem - b.ordem));
-  }, [setMomentos]);
+    commitState((current) => ({
+      ...current,
+      allMomentos: {
+        ...current.allMomentos,
+        [current.activeCultoId]: [...(current.allMomentos[current.activeCultoId] || []), normalizeMomento(m, (current.allMomentos[current.activeCultoId] || []).length, current.activeCultoId)]
+          .sort((a, b) => a.ordem - b.ordem),
+      },
+    }));
+  }, [commitState]);
 
   const updateMomento = useCallback((m: MomentoProgramacao) => {
-    setMomentos((prev) => prev.map((existing) => existing.id === m.id ? m : existing));
-  }, [setMomentos]);
+    commitState((current) => ({
+      ...current,
+      allMomentos: {
+        ...current.allMomentos,
+        [current.activeCultoId]: (current.allMomentos[current.activeCultoId] || []).map((existing, index) => (
+          existing.id === m.id ? normalizeMomento(m, index, current.activeCultoId) : existing
+        )),
+      },
+    }));
+  }, [commitState]);
 
   const removeMomento = useCallback((id: string) => {
-    setMomentos((prev) => prev.filter((momento) => momento.id !== id));
-  }, [setMomentos]);
-
-  const recalcStartTimes = (moms: MomentoProgramacao[], fromIndex: number): MomentoProgramacao[] => {
-    const result = [...moms];
-    for (let i = fromIndex; i < result.length; i++) {
-      if (i === 0) continue;
-      const prev = result[i - 1];
-      result[i] = { ...result[i], horarioInicio: calcularHorarioTermino(prev.horarioInicio, prev.duracao) };
-    }
-    return result;
-  };
+    commitState((current) => ({
+      ...current,
+      allMomentos: {
+        ...current.allMomentos,
+        [current.activeCultoId]: (current.allMomentos[current.activeCultoId] || []).filter((momento) => momento.id !== id),
+      },
+    }));
+  }, [commitState]);
 
   const adjustCurrentMomentDuration = useCallback((deltaSeconds: number) => {
-    if (currentIndex < 0) return;
-    setMomentos((prev) => {
-      const updated = [...prev];
-      const current = updated[currentIndex];
-      const newDuracao = Math.max(0, current.duracao + deltaSeconds / 60);
-      updated[currentIndex] = {
-        ...current,
-        duracao: newDuracao,
-        duracaoOriginal: current.duracaoOriginal ?? current.duracao,
+    commitState((current) => {
+      if (current.currentIndex < 0) return current;
+      const activeMomentos = [...(current.allMomentos[current.activeCultoId] || [])];
+      const currentMoment = activeMomentos[current.currentIndex];
+      if (!currentMoment) return current;
+
+      activeMomentos[current.currentIndex] = {
+        ...currentMoment,
+        duracao: Math.max(0, currentMoment.duracao + deltaSeconds / 60),
+        duracaoOriginal: currentMoment.duracaoOriginal ?? currentMoment.duracao,
       };
-      return recalcStartTimes(updated, currentIndex + 1);
+
+      return {
+        ...current,
+        allMomentos: {
+          ...current.allMomentos,
+          [current.activeCultoId]: recalcStartTimes(activeMomentos, current.currentIndex + 1),
+        },
+      };
     });
-  }, [currentIndex, setMomentos]);
+  }, [commitState]);
+
+  const setExecutionMode = useCallback((mode: ExecutionMode) => {
+    commitState((current) => ({ ...current, executionMode: mode }));
+  }, [commitState]);
+
+  const handleSetActiveCultoId = useCallback((id: string) => {
+    commitState((current) => ({
+      ...current,
+      activeCultoId: current.cultos.some((item) => item.id === id) ? id : current.activeCultoId,
+    }));
+  }, [commitState]);
+
+  const value = useMemo<CultoContextType>(() => ({
+    cultos,
+    addCulto,
+    updateCulto,
+    removeCulto,
+    duplicateCulto,
+    activeCultoId,
+    setActiveCultoId: handleSetActiveCultoId,
+    culto,
+    setCulto,
+    momentos,
+    allMomentos,
+    setMomentos,
+    currentIndex: syncState.currentIndex,
+    executionMode: syncState.executionMode,
+    setExecutionMode,
+    isPaused: syncState.isPaused,
+    elapsedSeconds: displayElapsed,
+    momentElapsedSeconds: displayMomentElapsed,
+    avancar,
+    voltar,
+    pausar,
+    retomar,
+    pular,
+    iniciarCulto,
+    finalizarCulto,
+    getMomentStatus,
+    marcarChamado,
+    addMomento,
+    updateMomento,
+    removeMomento,
+    adjustCurrentMomentDuration,
+  }), [
+    cultos,
+    addCulto,
+    updateCulto,
+    removeCulto,
+    duplicateCulto,
+    activeCultoId,
+    handleSetActiveCultoId,
+    culto,
+    setCulto,
+    momentos,
+    allMomentos,
+    setMomentos,
+    syncState.currentIndex,
+    syncState.executionMode,
+    syncState.isPaused,
+    setExecutionMode,
+    displayElapsed,
+    displayMomentElapsed,
+    avancar,
+    voltar,
+    pausar,
+    retomar,
+    pular,
+    iniciarCulto,
+    finalizarCulto,
+    getMomentStatus,
+    marcarChamado,
+    addMomento,
+    updateMomento,
+    removeMomento,
+    adjustCurrentMomentDuration,
+  ]);
 
   return (
-    <CultoContext.Provider value={{
-      cultos,
-      addCulto,
-      updateCulto,
-      removeCulto,
-      duplicateCulto,
-      activeCultoId,
-      setActiveCultoId,
-      culto,
-      setCulto,
-      momentos,
-      allMomentos,
-      setMomentos,
-      currentIndex,
-      executionMode,
-      setExecutionMode,
-      isPaused,
-      elapsedSeconds: displayElapsed,
-      momentElapsedSeconds: displayMomentElapsed,
-      avancar,
-      voltar,
-      pausar,
-      retomar,
-      pular,
-      iniciarCulto,
-      finalizarCulto,
-      getMomentStatus,
-      marcarChamado,
-      addMomento,
-      updateMomento,
-      removeMomento,
-      adjustCurrentMomentDuration,
-    }}>
+    <CultoContext.Provider value={value}>
       {children}
     </CultoContext.Provider>
   );

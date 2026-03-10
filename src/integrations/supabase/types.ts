@@ -18,44 +18,89 @@ export type Database = {
         Row: {
           active_culto_id: string | null
           all_momentos: Json
+          background_color: string | null
+          bottom_font_size: number | null
+          bottom_text_color: string | null
           cultos: Json
           current_index: number
+          danger_color: string | null
           elapsed_seconds: number
           execution_mode: string
           id: string
+          is_blinking: boolean | null
           is_paused: boolean
           message: string
+          message_font_size: number | null
+          message_text_color: string | null
           moment_elapsed_seconds: number
+          orange_threshold: number | null
+          red_threshold: number | null
           show_message: boolean
+          timer_font_size: number | null
+          timer_started_at: string | null
+          timer_text_color: string | null
+          top_font_size: number | null
+          top_text_color: string | null
           updated_at: string
+          warning_color: string | null
         }
         Insert: {
           active_culto_id?: string | null
           all_momentos?: Json
+          background_color?: string | null
+          bottom_font_size?: number | null
+          bottom_text_color?: string | null
           cultos?: Json
           current_index?: number
+          danger_color?: string | null
           elapsed_seconds?: number
           execution_mode?: string
           id?: string
+          is_blinking?: boolean | null
           is_paused?: boolean
           message?: string
+          message_font_size?: number | null
+          message_text_color?: string | null
           moment_elapsed_seconds?: number
+          orange_threshold?: number | null
+          red_threshold?: number | null
           show_message?: boolean
+          timer_font_size?: number | null
+          timer_started_at?: string | null
+          timer_text_color?: string | null
+          top_font_size?: number | null
+          top_text_color?: string | null
           updated_at?: string
+          warning_color?: string | null
         }
         Update: {
           active_culto_id?: string | null
           all_momentos?: Json
+          background_color?: string | null
+          bottom_font_size?: number | null
+          bottom_text_color?: string | null
           cultos?: Json
           current_index?: number
+          danger_color?: string | null
           elapsed_seconds?: number
           execution_mode?: string
           id?: string
+          is_blinking?: boolean | null
           is_paused?: boolean
           message?: string
+          message_font_size?: number | null
+          message_text_color?: string | null
           moment_elapsed_seconds?: number
+          orange_threshold?: number | null
+          red_threshold?: number | null
           show_message?: boolean
+          timer_font_size?: number | null
+          timer_started_at?: string | null
+          timer_text_color?: string | null
+          top_font_size?: number | null
+          top_text_color?: string | null
           updated_at?: string
+          warning_color?: string | null
         }
         Relationships: []
       }
