@@ -18,6 +18,18 @@ const PALETTES: Palette[] = [
   { nome: 'Modo Claro', corFundo: '#f8fafc', corFonte: '#0f172a', corMoldura: '#3b82f6' },
 ];
 
+const readSavedModels = () => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    return JSON.parse(window.localStorage.getItem('arte-modelos') || '[]');
+  } catch {
+    return [];
+  }
+};
+
 interface ArteCustomizationProps {
   config: ArteConfig;
   setConfig: (c: ArteConfig) => void;
@@ -25,11 +37,7 @@ interface ArteCustomizationProps {
 
 const ArteCustomization = ({ config, setConfig }: ArteCustomizationProps) => {
   const [expanded, setExpanded] = useState(true);
-  const [modelos, setModelos] = useState<{ nome: string; config: ArteConfig }[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('arte-modelos') || '[]');
-    } catch { return []; }
-  });
+  const [modelos, setModelos] = useState<{ nome: string; config: ArteConfig }[]>(readSavedModels);
   const [nomeModelo, setNomeModelo] = useState('');
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const bgInputRef = useRef<HTMLInputElement | null>(null);
@@ -38,7 +46,7 @@ const ArteCustomization = ({ config, setConfig }: ArteCustomizationProps) => {
     if (!nomeModelo.trim()) return;
     const novo = [...modelos, { nome: nomeModelo.trim(), config: { ...config } }];
     setModelos(novo);
-    localStorage.setItem('arte-modelos', JSON.stringify(novo));
+    window.localStorage.setItem('arte-modelos', JSON.stringify(novo));
     setNomeModelo('');
   };
 
@@ -49,7 +57,7 @@ const ArteCustomization = ({ config, setConfig }: ArteCustomizationProps) => {
   const removerModelo = (index: number) => {
     const novo = modelos.filter((_, i) => i !== index);
     setModelos(novo);
-    localStorage.setItem('arte-modelos', JSON.stringify(novo));
+    window.localStorage.setItem('arte-modelos', JSON.stringify(novo));
   };
 
   const update = (partial: Partial<ArteConfig>) => setConfig({ ...config, ...partial });
