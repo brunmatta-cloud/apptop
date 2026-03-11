@@ -401,6 +401,7 @@ const Moderador = () => {
           })}
         </div>
       </div>
+      </div>
     </div>
   );
 };
