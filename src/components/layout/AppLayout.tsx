@@ -23,6 +23,7 @@ const navItems = [
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const currentNav = navItems.find((item) => item.to === location.pathname);
 
   // Full-screen pages without layout
   if (location.pathname === '/foco' || location.pathname === '/cronometro') {
@@ -65,12 +66,15 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-sidebar/95 backdrop-blur-xl border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-sidebar/95 backdrop-blur-xl border-b border-sidebar-border px-3 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <Radio className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-sm">Culto ao Vivo</span>
+          <div className="min-w-0">
+            <span className="block font-display font-bold text-sm truncate">Culto ao Vivo</span>
+            <span className="block text-[11px] text-muted-foreground truncate">{currentNav?.label ?? 'Painel'}</span>
+          </div>
         </div>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-muted transition-colors">
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -81,38 +85,45 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ opacity: 0, x: -300 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -300 }}
-            className="lg:hidden fixed inset-0 z-40 bg-background/98 backdrop-blur-xl pt-16"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 z-40 bg-background/70 backdrop-blur-xl pt-16"
           >
-            <nav className="p-4 space-y-1">
-              {navItems.map(item => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-xl text-base transition-colors ${
-                      isActive
-                        ? 'bg-primary/15 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`
-                  }
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                  <ChevronRight className="w-4 h-4 ml-auto opacity-30" />
-                </NavLink>
-              ))}
-            </nav>
+            <motion.div
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              className="h-full w-[88vw] max-w-[320px] bg-card border-r border-border shadow-2xl"
+            >
+              <nav className="p-3 space-y-1 overflow-y-auto h-full pb-8">
+                {navItems.map(item => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${
+                        isActive
+                          ? 'bg-primary/15 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`
+                    }
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                    <ChevronRight className="w-4 h-4 ml-auto opacity-30" />
+                  </NavLink>
+                ))}
+              </nav>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 pt-14 lg:pt-0">
-        <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
           {children}
         </div>
       </main>

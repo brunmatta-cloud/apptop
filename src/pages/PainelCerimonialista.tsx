@@ -169,7 +169,7 @@ function PainelCerimonialista() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-[hsl(142_71%_45%/0.2)] flex items-center justify-center shrink-0">
             <Radio className="w-5 h-5 text-[hsl(142_71%_45%)]" />
@@ -179,7 +179,7 @@ function PainelCerimonialista() {
             <p className="text-muted-foreground text-sm truncate">{safeCulto.nome}</p>
           </div>
         </div>
-        <div className="flex items-center justify-between sm:justify-end gap-4 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3 sm:justify-end">
           <span className="text-xl sm:text-2xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
           <span className={`text-xs px-2.5 py-1 rounded-full border ${connectionBadge(connectionStatus)}`}>
             {connectionLabel(connectionStatus)}
@@ -189,7 +189,7 @@ function PainelCerimonialista() {
               type="button"
               onClick={iniciarCulto}
               disabled={!isDataReady || safeMomentos.length === 0 || isCommandLocked}
-              className="px-4 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:w-auto sm:px-5"
             >
               <Play className="w-4 h-4" /> {activeCommand === 'start' ? 'Iniciando...' : 'Iniciar Culto'}
             </button>
@@ -213,7 +213,7 @@ function PainelCerimonialista() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Progresso</span>
           <p className="text-xl sm:text-2xl font-bold font-display mt-1">{Math.round(summaryProgressPercent)} %</p>
@@ -241,7 +241,7 @@ function PainelCerimonialista() {
             style={{ transform: `scaleX(${summaryProgressPercent / 100})`, transformOrigin: 'left', width: '100%' }}
           />
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
           <span>{totalMinutes} min planejados</span>
           <span>{Math.round(summaryProgressPercent)} %</span>
         </div>
@@ -253,13 +253,13 @@ function PainelCerimonialista() {
             <span className="w-2.5 h-2.5 rounded-full bg-status-executing animate-pulse" />
             <span className="text-xs font-semibold text-status-executing uppercase tracking-wider">Momento em execucao</span>
           </div>
-          <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
               <Users className="w-5 sm:w-6 h-5 sm:h-6 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg sm:text-xl font-display font-bold truncate">{currentMoment.atividade}</h2>
-              <p className="text-muted-foreground text-sm truncate">
+              <h2 className="text-lg sm:text-xl font-display font-bold break-words">{currentMoment.atividade}</h2>
+              <p className="text-muted-foreground text-sm break-words">
                 {currentMoment.responsavel} • {currentMoment.ministerio} • {currentMoment.funcao}
               </p>
               <div className="mt-3">
@@ -286,32 +286,32 @@ function PainelCerimonialista() {
         <div className="glass-card p-4 sm:p-5">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Controles</h3>
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-              <button type="button" onClick={voltar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
+              <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <SkipBack className="w-4 h-4" /> <span className="hidden sm:inline">Voltar</span>
               </button>
               {isPaused ? (
-                <button type="button" onClick={retomar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))] hover:bg-[hsl(var(--status-alert))]/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                <button type="button" onClick={retomar} disabled={isCommandLocked} className="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-6">
                   <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                     <Play className="w-4 h-4 transition-transform duration-200 ease-out" />
                     <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
                   </span>
                 </button>
               ) : (
-                <button type="button" onClick={pausar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                <button type="button" onClick={pausar} disabled={isCommandLocked} className="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-6">
                   <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                     <Pause className="w-4 h-4 transition-transform duration-200 ease-out" />
                     <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
                   </span>
                 </button>
               )}
-              <button type="button" onClick={avancar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+              <button type="button" onClick={avancar} disabled={isCommandLocked} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <span className="hidden sm:inline">{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="w-4 h-4" />
               </button>
-              <button type="button" onClick={pular} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
+              <button type="button" onClick={pular} disabled={isCommandLocked} className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <FastForward className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
-              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-5">
                 <Check className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
               </button>
             </div>
@@ -373,14 +373,14 @@ function PainelCerimonialista() {
                 <EyeOff className="w-3 h-3" /> Tirar Msg
               </button>
             ) : (
-              <div className="flex items-center gap-1 min-w-0">
+              <div className="flex min-w-0 w-full items-center gap-1 sm:w-auto">
                 <input
                   type="text"
                   value={msgDraft}
                   onChange={(event) => setMsgDraft(event.target.value)}
                   onKeyDown={(event) => { if (event.key === 'Enter') handleSendMessage(); }}
                   placeholder="Mensagem..."
-                  className="bg-muted border border-border rounded-lg px-3 py-2 text-sm w-28 sm:w-40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-40"
                 />
                 <button
                   type="button"
@@ -401,7 +401,7 @@ function PainelCerimonialista() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
         <div className="space-y-4 min-w-0">
           <div className="glass-card p-4 sm:p-5">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Programacao completa</h3>
@@ -415,13 +415,13 @@ function PainelCerimonialista() {
                   return (
                     <div
                       key={momento.id}
-                      className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg transition-colors ${
+                      className={`flex flex-col gap-2 rounded-lg p-2 transition-colors sm:flex-row sm:items-center sm:gap-4 sm:p-3 ${
                         status === 'executando' ? 'bg-status-executing/10' : 'hover:bg-muted/20'
                       }`}
                     >
-                      <span className="text-xs sm:text-sm font-mono text-muted-foreground w-10 sm:w-12 shrink-0">{momento.horarioInicio}</span>
+                      <span className="w-full shrink-0 text-xs font-mono text-muted-foreground sm:w-12 sm:text-sm">{momento.horarioInicio}</span>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-sm ${status === 'concluido' ? 'text-muted-foreground line-through' : ''} truncate`}>
+                        <p className={`text-sm font-medium ${status === 'concluido' ? 'text-muted-foreground line-through' : ''} break-words`}>
                           {momento.atividade}
                           {adjustment !== 0 && (
                             <span className={`ml-2 text-xs font-semibold ${adjustment > 0 ? 'text-[hsl(var(--status-alert))]' : 'text-[hsl(var(--status-completed))]'}`}>

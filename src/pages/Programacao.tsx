@@ -155,25 +155,25 @@ const Programacao = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-display font-bold italic">Programação</h1>
           <p className="text-muted-foreground text-sm">Gerencie os cultos e suas programações</p>
         </div>
-        <button onClick={openAddCulto} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2">
+        <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
           <Plus className="w-4 h-4" /> Novo Culto
         </button>
       </div>
 
       {/* Cultos list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {cultos.map(c => {
           const isSelected = c.id === viewingCultoId;
           return (
             <div
               key={c.id}
               onClick={() => selectCulto(c.id)}
-              className={`glass-card p-5 cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary border-primary/30' : 'hover:bg-muted/20'}`}
+              className={`glass-card cursor-pointer p-4 sm:p-5 transition-all ${isSelected ? 'ring-2 ring-primary border-primary/30' : 'hover:bg-muted/20'}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -184,11 +184,11 @@ const Programacao = () => {
                 </div>
                 {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
               </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-3">
                 <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {new Date(c.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                 <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {c.horarioInicial}</span>
               </div>
-              <div className="flex items-center gap-3 border-t border-border/50 pt-3 mt-3" onClick={e => e.stopPropagation()}>
+              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/50 pt-3" onClick={e => e.stopPropagation()}>
                 <button onClick={() => openEditCulto(c)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
                   <Edit2 className="w-3 h-3" /> Editar
                 </button>
@@ -212,28 +212,28 @@ const Programacao = () => {
 
       {/* Momentos do culto selecionado */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-lg font-display font-semibold">
             Itens da Programação — {viewingCulto.nome || 'Selecione um culto'}
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {momentos.length > 0 && (
               <>
                 <button
                   onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
-                  className="px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium hover:bg-accent/80 transition-colors flex items-center gap-2 text-sm"
+                  className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
                 >
                   <ImageDown className="w-4 h-4" /> Exportar Imagem
                 </button>
                 <button
                   onClick={() => exportarProgramacao(viewingCulto, momentos)}
-                  className="px-4 py-2 rounded-lg bg-muted text-muted-foreground font-medium hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm border border-border"
+                  className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
                 >
                   <FileSpreadsheet className="w-4 h-4" /> Planilha
                 </button>
               </>
             )}
-            <button onClick={openAddMomento} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+            <button onClick={openAddMomento} disabled={isSubmitting} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
               <Plus className="w-4 h-4" /> Momento
             </button>
           </div>
@@ -261,15 +261,15 @@ const Programacao = () => {
                   const isExecuting = status === 'executando';
                   return (
                     <div key={m.id} className={`glass-card p-4 transition-colors ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
-                      <div className="flex items-center gap-4">
-                        <div className="text-center shrink-0">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="shrink-0 rounded-xl bg-muted/40 p-3 text-left sm:min-w-[110px] sm:text-center">
                           <p className="text-sm font-mono font-bold text-primary">{m.horarioInicio}</p>
                           <p className="text-[11px] text-muted-foreground">{m.duracao} minutos</p>
                           <p className="text-[11px] text-muted-foreground">{calcularHorarioTermino(m.horarioInicio, m.duracao)}</p>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-semibold ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>{m.atividade}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <p className={`break-words font-semibold ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>{m.atividade}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span className="text-sm text-muted-foreground">{m.responsavel}</span>
                             {m.ministerio && <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{m.ministerio}</span>}
                           </div>
@@ -277,7 +277,7 @@ const Programacao = () => {
                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">🎧 {m.acaoSonoplastia}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
                           <button onClick={() => openEditMomento(m)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                             <Edit2 className="w-4 h-4 text-muted-foreground" />
                           </button>

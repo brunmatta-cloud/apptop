@@ -329,7 +329,7 @@ const Moderador = () => {
                 {displayedNextMoment?.ministerio || displayedNextMoment?.funcao || 'Sem ministerio informado'}
               </p>
             </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm sm:text-base text-muted-foreground">
+            <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-3 sm:gap-4 sm:text-base">
               <span>Entrada: <span className="font-mono text-foreground">{displayedNextMoment?.horarioInicio ?? '--:--'}</span></span>
               <span>Saida: <span className="font-mono text-foreground">{displayedNextMomentEnd}</span></span>
               <span>Momento: <span className="text-foreground">{displayedNextMoment?.atividade ?? 'Nenhum'}</span></span>
@@ -413,17 +413,17 @@ const Moderador = () => {
                       {moderadorStatusLabel(status)}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                  <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3 sm:gap-4">
                     <span>Horario: {momento.horarioInicio}</span>
                     <span>Termino: {calcularHorarioTermino(momento.horarioInicio, momento.duracao)}</span>
                     <span>Momento: {momento.atividade}</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <button
                       type="button"
                       onClick={() => updateModeradorStatus(momento.id, 'chamado')}
                       disabled={isSubmitting}
-                      className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+                        className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       Chamar
                     </button>
@@ -431,7 +431,7 @@ const Moderador = () => {
                       type="button"
                       onClick={() => updateModeradorStatus(momento.id, 'confirmado')}
                       disabled={isSubmitting}
-                      className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 text-sm font-medium hover:bg-emerald-500/30 disabled:opacity-50"
+                        className="w-full rounded-lg bg-emerald-500/20 px-3 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50"
                     >
                       Confirmar
                     </button>
@@ -439,7 +439,7 @@ const Moderador = () => {
                       type="button"
                       onClick={() => updateModeradorStatus(momento.id, 'ausente')}
                       disabled={isSubmitting}
-                      className="px-3 py-2 rounded-lg bg-destructive/20 text-destructive text-sm font-medium hover:bg-destructive/30 disabled:opacity-50"
+                        className="w-full rounded-lg bg-destructive/20 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/30 disabled:opacity-50"
                     >
                       Ausente
                     </button>
@@ -462,8 +462,8 @@ const Moderador = () => {
               const status = getModeradorStatus(momento);
               const isPreparing = index === 0 || status === 'chamado';
               return (
-                <div key={momento.id} className="rounded-xl border border-border bg-muted/20 p-4 flex items-start justify-between gap-3">
-                  <div>
+                <div key={momento.id} className="rounded-xl border border-border bg-muted/20 p-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
                     <p className="text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} • {momento.atividade}</p>
                     <p className="text-xs text-muted-foreground mt-1">{momento.horarioInicio}</p>
