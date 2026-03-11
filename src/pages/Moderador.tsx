@@ -188,10 +188,12 @@ const Moderador = () => {
     const releaseDeactivated = !moderadorReleaseActive && previousReleaseActiveRef.current;
 
     if (releaseActivated) {
-      if (pendingReleaseMomentId && currentMoment) {
-        setPendingReleaseMomentId(null);
-        setReleasedHoldMomentId(currentMoment.id);
-      }
+      setPendingReleaseMomentId(null);
+      setReleasedHoldMomentId(
+        pendingReleaseMomentId && currentMoment
+          ? currentMoment.id
+          : displayedNextMoment?.id ?? currentMoment?.id ?? null
+      );
     } else if (releaseDeactivated) {
       setReleasedHoldMomentId(null);
       setLockedNextMomentId(nextMoment?.id ?? null);
@@ -220,7 +222,7 @@ const Moderador = () => {
 
     previousCurrentIndexRef.current = currentIndex;
     previousReleaseActiveRef.current = moderadorReleaseActive;
-  }, [currentIndex, currentMoment, moderadorReleaseActive, nextMoment, pendingReleaseMomentId, lockedNextMomentId, releasedHoldMomentId]);
+  }, [currentIndex, currentMoment, moderadorReleaseActive, nextMoment, pendingReleaseMomentId, lockedNextMomentId, releasedHoldMomentId, displayedNextMoment]);
 
   return (
     <div className={`-m-4 md:-m-6 lg:-m-8 min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 transition-colors duration-300 ${
@@ -382,8 +384,8 @@ const Moderador = () => {
               {pendingAction === 'toggle-moderador-release'
                 ? 'Sincronizando...'
                 : moderadorReleaseActive
-                  ? 'Normalizar alerta'
-                  : 'Ativar alerta'}
+                  ? 'Liberacao Feita'
+                  : 'Liberar'}
             </button>
           </div>
         </div>
