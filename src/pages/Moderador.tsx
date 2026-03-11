@@ -116,7 +116,11 @@ const Moderador = () => {
     : 'Sem liberacao recente';
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 rounded-[28px] p-4 sm:p-5 transition-colors duration-300 ${
+      moderadorReleaseActive
+        ? 'bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.18),rgba(16,185,129,0.08)_35%,rgba(5,10,20,0.96)_78%)]'
+        : ''
+    }`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
