@@ -1,37 +1,96 @@
 import { useCulto } from '@/contexts/CultoContext';
-import { calcularHorarioTermino, tipoMomentoLabel } from '@/types/culto';
-import { Clock, Play, TrendingUp, Timer, Zap, Radio, Volume2, List, Users, Focus, Image } from 'lucide-react';
+import { Clock, Play, TrendingUp, Timer, Zap, Radio, Volume2, List, Users, Focus } from 'lucide-react';
 import { StatusBadge } from '@/components/culto/StatusBadge';
-import { useMemo, memo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
+import { useSyncStore } from '@/contexts/SyncStoreContext';
+import { getTimerSnapshot } from '@/features/culto-sync/domain';
+import { formatElapsedLabel } from '@/utils/time';
 
-const Dashboard = memo(() => {
-  const { culto, momentos, currentIndex, elapsedSeconds, momentElapsedSeconds, getMomentStatus, iniciarCulto } = useCulto();
+const Dashboard = () => {
+  const { culto, momentos, getMomentStatus, iniciarCulto, pendingAction, isSubmitting, connectionStatus } = useCulto();
+  const { remoteState } = useSyncStore();
   const navigate = useNavigate();
   const { currentTime, formatTime } = useClock();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [liveProgressPercent, setLiveProgressPercent] = useState(0);
 
-  const { totalMinutes, progressPercent } = useMemo(() => {
-    const total = momentos.reduce((sum, m) => sum + m.duracao, 0);
-    const completed = momentos.slice(0, Math.max(0, currentIndex)).reduce((sum, m) => sum + m.duracao, 0);
-    return { totalMinutes: total, progressPercent: total > 0 ? (completed / total) * 100 : 0 };
-  }, [momentos, currentIndex]);
+  useEffect(() => {
+    if (remoteState.timerStatus !== 'running') {
+      setNowMs(Date.now());
+      return;
+    }
 
-  const formatElapsed = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    if (h > 0) return `${h}h ${m}min ${sec}s`;
-    if (m > 0) return `${m}min ${sec}s`;
-    return `${sec}s`;
-  };
+    let animationFrame = 0;
+    const tick = () => {
+      setNowMs(Date.now());
+      animationFrame = window.requestAnimationFrame(tick);
+    };
 
-  const statusLabel = culto.status === 'planejado' ? 'Sem horário' : culto.status === 'em_andamento' ? 'Em andamento' : 'Finalizado';
+    animationFrame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [
+    remoteState.timerStatus,
+    remoteState.startedAt,
+    remoteState.accumulatedMs,
+    remoteState.activeCultoId,
+    remoteState.currentIndex,
+  ]);
+
+  useEffect(() => {
+    const totalMs = momentos.reduce((sum, momento) => sum + momento.duracao, 0) * 60 * 1000;
+
+    const updateProgress = (timestampMs: number) => {
+      const snapshot = remoteState.timerStatus === 'running'
+        ? getTimerSnapshot(remoteState, timestampMs)
+        : getTimerSnapshot(remoteState);
+      const nextPercent = totalMs > 0
+        ? Math.min(100, (snapshot.elapsedMs / totalMs) * 100)
+        : 0;
+      setLiveProgressPercent(nextPercent);
+    };
+
+    updateProgress(Date.now());
+
+    if (remoteState.timerStatus !== 'running') {
+      return;
+    }
+
+    let animationFrame = 0;
+    const tick = (timestampMs: number) => {
+      updateProgress(timestampMs);
+      animationFrame = window.requestAnimationFrame(tick);
+    };
+
+    animationFrame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [
+    momentos,
+    remoteState,
+  ]);
+
+  const liveSnapshot = remoteState.timerStatus === 'running'
+    ? getTimerSnapshot(remoteState, nowMs)
+    : getTimerSnapshot(remoteState);
+  const safeElapsedMs = Number.isFinite(liveSnapshot.elapsedMs) ? liveSnapshot.elapsedMs : 0;
+  const totalMinutes = momentos.reduce((sum, momento) => sum + momento.duracao, 0);
+  const totalMs = totalMinutes * 60 * 1000;
+  const progressPercent = Number.isFinite(liveProgressPercent) ? liveProgressPercent : 0;
+  const displayProgressPercent = progressPercent >= 100 ? '100.0' : progressPercent.toFixed(1);
+
+  const statusLabel = culto.status === 'planejado' ? 'Sem horario' : culto.status === 'em_andamento' ? 'Em andamento' : 'Finalizado';
+  const connectionLabel = connectionStatus === 'online' ? 'Sincronizado' : connectionStatus === 'degraded' ? 'Sincronizacao parcial' : connectionStatus === 'offline' ? 'Offline' : 'Conectando';
+  const connectionClass = connectionStatus === 'online'
+    ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
+    : connectionStatus === 'degraded'
+      ? 'border-amber-500/30 text-amber-300 bg-amber-500/10'
+      : 'border-border text-muted-foreground bg-muted/40';
 
   const quickLinks = useMemo(() => [
     { label: 'Cerimonialista', icon: Radio, to: '/cerimonialista', color: 'bg-[hsl(142_71%_45%/0.2)] text-[hsl(142_71%_45%)]' },
     { label: 'Sonoplastia', icon: Volume2, to: '/sonoplastia', color: 'bg-[hsl(30_90%_50%/0.2)] text-[hsl(30_90%_50%)]' },
-    { label: 'Programação', icon: List, to: '/programacao', color: 'bg-[hsl(217_91%_60%/0.2)] text-[hsl(217_91%_60%)]' },
+    { label: 'Programacao', icon: List, to: '/programacao', color: 'bg-[hsl(217_91%_60%/0.2)] text-[hsl(217_91%_60%)]' },
     { label: 'Chamada', icon: Users, to: '/chamada', color: 'bg-[hsl(330_70%_60%/0.2)] text-[hsl(330_70%_60%)]' },
     { label: 'Modo Foco', icon: Focus, to: '/foco', color: 'bg-muted text-muted-foreground' },
     { label: 'Linha do Tempo', icon: Clock, to: '/linha-do-tempo', color: 'bg-[hsl(0_72%_51%/0.2)] text-[hsl(0_72%_51%)]' },
@@ -39,7 +98,6 @@ const Dashboard = memo(() => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold font-display">Painel</h1>
@@ -48,56 +106,57 @@ const Dashboard = memo(() => {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <span className={`text-xs px-2.5 py-1 rounded-full border ${connectionClass}`}>
+            {connectionLabel}
+          </span>
           <span className="text-2xl sm:text-3xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
           {culto.status === 'planejado' && (
             <button
               onClick={() => {
                 try { iniciarCulto(); } catch (error) { console.error('Erro ao iniciar culto:', error); }
               }}
-              className="px-4 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm"
+              disabled={isSubmitting}
+              className="px-4 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none"
             >
-              <Play className="w-4 h-4" /> Novo Culto
+              <Play className="w-4 h-4" /> {pendingAction === 'start' ? 'Iniciando...' : 'Iniciar Culto'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Culto card */}
       <div className="glass-card p-4">
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-primary" />
           <div>
             <p className="font-display font-semibold">{culto.nome}</p>
             <p className="text-sm text-muted-foreground">
-              {new Date(culto.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })} • {culto.horarioInicial}
+              {new Date(`${culto.data}T00:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })} • {culto.horarioInicial}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Stats grid + Quick access */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-6">
-          {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="glass-card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-primary" />
                 <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Progresso</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold font-display text-primary">{Math.round(progressPercent)} %</p>
+              <p className="text-xl sm:text-2xl font-bold font-display text-primary">{displayProgressPercent} %</p>
             </div>
             <div className="glass-card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Decorrido</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold font-display">{formatElapsed(elapsedSeconds)}</p>
+              <p className="text-xl sm:text-2xl font-bold font-display">{formatElapsedLabel(safeElapsedMs)}</p>
             </div>
             <div className="glass-card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Timer className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Duração Total</span>
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Duracao Total</span>
               </div>
               <p className="text-xl sm:text-2xl font-bold font-display">{totalMinutes} min</p>
             </div>
@@ -112,7 +171,6 @@ const Dashboard = memo(() => {
             </div>
           </div>
 
-          {/* Progress */}
           <div className="glass-card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progresso do Culto</h3>
@@ -123,21 +181,20 @@ const Dashboard = memo(() => {
             <div className="progress-bar h-2.5 rounded-full">
               <div className="progress-bar-fill rounded-full" style={{ transform: `scaleX(${progressPercent / 100})`, transformOrigin: 'left', width: '100%' }} />
             </div>
-            <p className="text-right text-xs text-muted-foreground mt-1.5">{Math.round(progressPercent)} %</p>
+            <p className="text-right text-xs text-muted-foreground mt-1.5">{displayProgressPercent} %</p>
           </div>
 
-          {/* Programação */}
           <div className="glass-card p-4 sm:p-5">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Programação</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Programacao</h3>
             <div className="space-y-1">
-              {momentos.map((m, i) => {
-                const status = getMomentStatus(i);
+              {momentos.map((momento, index) => {
+                const status = getMomentStatus(index);
                 return (
-                  <div key={m.id} className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg transition-colors ${status === 'executando' ? 'bg-status-executing/10' : 'hover:bg-muted/30'}`}>
-                    <span className="text-xs sm:text-sm font-mono text-muted-foreground w-10 sm:w-12">{m.horarioInicio}</span>
+                  <div key={momento.id} className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg transition-colors ${status === 'executando' ? 'bg-status-executing/10' : 'hover:bg-muted/30'}`}>
+                    <span className="text-xs sm:text-sm font-mono text-muted-foreground w-10 sm:w-12">{momento.horarioInicio}</span>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-sm ${status === 'concluido' ? 'text-muted-foreground line-through' : ''} truncate`}>{m.atividade}</p>
-                      <p className="text-xs text-muted-foreground truncate">{m.responsavel}</p>
+                      <p className={`font-medium text-sm ${status === 'concluido' ? 'text-muted-foreground line-through' : ''} truncate`}>{momento.atividade}</p>
+                      <p className="text-xs text-muted-foreground truncate">{momento.responsavel}</p>
                     </div>
                     <StatusBadge status={status} />
                   </div>
@@ -147,11 +204,10 @@ const Dashboard = memo(() => {
           </div>
         </div>
 
-        {/* Quick access */}
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Acesso Rápido</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Acesso Rapido</h3>
           <div className="grid grid-cols-2 gap-3">
-            {quickLinks.map(link => (
+            {quickLinks.map((link) => (
               <button
                 key={link.to}
                 onClick={() => navigate(link.to)}
@@ -168,7 +224,5 @@ const Dashboard = memo(() => {
       </div>
     </div>
   );
-});
-
-Dashboard.displayName = 'Dashboard';
+};
 export default Dashboard;

@@ -1,30 +1,57 @@
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
-import { ProgressBar } from '@/components/culto/ProgressBar';
+import type { MomentoProgramacao } from '@/types/culto';
 import { Clock, User } from 'lucide-react';
-import { useMemo, memo } from 'react';
+import { useMemo } from 'react';
 import { useClock } from '@/hooks/useClock';
 
-const LinhaDoTempo = memo(() => {
-  const { culto, momentos, currentIndex, momentElapsedSeconds, getMomentStatus } = useCulto();
-  const { currentTime, formatTime } = useClock();
+const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefined, index: number): MomentoProgramacao => ({
+  id: momento?.id || `momento-${index}`,
+  cultoId: momento?.cultoId || '',
+  ordem: Number.isFinite(momento?.ordem) ? Number(momento.ordem) : index,
+  bloco: momento?.bloco || '',
+  horarioInicio: typeof momento?.horarioInicio === 'string' && momento.horarioInicio.includes(':') ? momento.horarioInicio : '00:00',
+  duracao: Number.isFinite(momento?.duracao) ? Math.max(0, Number(momento.duracao)) : 0,
+  atividade: momento?.atividade || 'Momento sem nome',
+  responsavel: momento?.responsavel || 'Nao informado',
+  ministerio: momento?.ministerio || 'Nao informado',
+  funcao: momento?.funcao || 'Nao informado',
+  fotoUrl: momento?.fotoUrl || '',
+  tipoMomento: momento?.tipoMomento || 'nenhum',
+  tipoMidia: momento?.tipoMidia || 'nenhum',
+  acaoSonoplastia: momento?.acaoSonoplastia || '',
+  observacao: momento?.observacao || '',
+  antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento.antecedenciaChamada)) : 0,
+  chamado: Boolean(momento?.chamado),
+  duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento.duracaoOriginal) : undefined,
+});
 
-  const totalMinutes = useMemo(() => momentos.reduce((sum, m) => sum + m.duracao, 0), [momentos]);
-  const firstTime = momentos[0]?.horarioInicio || '00:00';
-  const lastEnd = momentos.length > 0 ? calcularHorarioTermino(momentos[momentos.length - 1].horarioInicio, momentos[momentos.length - 1].duracao) : '00:00';
+const LinhaDoTempo = () => {
+  const { culto, momentos, currentIndex, momentElapsedMs, isPaused, getMomentStatus } = useCulto();
+  const { currentTime, formatTime } = useClock();
+  const safeMomentos = useMemo(
+    () => (Array.isArray(momentos) ? momentos : []).map((momento, index) => normalizeMomento(momento, index)),
+    [momentos]
+  );
+  const safeCurrentIndex = Number.isInteger(currentIndex) ? currentIndex : -1;
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+
+  const totalMinutes = useMemo(() => safeMomentos.reduce((sum, m) => sum + m.duracao, 0), [safeMomentos]);
+  const firstTime = safeMomentos[0]?.horarioInicio || '00:00';
+  const lastEnd = safeMomentos.length > 0 ? calcularHorarioTermino(safeMomentos[safeMomentos.length - 1].horarioInicio, safeMomentos[safeMomentos.length - 1].duracao) : '00:00';
 
   const blockColors = useMemo(() => {
     const colors: Record<string, string> = {};
     const colorPool = ['bg-[hsl(217_91%_60%)]', 'bg-[hsl(270_60%_55%)]', 'bg-[hsl(142_71%_45%)]', 'bg-[hsl(30_90%_50%)]', 'bg-[hsl(330_70%_60%)]', 'bg-[hsl(190_80%_50%)]', 'bg-[hsl(45_90%_55%)]'];
     let idx = 0;
-    momentos.forEach(m => {
+    safeMomentos.forEach(m => {
       if (!colors[m.bloco]) {
         colors[m.bloco] = colorPool[idx % colorPool.length];
         idx++;
       }
     });
     return colors;
-  }, [momentos]);
+  }, [safeMomentos]);
 
   return (
     <div className="space-y-6">
@@ -45,7 +72,7 @@ const LinhaDoTempo = memo(() => {
       {/* Visual timeline bar */}
       <div className="glass-card p-4 sm:p-5">
         <div className="flex gap-0.5 h-10 sm:h-12 rounded-xl overflow-hidden">
-          {momentos.map((m, i) => {
+          {safeMomentos.map((m, i) => {
             const widthPercent = totalMinutes > 0 ? (m.duracao / totalMinutes) * 100 : 0;
             const status = getMomentStatus(i);
             const color = status === 'concluido' ? 'bg-status-completed' :
@@ -74,10 +101,20 @@ const LinhaDoTempo = memo(() => {
       {/* Timeline items */}
       <div className="space-y-4 relative">
         <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
-        {momentos.map((m, i) => {
+        {safeMomentos.map((m, i) => {
           const status = getMomentStatus(i);
           const isExecuting = status === 'executando';
           const horarioFim = calcularHorarioTermino(m.horarioInicio, m.duracao);
+          const itemElapsedMs = isExecuting ? safeMomentElapsedMs : 0;
+          const itemTotalMs = m.duracao * 60 * 1000;
+          const itemPercent = itemTotalMs > 0
+            ? Math.min(100, (itemElapsedMs / itemTotalMs) * 100)
+            : 0;
+          const itemProgressScale = itemPercent / 100;
+          const itemRemainingMs = Math.max(0, itemTotalMs - itemElapsedMs);
+          const itemRemainingSeconds = Math.ceil(itemRemainingMs / 1000);
+          const itemRemaining = `${String(Math.floor(itemRemainingSeconds / 60)).padStart(2, '0')}:${String(itemRemainingSeconds % 60).padStart(2, '0')}`;
+          const itemDisplayPercent = Math.min(100, Math.max(0, Math.round(itemPercent)));
           return (
             <div key={m.id} className="relative pl-12">
               <div className={`absolute left-[14px] top-5 w-3 h-3 rounded-full border-2 ${
@@ -107,7 +144,22 @@ const LinhaDoTempo = memo(() => {
                 </div>
                 {isExecuting && (
                   <div className="mt-3">
-                    <ProgressBar momento={m} elapsedSeconds={momentElapsedSeconds} />
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>{itemDisplayPercent}%</span>
+                        <span>{isPaused ? `${itemRemaining} pausado` : `${itemRemaining} restantes`}</span>
+                      </div>
+                      <div className="progress-bar h-2">
+                        <div
+                          className="progress-bar-fill"
+                          style={{
+                            transform: `scaleX(${itemProgressScale})`,
+                            transformOrigin: 'left',
+                            width: '100%',
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -117,7 +169,5 @@ const LinhaDoTempo = memo(() => {
       </div>
     </div>
   );
-});
-
-LinhaDoTempo.displayName = 'LinhaDoTempo';
+};
 export default LinhaDoTempo;

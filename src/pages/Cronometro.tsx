@@ -1,6 +1,8 @@
 import { useCulto } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { useRef, useCallback, memo } from 'react';
+import { useMomentProgress } from '@/hooks/useMomentProgress';
+import { formatTimerMs } from '@/utils/time';
 
 const blend = (base: string, overlay: string, alpha: number) => {
   const toRgb = (hex: string) => {
@@ -18,7 +20,7 @@ const blend = (base: string, overlay: string, alpha: number) => {
 };
 
 const Cronometro = memo(() => {
-  const { momentos, currentIndex, momentElapsedSeconds, culto } = useCulto();
+  const { momentos, currentIndex, culto, momentElapsedMs } = useCulto();
   const {
     isBlinking,
     message,
@@ -36,6 +38,7 @@ const Cronometro = memo(() => {
     messageTextColor,
     warningColor,
     dangerColor,
+    connectionStatus,
   } = useCronometro();
   const containerRef = useRef<HTMLDivElement>(null);
   const toggleFullscreen = useCallback(() => {
@@ -57,25 +60,19 @@ const Cronometro = memo(() => {
     );
   }
 
-  const safeElapsedSeconds = typeof momentElapsedSeconds === 'number' ? momentElapsedSeconds : 0;
+  const safeElapsedMs = typeof momentElapsedMs === 'number' ? momentElapsedMs : 0;
   const safeCurrentIndex = typeof currentIndex === 'number' ? currentIndex : -1;
   const safeMomentos = Array.isArray(momentos) ? momentos : [];
   const currentMoment = safeCurrentIndex >= 0 ? safeMomentos[safeCurrentIndex] : null;
-  const baseDurationSec = currentMoment ? currentMoment.duracao * 60 : 0;
-  const remainingSeconds = Math.max(0, baseDurationSec - safeElapsedSeconds);
-  const progressPercent = baseDurationSec > 0 ? ((baseDurationSec - remainingSeconds) / baseDurationSec) * 100 : 0;
+  const nextMoment = safeCurrentIndex >= 0 ? safeMomentos[safeCurrentIndex + 1] : null;
+  const { remainingSeconds, remainingMs, percent: progressPercent, formattedRemaining, remainingLabel } = useMomentProgress(currentMoment, safeElapsedMs);
   const isRed = remainingSeconds <= redThreshold && !!currentMoment;
   const isOrange = !isRed && remainingSeconds <= orangeThreshold && !!currentMoment;
   const accentColor = isRed ? dangerColor : isOrange ? warningColor : timerTextColor;
   const effectiveBackground = isRed ? blend(backgroundColor, dangerColor, 0.22) : isOrange ? blend(backgroundColor, warningColor, 0.16) : backgroundColor;
   const isNotStarted = culto.status === 'planejado';
   const isFinished = culto.status === 'finalizado';
-
-  const formatTimer = (seconds: number) => {
-    const min = Math.floor(seconds / 60);
-    const sec = seconds % 60;
-    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-  };
+  const connectionLabel = connectionStatus === 'online' ? 'Sincronizado' : connectionStatus === 'degraded' ? 'Sincronizacao parcial' : connectionStatus === 'offline' ? 'Offline' : 'Conectando';
 
   return (
     <div
@@ -98,7 +95,12 @@ const Cronometro = memo(() => {
         />
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 w-full px-4 text-center">
+      <div className="flex-1 flex flex-col items-center justify-between relative z-10 w-full px-4 py-[5vh] text-center">
+        <div className="w-full flex items-center justify-between text-[11px] uppercase tracking-[0.24em] text-white/55">
+          <span>{connectionLabel}</span>
+          <span className="max-w-[38vw] truncate">{nextMoment ? `Proximo: ${nextMoment.atividade}` : 'Sem proximo comando'}</span>
+        </div>
+        <div className="w-full flex-1 flex flex-col items-center justify-center">
         {currentMoment && !showMessage && (
           <p
             className="uppercase mb-3"
@@ -131,7 +133,7 @@ const Cronometro = memo(() => {
               textShadow: `0 0 40px ${accentColor}55`,
             }}
           >
-            {isNotStarted || isFinished ? '00:00' : formatTimer(remainingSeconds)}
+            {isNotStarted || isFinished ? formatTimerMs(0) : formattedRemaining}
           </div>
         )}
 
@@ -146,6 +148,10 @@ const Cronometro = memo(() => {
             {currentMoment.responsavel}
           </p>
         )}
+        </div>
+        <div className="text-sm text-white/60">
+          {showMessage ? 'Mensagem oficial do painel' : currentMoment ? `${remainingLabel} restantes` : 'Aguardando inicio do culto'}
+        </div>
       </div>
 
       <div className="w-[90%] relative z-10 mb-[4vh]">
@@ -161,7 +167,7 @@ const Cronometro = memo(() => {
             className="h-full rounded-2xl"
             style={{
               width: '100%',
-              transform: `scaleX(${(isNotStarted || isFinished) ? 0 : Math.max(0, Math.min(1, progressPercent / 100))})`,
+              transform: `scaleX(${(isNotStarted || isFinished || remainingMs <= 0) ? 0 : Math.max(0, Math.min(1, progressPercent / 100))})`,
               transformOrigin: 'left',
               background: `linear-gradient(90deg, ${blend(accentColor, '#ffffff', 0.15)} 0%, ${accentColor} 100%)`,
               boxShadow: `0 0 30px ${accentColor}66`,

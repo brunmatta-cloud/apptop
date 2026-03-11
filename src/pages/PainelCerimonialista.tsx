@@ -9,6 +9,8 @@ import {
 import { useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
+import { useMomentProgress } from '@/hooks/useMomentProgress';
+import { formatTimerMs } from '@/utils/time';
 
 const emptyCultoFallback = {
   nome: 'Culto carregando...',
@@ -43,6 +45,19 @@ const getAdjustmentLabel = (momento: MomentoProgramacao | null) => {
   return Math.round((momento.duracao - momento.duracaoOriginal) * 60);
 };
 
+const connectionBadge = (status: string) => {
+  if (status === 'online') return 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10';
+  if (status === 'degraded') return 'border-amber-500/30 text-amber-300 bg-amber-500/10';
+  return 'border-border text-muted-foreground bg-muted/40';
+};
+
+const connectionLabel = (status: string) => {
+  if (status === 'online') return 'Sincronizado';
+  if (status === 'degraded') return 'Sincronizacao parcial';
+  if (status === 'offline') return 'Offline';
+  return 'Conectando';
+};
+
 function PainelCerimonialista() {
   const cultoData = useCulto();
   const cronometroData = useCronometro();
@@ -50,10 +65,11 @@ function PainelCerimonialista() {
   const clockData = useClock();
 
   const {
-    culto, momentos, currentIndex, elapsedSeconds, momentElapsedSeconds,
-    executionMode, setExecutionMode, isPaused,
+    culto, momentos, currentIndex,
+    executionMode, setExecutionMode, isPaused, elapsedMs, momentElapsedSeconds, momentElapsedMs,
     avancar, voltar, pausar, retomar, pular, iniciarCulto, finalizarCulto,
     getMomentStatus, marcarChamado, adjustCurrentMomentDuration,
+    pendingAction, isSubmitting, lastError, connectionStatus,
   } = cultoData;
 
   const {
@@ -69,30 +85,19 @@ function PainelCerimonialista() {
     [momentos]
   );
   const safeCurrentIndex = Number.isInteger(currentIndex) ? currentIndex : -1;
-  const safeElapsedSeconds = Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0;
+  const safeElapsedMs = Number.isFinite(elapsedMs) ? elapsedMs : 0;
   const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const isDataReady = Boolean(culto) && Array.isArray(momentos);
 
-  const currentMoment = useMemo(() => {
-    if (safeCurrentIndex < 0 || safeCurrentIndex >= safeMomentos.length) return null;
-    return safeMomentos[safeCurrentIndex] ?? null;
-  }, [safeCurrentIndex, safeMomentos]);
+  const currentMoment = safeCurrentIndex < 0 || safeCurrentIndex >= safeMomentos.length
+    ? null
+    : safeMomentos[safeCurrentIndex] ?? null;
 
-  const summary = useMemo(() => {
-    const totalMinutes = safeMomentos.reduce((sum, momento) => sum + (Number.isFinite(momento.duracao) ? momento.duracao : 0), 0);
-    const completedMinutes = safeMomentos
-      .slice(0, Math.max(0, safeCurrentIndex))
-      .reduce((sum, momento) => sum + (Number.isFinite(momento.duracao) ? momento.duracao : 0), 0);
-    const progressPercent = totalMinutes > 0 ? (completedMinutes / totalMinutes) * 100 : 0;
-    const remainingSeconds = Math.max(0, totalMinutes * 60 - safeElapsedSeconds);
-
-    return {
-      totalMinutes,
-      progressPercent,
-      remainMin: Math.floor(remainingSeconds / 60),
-      remainSec: remainingSeconds % 60,
-    };
-  }, [safeMomentos, safeCurrentIndex, safeElapsedSeconds]);
+  const totalMinutes = safeMomentos.reduce((sum, momento) => sum + (Number.isFinite(momento.duracao) ? momento.duracao : 0), 0);
+  const totalMs = totalMinutes * 60 * 1000;
+  const summaryProgressPercent = totalMs > 0 ? Math.min(100, (safeElapsedMs / totalMs) * 100) : 0;
+  const summaryRemainingMs = Math.max(0, totalMs - safeElapsedMs);
 
   const chamadaItems = useMemo(() => {
     return safeMomentos.filter((momento, index) => {
@@ -110,13 +115,10 @@ function PainelCerimonialista() {
     [safeMomentos, safeCurrentIndex]
   );
 
-  const momentPercent = currentMoment && currentMoment.duracao > 0
-    ? Math.min(100, (safeMomentElapsedSeconds / (currentMoment.duracao * 60)) * 100)
-    : 0;
-  const momentRemaining = currentMoment
-    ? Math.max(0, currentMoment.duracao * 60 - safeMomentElapsedSeconds)
-    : 0;
+  const { percent: currentMomentPercent, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
   const currentAdjustment = getAdjustmentLabel(currentMoment);
+  const isCommandLocked = isSubmitting;
+  const activeCommand = pendingAction ?? '';
 
   const handleSendMessage = useCallback(() => {
     try {
@@ -175,18 +177,29 @@ function PainelCerimonialista() {
         </div>
         <div className="flex items-center justify-between sm:justify-end gap-4 flex-wrap">
           <span className="text-xl sm:text-2xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
+          <span className={`text-xs px-2.5 py-1 rounded-full border ${connectionBadge(connectionStatus)}`}>
+            {connectionLabel(connectionStatus)}
+          </span>
           {safeCulto.status === 'planejado' && (
             <button
               type="button"
               onClick={iniciarCulto}
-              disabled={!isDataReady || safeMomentos.length === 0}
+              disabled={!isDataReady || safeMomentos.length === 0 || isCommandLocked}
               className="px-4 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none"
             >
-              <Play className="w-4 h-4" /> Iniciar Culto
+              <Play className="w-4 h-4" /> {activeCommand === 'start' ? 'Iniciando...' : 'Iniciar Culto'}
             </button>
           )}
         </div>
       </div>
+
+      {(lastError || isCommandLocked) && (
+        <div className={`glass-card p-4 border ${lastError ? 'border-destructive/30' : 'border-primary/20'}`}>
+          <p className={`text-sm ${lastError ? 'text-destructive' : 'text-muted-foreground'}`}>
+            {lastError ?? `Comando em processamento: ${activeCommand}. A interface sera reidratada ao confirmar.`}
+          </p>
+        </div>
+      )}
 
       {!isDataReady && (
         <div className="glass-card p-4 sm:p-5">
@@ -199,15 +212,15 @@ function PainelCerimonialista() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Progresso</span>
-          <p className="text-xl sm:text-2xl font-bold font-display mt-1">{Math.round(summary.progressPercent)} %</p>
+          <p className="text-xl sm:text-2xl font-bold font-display mt-1">{Math.round(summaryProgressPercent)} %</p>
         </div>
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Decorrido</span>
-          <p className="text-xl sm:text-2xl font-bold font-display mt-1">{safeElapsedSeconds}s</p>
+          <p className="text-xl sm:text-2xl font-bold font-display mt-1">{formatTimerMs(safeElapsedMs)}</p>
         </div>
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Restante</span>
-          <p className="text-xl sm:text-2xl font-bold font-display mt-1">{summary.remainMin}min {summary.remainSec}s</p>
+          <p className="text-xl sm:text-2xl font-bold font-display mt-1">{formatTimerMs(summaryRemainingMs)}</p>
         </div>
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Status</span>
@@ -221,12 +234,12 @@ function PainelCerimonialista() {
         <div className="progress-bar h-2.5 rounded-full">
           <div
             className="progress-bar-fill rounded-full"
-            style={{ transform: `scaleX(${summary.progressPercent / 100})`, transformOrigin: 'left', width: '100%' }}
+            style={{ transform: `scaleX(${summaryProgressPercent / 100})`, transformOrigin: 'left', width: '100%' }}
           />
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{summary.totalMinutes} min planejados</span>
-          <span>{Math.round(summary.progressPercent)} %</span>
+          <span>{totalMinutes} min planejados</span>
+          <span>{Math.round(summaryProgressPercent)} %</span>
         </div>
       </div>
 
@@ -249,13 +262,13 @@ function PainelCerimonialista() {
                 <div className="progress-bar h-2 rounded-full">
                   <div
                     className="progress-bar-fill rounded-full"
-                    style={{ transform: `scaleX(${momentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
+                    style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
                   />
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground mt-1.5 gap-2">
                   <span>{currentMoment.horarioInicio}</span>
                   <span className="font-mono font-semibold text-foreground">
-                    {Math.floor(momentRemaining / 60)}:{String(momentRemaining % 60).padStart(2, '0')} restantes
+                    {isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}
                   </span>
                   <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
                 </div>
@@ -269,26 +282,32 @@ function PainelCerimonialista() {
         <div className="glass-card p-4 sm:p-5">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Controles</h3>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            <button type="button" onClick={voltar} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm">
+            <button type="button" onClick={voltar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
               <SkipBack className="w-4 h-4" /> <span className="hidden sm:inline">Voltar</span>
             </button>
             {isPaused ? (
-              <button type="button" onClick={retomar} className="px-4 sm:px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-semibold">
-                <Play className="w-4 h-4" /> Retomar
+              <button type="button" onClick={retomar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))] hover:bg-[hsl(var(--status-alert))]/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
+                  <Play className="w-4 h-4 transition-transform duration-200 ease-out" />
+                  <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
+                </span>
               </button>
             ) : (
-              <button type="button" onClick={pausar} className="px-4 sm:px-6 py-2.5 rounded-lg bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))] hover:bg-[hsl(var(--status-alert))]/90 transition-colors flex items-center gap-2 text-sm font-semibold">
-                <Pause className="w-4 h-4" /> Pausar
+              <button type="button" onClick={pausar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
+                  <Pause className="w-4 h-4 transition-transform duration-200 ease-out" />
+                  <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
+                </span>
               </button>
             )}
-            <button type="button" onClick={avancar} className="px-3 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-semibold">
-              <span className="hidden sm:inline">Avancar</span> <SkipForward className="w-4 h-4" />
+            <button type="button" onClick={avancar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+              <span className="hidden sm:inline">{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="w-4 h-4" />
             </button>
-            <button type="button" onClick={pular} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm">
-              <FastForward className="w-4 h-4" /> <span className="hidden sm:inline">Pular</span>
+            <button type="button" onClick={pular} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
+              <FastForward className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
             </button>
-            <button type="button" onClick={finalizarCulto} className="px-3 sm:px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2 text-sm font-semibold">
-              <Check className="w-4 h-4" /> <span className="hidden sm:inline">Finalizar</span>
+            <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+              <Check className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
             </button>
           </div>
         </div>
@@ -305,24 +324,25 @@ function PainelCerimonialista() {
             </Link>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button type="button" onClick={() => safeAdjustDuration(-60)} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors text-sm font-semibold">
+            <button type="button" onClick={() => safeAdjustDuration(-60)} disabled={isCommandLocked} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
               <Minus className="w-3 h-3" /> 1min
             </button>
-            <button type="button" onClick={() => safeAdjustDuration(60)} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[hsl(var(--status-completed)/0.2)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.3)] transition-colors text-sm font-semibold">
+            <button type="button" onClick={() => safeAdjustDuration(60)} disabled={isCommandLocked} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[hsl(var(--status-completed)/0.2)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.3)] transition-colors text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
               <Plus className="w-3 h-3" /> 1min
             </button>
             <button
               type="button"
               onClick={safeToggleBlink}
+              disabled={isCommandLocked}
               className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
                 isBlinking ? 'bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))]' : 'bg-muted hover:bg-muted/80'
-              }`}
+              } disabled:opacity-50 disabled:pointer-events-none`}
             >
               {isBlinking ? <ZapOff className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
               {isBlinking ? 'Parar' : 'Piscar'}
             </button>
             {showMessage ? (
-              <button type="button" onClick={safeClearMessage} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors text-sm">
+              <button type="button" onClick={safeClearMessage} disabled={isCommandLocked} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none">
                 <EyeOff className="w-3 h-3" /> Tirar Msg
               </button>
             ) : (
@@ -338,7 +358,7 @@ function PainelCerimonialista() {
                 <button
                   type="button"
                   onClick={handleSendMessage}
-                  disabled={!msgDraft.trim()}
+                  disabled={!msgDraft.trim() || isCommandLocked}
                   className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   <Send className="w-3 h-3" />
@@ -411,7 +431,8 @@ function PainelCerimonialista() {
                     <button
                       type="button"
                       onClick={() => marcarChamado(momento.id)}
-                      className="mt-2 text-xs px-3 py-1 rounded bg-status-completed/20 text-status-completed hover:bg-status-completed/30 transition-colors flex items-center gap-1"
+                      disabled={isCommandLocked}
+                      className="mt-2 text-xs px-3 py-1 rounded bg-status-completed/20 text-status-completed hover:bg-status-completed/30 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
                     >
                       <Check className="w-3 h-3" /> Marcar como chamado
                     </button>
@@ -442,7 +463,8 @@ function PainelCerimonialista() {
             <select
               value={executionMode}
               onChange={(event) => handleExecutionModeChange(event.target.value)}
-              className="w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              disabled={isCommandLocked}
+              className="w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:pointer-events-none"
             >
               <option value="manual">Manual</option>
               <option value="automatico">Automatico</option>

@@ -5,14 +5,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState, useRef, useMemo, memo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useClock } from '@/hooks/useClock';
+import { useMomentProgress } from '@/hooks/useMomentProgress';
+import { formatTimerMs } from '@/utils/time';
 
 const PainelSonoplastia = memo(() => {
-  const { culto, momentos, currentIndex, momentElapsedSeconds, getMomentStatus } = useCulto();
+  const { culto, momentos, currentIndex, momentElapsedMs, isPaused, getMomentStatus } = useCulto();
   const { currentTime, formatTime } = useClock();
   const [alerts, setAlerts] = useState<{ id: string; message: string; time: Date }[]>([]);
   const alertedRef = useRef<Set<string>>(new Set());
 
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const soundMoments = useMemo(() => momentos.filter(m => m.tipoMidia !== 'nenhum' || m.acaoSonoplastia), [momentos]);
 
   const nextSoundAction = useMemo(() => soundMoments.find(m => {
@@ -20,19 +23,19 @@ const PainelSonoplastia = memo(() => {
     return idx > currentIndex;
   }), [soundMoments, momentos, currentIndex]);
 
-  const secondsUntilNext = useMemo(() => {
+  const remainingMsUntilNext = useMemo(() => {
     if (!currentMoment || !nextSoundAction) return Infinity;
     const nextIdx = momentos.findIndex(x => x.id === nextSoundAction.id);
     if (nextIdx <= currentIndex) return Infinity;
-    const currentRemaining = Math.max(0, currentMoment.duracao * 60 - momentElapsedSeconds);
-    const betweenSeconds = momentos.slice(currentIndex + 1, nextIdx).reduce((s, m) => s + m.duracao * 60, 0);
-    return currentRemaining + betweenSeconds;
-  }, [currentMoment, nextSoundAction, momentos, currentIndex, momentElapsedSeconds]);
+    const currentRemaining = Math.max(0, currentMoment.duracao * 60 * 1000 - safeMomentElapsedMs);
+    const betweenMs = momentos.slice(currentIndex + 1, nextIdx).reduce((s, m) => s + m.duracao * 60 * 1000, 0);
+    return currentRemaining + betweenMs;
+  }, [currentMoment, nextSoundAction, momentos, currentIndex, safeMomentElapsedMs]);
 
   useEffect(() => {
     if (!nextSoundAction) return;
     const alertKey = `alert-10s-${nextSoundAction.id}`;
-    if (secondsUntilNext <= 10 && secondsUntilNext > 8 && !alertedRef.current.has(alertKey)) {
+    if (remainingMsUntilNext <= 10000 && remainingMsUntilNext > 8000 && !alertedRef.current.has(alertKey)) {
       alertedRef.current.add(alertKey);
       const newAlert = {
         id: alertKey,
@@ -46,7 +49,7 @@ const PainelSonoplastia = memo(() => {
         variant: 'destructive',
       });
     }
-  }, [secondsUntilNext, nextSoundAction]);
+  }, [remainingMsUntilNext, nextSoundAction]);
 
   useEffect(() => {
     alertedRef.current.clear();
@@ -60,9 +63,8 @@ const PainelSonoplastia = memo(() => {
     }
   };
 
-  const currentProgress = currentMoment ? Math.min(100, (momentElapsedSeconds / (currentMoment.duracao * 60)) * 100) : 0;
-  const currentRemaining = currentMoment ? Math.max(0, currentMoment.duracao * 60 - momentElapsedSeconds) : 0;
-  const isNextUrgent = secondsUntilNext <= 10;
+  const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
+  const isNextUrgent = remainingMsUntilNext <= 10000;
 
   return (
     <div className="space-y-6">
@@ -89,12 +91,8 @@ const PainelSonoplastia = memo(() => {
         {nextSoundAction ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
             <div className={`flex flex-col items-center justify-center shrink-0 ${isNextUrgent ? 'animate-pulse' : ''}`}>
-              <span className={`font-mono font-black leading-none ${isNextUrgent ? 'text-status-alert' : 'text-primary'} ${secondsUntilNext < 60 ? 'text-5xl sm:text-7xl' : 'text-4xl sm:text-5xl'}`}>
-                {secondsUntilNext < Infinity
-                  ? secondsUntilNext >= 60
-                    ? `${String(Math.floor(secondsUntilNext / 60)).padStart(2, '0')}:${String(Math.floor(secondsUntilNext % 60)).padStart(2, '0')}`
-                    : `00:${String(Math.ceil(secondsUntilNext)).padStart(2, '0')}`
-                  : '--:--'}
+              <span className={`font-mono font-black leading-none ${isNextUrgent ? 'text-status-alert' : 'text-primary'} ${remainingMsUntilNext < 60000 ? 'text-5xl sm:text-7xl' : 'text-4xl sm:text-5xl'}`}>
+                {remainingMsUntilNext < Infinity ? formatTimerMs(remainingMsUntilNext) : '--:--'}
               </span>
               <span className={`text-xs mt-1 ${isNextUrgent ? 'text-status-alert font-bold' : 'text-muted-foreground'}`}>
                 {isNextUrgent ? '⚠️ ATENÇÃO!' : 'até próxima ação'}
@@ -166,7 +164,7 @@ const PainelSonoplastia = memo(() => {
                 <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
                   <span>{currentMoment.horarioInicio}</span>
                   <span className="font-mono font-semibold text-foreground">
-                    {Math.floor(currentRemaining / 60)}:{String(currentRemaining % 60).padStart(2, '0')} restantes
+                    {isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}
                   </span>
                   <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
                 </div>

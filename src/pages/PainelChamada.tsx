@@ -4,7 +4,7 @@ import { useMemo, memo } from 'react';
 import { useClock } from '@/hooks/useClock';
 
 const PainelChamada = memo(() => {
-  const { culto, momentos, currentIndex, momentElapsedSeconds, getMomentStatus, marcarChamado } = useCulto();
+  const { culto, momentos, currentIndex, momentElapsedSeconds, getMomentStatus, marcarChamado, isSubmitting } = useCulto();
   const { currentTime, formatTime } = useClock();
 
   const executing = currentIndex >= 0 ? [momentos[currentIndex]] : [];
@@ -92,7 +92,7 @@ const PainelChamada = memo(() => {
                   <p className="text-sm text-muted-foreground truncate">{m.ministerio} • {m.funcao}</p>
                   <p className="text-xs text-muted-foreground truncate">{m.atividade} • {m.horarioInicio}</p>
                 </div>
-                <button onClick={() => marcarChamado(m.id)} className="px-3 py-1.5 rounded-lg bg-status-completed/20 text-status-completed hover:bg-status-completed/30 text-xs font-medium flex items-center gap-1 transition-colors shrink-0">
+                <button disabled={isSubmitting} onClick={() => marcarChamado(m.id)} className="px-3 py-1.5 rounded-lg bg-status-completed/20 text-status-completed hover:bg-status-completed/30 text-xs font-medium flex items-center gap-1 transition-colors shrink-0 disabled:opacity-50 disabled:pointer-events-none">
                   <Check className="w-3 h-3" /> Chamado
                 </button>
               </div>

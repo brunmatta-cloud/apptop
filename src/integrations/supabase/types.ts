@@ -17,11 +17,13 @@ export type Database = {
       culto_sync_state: {
         Row: {
           active_culto_id: string | null
+          accumulated_ms: number
           all_momentos: Json
           background_color: string | null
           bottom_font_size: number | null
           bottom_text_color: string | null
           cultos: Json
+          current_command: string
           current_index: number
           danger_color: string | null
           elapsed_seconds: number
@@ -32,25 +34,36 @@ export type Database = {
           message: string
           message_font_size: number | null
           message_text_color: string | null
+          moment_accumulated_ms: number
           moment_elapsed_seconds: number
+          moment_paused_at: string | null
+          moment_started_at: string | null
+          next_command: string
           orange_threshold: number | null
+          paused_at: string | null
           red_threshold: number | null
+          revision: number
           show_message: boolean
+          started_at: string | null
+          timer_status: string
           timer_font_size: number | null
           timer_started_at: string | null
           timer_text_color: string | null
           top_font_size: number | null
           top_text_color: string | null
           updated_at: string
+          updated_by: string
           warning_color: string | null
         }
         Insert: {
           active_culto_id?: string | null
+          accumulated_ms?: number
           all_momentos?: Json
           background_color?: string | null
           bottom_font_size?: number | null
           bottom_text_color?: string | null
           cultos?: Json
+          current_command?: string
           current_index?: number
           danger_color?: string | null
           elapsed_seconds?: number
@@ -61,25 +74,36 @@ export type Database = {
           message?: string
           message_font_size?: number | null
           message_text_color?: string | null
+          moment_accumulated_ms?: number
           moment_elapsed_seconds?: number
+          moment_paused_at?: string | null
+          moment_started_at?: string | null
+          next_command?: string
           orange_threshold?: number | null
+          paused_at?: string | null
           red_threshold?: number | null
+          revision?: number
           show_message?: boolean
+          started_at?: string | null
+          timer_status?: string
           timer_font_size?: number | null
           timer_started_at?: string | null
           timer_text_color?: string | null
           top_font_size?: number | null
           top_text_color?: string | null
           updated_at?: string
+          updated_by?: string
           warning_color?: string | null
         }
         Update: {
           active_culto_id?: string | null
+          accumulated_ms?: number
           all_momentos?: Json
           background_color?: string | null
           bottom_font_size?: number | null
           bottom_text_color?: string | null
           cultos?: Json
+          current_command?: string
           current_index?: number
           danger_color?: string | null
           elapsed_seconds?: number
@@ -90,16 +114,25 @@ export type Database = {
           message?: string
           message_font_size?: number | null
           message_text_color?: string | null
+          moment_accumulated_ms?: number
           moment_elapsed_seconds?: number
+          moment_paused_at?: string | null
+          moment_started_at?: string | null
+          next_command?: string
           orange_threshold?: number | null
+          paused_at?: string | null
           red_threshold?: number | null
+          revision?: number
           show_message?: boolean
+          started_at?: string | null
+          timer_status?: string
           timer_font_size?: number | null
           timer_started_at?: string | null
           timer_text_color?: string | null
           top_font_size?: number | null
           top_text_color?: string | null
           updated_at?: string
+          updated_by?: string
           warning_color?: string | null
         }
         Relationships: []
@@ -137,12 +170,141 @@ export type Database = {
         }
         Relationships: []
       }
+      session_events: {
+        Row: {
+          applied_revision: number | null
+          created_at: string
+          created_by: string
+          error_message: string | null
+          event_type: string
+          expected_revision: number | null
+          id: number
+          payload: Json
+          session_id: string
+          success: boolean
+        }
+        Insert: {
+          applied_revision?: number | null
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          event_type: string
+          expected_revision?: number | null
+          id?: number
+          payload?: Json
+          session_id: string
+          success?: boolean
+        }
+        Update: {
+          applied_revision?: number | null
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          event_type?: string
+          expected_revision?: number | null
+          id?: number
+          payload?: Json
+          session_id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
+      session_state: {
+        Row: {
+          accumulated_ms: number
+          active_culto_id: string | null
+          all_momentos: Json
+          cultos: Json
+          current_command: string
+          current_index: number
+          current_stage: string
+          execution_mode: string
+          id: number
+          moment_accumulated_ms: number
+          moment_paused_at: string | null
+          moment_started_at: string | null
+          next_command: string
+          paused_at: string | null
+          revision: number
+          session_id: string
+          settings: Json
+          started_at: string | null
+          status: string
+          timer_status: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          accumulated_ms?: number
+          active_culto_id?: string | null
+          all_momentos?: Json
+          cultos?: Json
+          current_command?: string
+          current_index?: number
+          current_stage?: string
+          execution_mode?: string
+          id?: number
+          moment_accumulated_ms?: number
+          moment_paused_at?: string | null
+          moment_started_at?: string | null
+          next_command?: string
+          paused_at?: string | null
+          revision?: number
+          session_id: string
+          settings?: Json
+          started_at?: string | null
+          status?: string
+          timer_status?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          accumulated_ms?: number
+          active_culto_id?: string | null
+          all_momentos?: Json
+          cultos?: Json
+          current_command?: string
+          current_index?: number
+          current_stage?: string
+          execution_mode?: string
+          id?: number
+          moment_accumulated_ms?: number
+          moment_paused_at?: string | null
+          moment_started_at?: string | null
+          next_command?: string
+          paused_at?: string | null
+          revision?: number
+          session_id?: string
+          settings?: Json
+          started_at?: string | null
+          status?: string
+          timer_status?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_session_command: {
+        Args: {
+          p_actor?: string
+          p_command?: string
+          p_expected_revision?: number | null
+          p_payload?: Json
+          p_session_id?: string
+        }
+        Returns: Database["public"]["Tables"]["session_state"]["Row"]
+      }
+      get_session_state: {
+        Args: {
+          p_session_id?: string
+        }
+        Returns: Database["public"]["Tables"]["session_state"]["Row"]
+      }
     }
     Enums: {
       [_ in never]: never

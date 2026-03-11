@@ -1,12 +1,12 @@
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
 import { StatusBadge } from '@/components/culto/StatusBadge';
-import { ProgressBar } from '@/components/culto/ProgressBar';
 import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown } from 'lucide-react';
 import { useState } from 'react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
 import { exportarProgramacao } from '@/utils/exportProgramacao';
 import { exportarProgramacaoImagem } from '@/utils/exportProgramacaoImagem';
+import { useMomentProgress } from '@/hooks/useMomentProgress';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 
@@ -26,15 +26,42 @@ const emptyCulto = (): Culto => ({
   status: 'planejado',
 });
 
+const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) => {
+  const { currentIndex, momentos, momentElapsedMs, isPaused } = useCulto();
+  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+  const effectiveElapsedMs = currentMoment?.id === momento.id ? safeMomentElapsedMs : 0;
+  const { percent, progressScale, formattedRemaining } = useMomentProgress(momento, effectiveElapsedMs);
+  const displayPercent = Math.round(percent);
+
+  return (
+    <div className="mt-3">
+      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+        <span>{displayPercent}%</span>
+        <span>{isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}</span>
+      </div>
+      <div className="progress-bar h-2">
+        <div
+          className="progress-bar-fill"
+          style={{
+            transform: `scaleX(${progressScale})`,
+            transformOrigin: 'left',
+            width: '100%',
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
 const Programacao = () => {
   const {
     cultos, addCulto, updateCulto, removeCulto, duplicateCulto,
     activeCultoId, setActiveCultoId,
     culto, momentos, addMomento, updateMomento, removeMomento,
-    getMomentStatus, momentElapsedSeconds,
+    getMomentStatus, isSubmitting, lastError,
   } = useCulto();
 
-  const [selectedCultoId, setSelectedCultoId] = useState<string | null>(null);
   const [showMomentoForm, setShowMomentoForm] = useState(false);
   const [editingMomento, setEditingMomento] = useState<MomentoProgramacao | null>(null);
   const [showCultoForm, setShowCultoForm] = useState(false);
@@ -42,19 +69,18 @@ const Programacao = () => {
   const [newBlocoMode, setNewBlocoMode] = useState(false);
   const [newBlocoName, setNewBlocoName] = useState('');
 
-  // The culto we're viewing details for
-  const viewingCultoId = selectedCultoId || activeCultoId;
+  const viewingCultoId = activeCultoId;
   const viewingCulto = cultos.find(c => c.id === viewingCultoId) || culto;
 
-  // Switch active culto when selecting one to view its momentos
   const selectCulto = (id: string) => {
-    setSelectedCultoId(id);
     setActiveCultoId(id);
   };
 
   const blocosExistentes = [...new Set(momentos.map(m => m.bloco).filter(Boolean))];
 
   const openAddMomento = () => {
+    if (!viewingCultoId || !viewingCulto) return;
+
     const novoMomento = emptyMomento(viewingCultoId, momentos.length);
     
     // Se houver momentos, calcular horário e ordem baseado no último
@@ -105,8 +131,6 @@ const Programacao = () => {
       updateCulto(editingCulto);
     } else {
       addCulto(editingCulto);
-      setSelectedCultoId(editingCulto.id);
-      setActiveCultoId(editingCulto.id);
     }
     setShowCultoForm(false);
     setEditingCulto(null);
@@ -114,7 +138,6 @@ const Programacao = () => {
 
   const handleDeleteCulto = (id: string) => {
     removeCulto(id);
-    if (selectedCultoId === id) setSelectedCultoId(null);
   };
 
   const blocos = momentos.reduce<Record<string, typeof momentos>>((acc, m) => {
@@ -181,6 +204,12 @@ const Programacao = () => {
         })}
       </div>
 
+      {lastError && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {lastError}
+        </div>
+      )}
+
       {/* Momentos do culto selecionado */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -204,7 +233,7 @@ const Programacao = () => {
                 </button>
               </>
             )}
-            <button onClick={openAddMomento} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm">
+            <button onClick={openAddMomento} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
               <Plus className="w-4 h-4" /> Momento
             </button>
           </div>
@@ -258,9 +287,7 @@ const Programacao = () => {
                         </div>
                       </div>
                       {isExecuting && (
-                        <div className="mt-3">
-                          <ProgressBar momento={m} elapsedSeconds={momentElapsedSeconds} />
-                        </div>
+                        <ExecutingMomentProgress momento={m} />
                       )}
                     </div>
                   );
@@ -347,7 +374,7 @@ const Programacao = () => {
             <p className="text-sm text-muted-foreground mb-4">Horário previsto: <span className="font-mono font-bold text-primary">{calcularHorarioTermino(editingMomento.horarioInicio, editingMomento.duracao)}</span></p>
             <div className="flex justify-end gap-3">
               <button onClick={() => { setShowMomentoForm(false); setEditingMomento(null); }} className="px-5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-sm">Cancelar</button>
-              <button onClick={saveMomento} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex items-center gap-2">💾 Salvar</button>
+              <button onClick={saveMomento} disabled={isSubmitting} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">💾 Salvar</button>
             </div>
           </div>
         </div>
@@ -373,7 +400,7 @@ const Programacao = () => {
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => { setShowCultoForm(false); setEditingCulto(null); }} className="px-5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-sm">Cancelar</button>
-              <button onClick={saveCulto} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex items-center gap-2">💾 Salvar</button>
+              <button onClick={saveCulto} disabled={isSubmitting} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">💾 Salvar</button>
             </div>
           </div>
         </div>

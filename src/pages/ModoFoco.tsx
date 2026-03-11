@@ -6,7 +6,7 @@ import { calcularHorarioTermino } from '@/types/culto';
 import { useNavigate } from 'react-router-dom';
 
 const ModoFoco = () => {
-  const { culto, momentos, currentIndex, momentElapsedSeconds } = useCulto();
+  const { culto, momentos, currentIndex, momentElapsedMs } = useCulto();
   const navigate = useNavigate();
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const nextMoment = currentIndex >= 0 && currentIndex + 1 < momentos.length ? momentos[currentIndex + 1] : null;
@@ -45,7 +45,7 @@ const ModoFoco = () => {
                 </p>
               </div>
               <div className="max-w-md mx-auto">
-                <ProgressBar momento={currentMoment} elapsedSeconds={momentElapsedSeconds} />
+                <ProgressBar momento={currentMoment} elapsedMs={momentElapsedMs} />
               </div>
               {nextMoment && (
                 <div className="pt-8 border-t border-border/30">
