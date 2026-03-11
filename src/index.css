@@ -80,6 +80,21 @@
     -moz-osx-font-smoothing: grayscale;
     /* Prevent layout shifts from scrollbar */
     overflow-y: scroll;
+    overflow-x: hidden;
+  }
+
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html[data-mobile='true'] {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body[data-mobile='true'] {
+    touch-action: manipulation;
   }
 
   h1, h2, h3, h4, h5, h6 {

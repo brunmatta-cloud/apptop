@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const navItems = [
   { to: '/', label: 'Painel', icon: LayoutDashboard },
@@ -24,6 +25,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopMenuHidden, setDesktopMenuHidden] = useState(false);
   const location = useLocation();
+  const isMobile = useIsMobile();
   const currentNav = navItems.find((item) => item.to === location.pathname);
 
   useEffect(() => {
@@ -37,12 +39,30 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     window.localStorage.setItem('app.desktopMenuHidden', String(desktopMenuHidden));
   }, [desktopMenuHidden]);
 
+  useEffect(() => {
+    if (!isMobile) return;
+    setDesktopMenuHidden(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, isMobile]);
+
+  useEffect(() => {
+    document.documentElement.dataset.mobile = String(isMobile);
+    document.body.dataset.mobile = String(isMobile);
+    return () => {
+      delete document.documentElement.dataset.mobile;
+      delete document.body.dataset.mobile;
+    };
+  }, [isMobile]);
+
   if (location.pathname === '/foco' || location.pathname === '/cronometro') {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div data-mobile={isMobile} className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       <aside className={`hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col bg-sidebar border-r border-sidebar-border transition-all duration-200 ${desktopMenuHidden ? 'w-0 overflow-hidden border-r-0' : 'w-64'}`}>
         <div className="p-5 pb-4">
           <div className="flex items-start justify-between gap-3">
@@ -164,8 +184,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </button>
       )}
 
-      <main className={`flex-1 pt-14 transition-all duration-200 lg:pt-0 ${desktopMenuHidden ? 'lg:ml-0' : 'lg:ml-64'}`}>
-        <div className="mx-auto max-w-[1400px] p-3 sm:p-4 md:p-6 lg:p-8">
+      <main className={`min-w-0 flex-1 overflow-x-hidden pt-14 transition-all duration-200 lg:pt-0 ${desktopMenuHidden ? 'lg:ml-0' : 'lg:ml-64'}`}>
+        <div
+          key={`${location.pathname}-${isMobile ? 'mobile' : 'desktop'}`}
+          data-mobile={isMobile}
+          className="mx-auto w-full max-w-[1400px] min-w-0 px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 lg:px-8 lg:py-8"
+        >
           {children}
         </div>
       </main>

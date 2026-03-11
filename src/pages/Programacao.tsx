@@ -452,7 +452,7 @@ const Programacao = () => {
 
       {showCultoSelector && (
         <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
-          <div className="absolute inset-x-0 bottom-0 top-20 w-full rounded-t-3xl border border-border bg-card shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-md sm:rounded-none sm:border-l sm:border-t-0">
+          <div className="absolute inset-x-0 bottom-0 top-20 flex w-full flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-md sm:rounded-none sm:border-l sm:border-t-0">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Selecionar culto</p>
@@ -462,40 +462,70 @@ const Programacao = () => {
                 Fechar
               </button>
             </div>
-            <div className="max-h-[calc(100vh-88px)] overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-8 sm:pb-4">
               <div className="space-y-3">
                 {cultos.map((c) => {
                   const isSelected = c.id === viewingCultoId;
                   return (
-                    <button
+                    <div
                       key={c.id}
-                      type="button"
-                      onClick={() => {
-                        selectCulto(c.id);
-                        setShowCultoSelector(false);
-                      }}
-                      className={`w-full rounded-2xl border p-4 text-left transition-all ${
-                        isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/30'
+                      className={`rounded-2xl border p-3 transition-all ${
+                        isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-display font-semibold">{c.nome || 'Sem nome'}</p>
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(c.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
-                              <Clock className="h-3 w-3" />
-                              {c.horarioInicial}
-                            </span>
-                            <span className="inline-flex rounded-full bg-muted px-2.5 py-1">{statusLabel(c.status)}</span>
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectCulto(c.id);
+                            setShowCultoSelector(false);
+                          }}
+                          className="flex min-w-0 flex-1 items-start justify-between gap-3 rounded-xl p-1 text-left transition-colors hover:bg-muted/20"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-display font-semibold">{c.nome || 'Sem nome'}</p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(c.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                                <Clock className="h-3 w-3" />
+                                {c.horarioInicial}
+                              </span>
+                              <span className="inline-flex rounded-full bg-muted px-2.5 py-1">{statusLabel(c.status)}</span>
+                            </div>
                           </div>
+                          {isSelected && <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />}
+                        </button>
+                        <div className="flex shrink-0 flex-col gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCultoSelector(false);
+                              openEditCulto(c);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-muted/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            aria-label={`Editar ${c.nome || 'culto'}`}
+                            title="Editar culto"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCultoSelector(false);
+                              handleDeleteCulto(c.id);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20"
+                            aria-label={`Excluir ${c.nome || 'culto'}`}
+                            title="Excluir culto"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                        {isSelected && <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
