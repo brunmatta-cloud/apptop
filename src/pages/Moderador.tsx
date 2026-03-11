@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino, type ModeradorCallStatus, type MomentoProgramacao } from '@/types/culto';
-import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo } from 'lucide-react';
+import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo, User } from 'lucide-react';
 
 const getModeradorStatus = (momento: MomentoProgramacao): ModeradorCallStatus => {
   if (momento.moderadorStatus === 'chamado' || momento.moderadorStatus === 'confirmado' || momento.moderadorStatus === 'ausente') {
@@ -74,6 +74,8 @@ const Moderador = () => {
     momentos,
     currentIndex,
     momentElapsedSeconds,
+    momentElapsedMs,
+    isPaused,
     getMomentStatus,
     moderadorReleaseActive,
     moderadorReleaseUpdatedAt,
@@ -85,6 +87,7 @@ const Moderador = () => {
   } = useCulto();
 
   const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const nextMoment = currentIndex >= 0 ? momentos[currentIndex + 1] : momentos[0] ?? null;
 
@@ -110,17 +113,36 @@ const Moderador = () => {
       .slice(0, 6)
   ), [currentIndex, momentos]);
 
+  const totalMinutes = useMemo(() => momentos.reduce((sum, momento) => sum + momento.duracao, 0), [momentos]);
+  const firstTime = momentos[0]?.horarioInicio || '00:00';
+  const lastEnd = momentos.length > 0
+    ? calcularHorarioTermino(momentos[momentos.length - 1].horarioInicio, momentos[momentos.length - 1].duracao)
+    : '00:00';
+  const blockColors = useMemo(() => {
+    const colors: Record<string, string> = {};
+    const colorPool = ['bg-[hsl(217_91%_60%)]', 'bg-[hsl(270_60%_55%)]', 'bg-[hsl(142_71%_45%)]', 'bg-[hsl(30_90%_50%)]', 'bg-[hsl(330_70%_60%)]', 'bg-[hsl(190_80%_50%)]', 'bg-[hsl(45_90%_55%)]'];
+    let idx = 0;
+    momentos.forEach((momento) => {
+      if (!colors[momento.bloco]) {
+        colors[momento.bloco] = colorPool[idx % colorPool.length];
+        idx += 1;
+      }
+    });
+    return colors;
+  }, [momentos]);
+
   const releaseLabel = moderadorReleaseActive ? 'Liberacao ativa' : 'Aguardando comando do cerimonialista';
   const releaseMeta = moderadorReleaseUpdatedAt
     ? `${new Date(moderadorReleaseUpdatedAt).toLocaleTimeString('pt-BR')} • ${moderadorReleaseBy ?? 'sistema'}`
     : 'Sem liberacao recente';
 
   return (
-    <div className={`space-y-6 rounded-[28px] p-4 sm:p-5 transition-colors duration-300 ${
+    <div className={`-m-4 md:-m-6 lg:-m-8 min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 transition-colors duration-300 ${
       moderadorReleaseActive
-        ? 'bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.18),rgba(16,185,129,0.08)_35%,rgba(5,10,20,0.96)_78%)]'
+        ? 'bg-[rgba(16,185,129,0.18)]'
         : ''
     }`}>
+      <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
@@ -276,38 +298,103 @@ const Moderador = () => {
           <Clock3 className="w-4 h-4 text-primary" />
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Linha do Tempo Completa</h3>
         </div>
-        <div className="space-y-3">
+
+        <div className="flex gap-0.5 h-10 sm:h-12 rounded-xl overflow-hidden">
           {momentos.map((momento, index) => {
+            const widthPercent = totalMinutes > 0 ? (momento.duracao / totalMinutes) * 100 : 0;
             const status = getMomentStatus(index);
-            const statusVisual = status === 'concluido'
-              ? 'border-emerald-500/20 bg-emerald-500/10'
+            const color = status === 'concluido'
+              ? 'bg-status-completed'
               : status === 'executando'
-                ? 'border-primary/30 bg-primary/10'
-                : status === 'proximo'
-                  ? 'border-amber-500/20 bg-amber-500/10'
-                  : 'border-border bg-muted/20';
+                ? 'bg-status-executing'
+                : blockColors[momento.bloco] || 'bg-muted';
 
             return (
-              <div key={momento.id} className={`rounded-xl border p-4 ${statusVisual}`}>
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1 flex-wrap">
-                      <span className="font-mono text-sm text-primary">{momento.horarioInicio}</span>
-                      <span>—</span>
-                      <span className="font-mono">{calcularHorarioTermino(momento.horarioInicio, momento.duracao)}</span>
-                      <span>({momento.duracao} min)</span>
+              <div
+                key={momento.id}
+                className={`${color} ${status === 'executando' ? 'animate-pulse' : ''} transition-all relative group`}
+                style={{ width: `${widthPercent}%`, minWidth: '2px' }}
+                title={`${momento.atividade} (${momento.duracao}min)`}
+              >
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg px-3 py-1.5 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                  {momento.atividade}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-muted-foreground font-mono">
+          <span>{firstTime}</span>
+          <span>{lastEnd}</span>
+        </div>
+
+        <div className="space-y-4 relative mt-5">
+          <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+          {momentos.map((momento, index) => {
+            const status = getMomentStatus(index);
+            const isExecuting = status === 'executando';
+            const horarioFim = calcularHorarioTermino(momento.horarioInicio, momento.duracao);
+            const itemElapsedMs = isExecuting ? safeMomentElapsedMs : 0;
+            const itemTotalMs = momento.duracao * 60 * 1000;
+            const itemPercent = itemTotalMs > 0 ? Math.min(100, (itemElapsedMs / itemTotalMs) * 100) : 0;
+            const itemProgressScale = itemPercent / 100;
+            const itemRemainingMs = Math.max(0, itemTotalMs - itemElapsedMs);
+            const itemRemainingSeconds = Math.ceil(itemRemainingMs / 1000);
+            const itemRemaining = `${String(Math.floor(itemRemainingSeconds / 60)).padStart(2, '0')}:${String(itemRemainingSeconds % 60).padStart(2, '0')}`;
+            const moderadorStatus = getModeradorStatus(momento);
+
+            return (
+              <div key={momento.id} className="relative pl-12">
+                <div className={`absolute left-[14px] top-5 w-3 h-3 rounded-full border-2 ${
+                  status === 'concluido' ? 'bg-status-completed border-status-completed' :
+                  isExecuting ? 'bg-status-executing border-status-executing animate-pulse' :
+                  'bg-muted border-border'
+                }`} />
+                <div className={`glass-card p-3 sm:p-4 ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-1 flex-wrap">
+                        <span className="font-mono font-bold text-primary">{momento.horarioInicio}</span>
+                        <span>—</span>
+                        <span className="font-mono">{horarioFim}</span>
+                        <span>({momento.duracao} min)</span>
+                      </div>
+                      <h3 className={`font-display font-semibold text-base sm:text-lg ${status === 'concluido' ? 'text-muted-foreground line-through' : ''} truncate`}>
+                        {momento.atividade}
+                      </h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
+                        <User className="w-3.5 h-3.5 shrink-0" /> {momento.responsavel} • {momento.ministerio}
+                      </p>
                     </div>
-                    <p className="font-semibold truncate">{momento.atividade}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {momento.responsavel || 'Sem responsavel'} • {momento.funcao || 'Sem funcao'} • {momento.ministerio || 'Sem ministerio'}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <span className={`text-xs px-2.5 py-1 rounded-full border ${moderadorStatusClass(moderadorStatus)}`}>
+                        {moderadorStatusLabel(moderadorStatus)}
+                      </span>
+                      <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider shrink-0 ${
+                        blockColors[momento.bloco] || 'bg-muted'
+                      } text-white`}>
+                        {momento.bloco}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs px-2.5 py-1 rounded-full border ${moderadorStatusClass(getModeradorStatus(momento))}`}>
-                      {moderadorStatusLabel(getModeradorStatus(momento))}
-                    </span>
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{status}</span>
-                  </div>
+                  {isExecuting && (
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>{Math.min(100, Math.max(0, Math.round(itemPercent)))}%</span>
+                        <span>{isPaused ? `${itemRemaining} pausado` : `${itemRemaining} restantes`}</span>
+                      </div>
+                      <div className="progress-bar h-2">
+                        <div
+                          className="progress-bar-fill"
+                          style={{
+                            transform: `scaleX(${itemProgressScale})`,
+                            transformOrigin: 'left',
+                            width: '100%',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

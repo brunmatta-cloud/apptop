@@ -149,9 +149,6 @@ const Cronometro = memo(() => {
           </p>
         )}
         </div>
-        <div className="text-sm text-white/60">
-          {showMessage ? 'Mensagem oficial do painel' : currentMoment ? `${remainingLabel} restantes` : 'Aguardando inicio do culto'}
-        </div>
       </div>
 
       <div className="w-[90%] relative z-10 mb-[4vh]">
