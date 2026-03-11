@@ -1,23 +1,23 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, BarChart3, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
   { to: '/', label: 'Painel', icon: LayoutDashboard },
-  { to: '/programacao', label: 'Programação', icon: List },
+  { to: '/programacao', label: 'Programacao', icon: List },
   { to: '/cerimonialista', label: 'Cerimonialista', icon: Radio },
   { to: '/sonoplastia', label: 'Sonoplastia', icon: Volume2 },
   { to: '/chamada', label: 'Chamada', icon: Users },
   { to: '/moderador', label: 'Moderador', icon: ShieldCheck },
   { to: '/linha-do-tempo', label: 'Linha do Tempo', icon: Clock },
-  { to: '/cronometro', label: 'Cronômetro', icon: Timer },
+  { to: '/cronometro', label: 'Cronometro', icon: Timer },
   { to: '/cronometro-controle', label: 'Controle Timer', icon: SlidersHorizontal },
   { to: '/foco', label: 'Modo Foco', icon: Focus },
   { to: '/artes', label: 'Gerador de Artes', icon: Image },
-  { to: '/configuracoes', label: 'Configurações', icon: Settings },
+  { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
 ];
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -37,94 +37,112 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     window.localStorage.setItem('app.desktopMenuHidden', String(desktopMenuHidden));
   }, [desktopMenuHidden]);
 
-  // Full-screen pages without layout
   if (location.pathname === '/foco' || location.pathname === '/cronometro') {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Desktop Sidebar */}
-      <aside className={`hidden lg:flex flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30 transition-all duration-200 ${desktopMenuHidden ? 'w-0 overflow-hidden border-r-0' : 'w-64'}`}>
-        <div className="p-5 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Radio className="w-5 h-5 text-primary-foreground" />
+      <aside className={`hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col bg-sidebar border-r border-sidebar-border transition-all duration-200 ${desktopMenuHidden ? 'w-0 overflow-hidden border-r-0' : 'w-64'}`}>
+        <div className="p-5 pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary">
+                <Radio className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate font-display text-base font-bold text-foreground">Culto ao Vivo</h2>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Sistema de Gestao</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-display font-bold text-base text-foreground">Culto ao Vivo</h2>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Sistema de Gestão</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setDesktopMenuHidden(true)}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar-accent/70 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+              aria-label="Ocultar menu"
+              title="Ocultar menu"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
           </div>
         </div>
-        <nav className="flex-1 px-3 space-y-0.5">
-          {navItems.map(item => (
+
+        <div className="px-5 pb-4">
+          <div className="h-px bg-sidebar-border" />
+        </div>
+
+        <nav className="flex-1 space-y-0.5 px-3">
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+              className={({ isActive }) => (
+                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
                   isActive
                     ? 'bg-primary/15 text-primary font-medium'
-                    : 'text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground'
                 }`
-              }
+              )}
             >
-              <item.icon className="w-[18px] h-[18px]" />
+              <item.icon className="h-[18px] w-[18px]" />
               {item.label}
             </NavLink>
           ))}
         </nav>
-      </aside>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-sidebar/95 backdrop-blur-xl border-b border-sidebar-border px-3 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Radio className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <div className="min-w-0">
-            <span className="block font-display font-bold text-sm truncate">Culto ao Vivo</span>
-            <span className="block text-[11px] text-muted-foreground truncate">{currentNav?.label ?? 'Painel'}</span>
+        <div className="px-4 pb-4">
+          <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/40 px-3 py-3 text-xs text-muted-foreground">
+            Recolha o menu para ganhar mais espaco na area principal.
           </div>
         </div>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-muted transition-colors">
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </aside>
+
+      <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b border-sidebar-border bg-sidebar/95 px-3 py-3 backdrop-blur-xl lg:hidden">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <Radio className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div className="min-w-0">
+            <span className="block truncate font-display text-sm font-bold">Culto ao Vivo</span>
+            <span className="block truncate text-[11px] text-muted-foreground">{currentNav?.label ?? 'Painel'}</span>
+          </div>
+        </div>
+        <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 transition-colors hover:bg-muted">
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* Mobile Nav */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 z-40 bg-background/70 backdrop-blur-xl pt-16"
+            className="fixed inset-0 z-40 bg-background/70 pt-16 backdrop-blur-xl lg:hidden"
           >
             <motion.div
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              className="h-full w-[88vw] max-w-[320px] bg-card border-r border-border shadow-2xl"
+              className="h-full w-[88vw] max-w-[320px] border-r border-border bg-card shadow-2xl"
             >
-              <nav className="p-3 space-y-1 overflow-y-auto h-full pb-8">
-                {navItems.map(item => (
+              <nav className="h-full space-y-1 overflow-y-auto p-3 pb-8">
+                {navItems.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
                     onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${
+                    className={({ isActive }) => (
+                      `flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors ${
                         isActive
                           ? 'bg-primary/15 text-primary font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                       }`
-                    }
+                    )}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon className="h-5 w-5" />
                     {item.label}
-                    <ChevronRight className="w-4 h-4 ml-auto opacity-30" />
+                    <ChevronRight className="ml-auto h-4 w-4 opacity-30" />
                   </NavLink>
                 ))}
               </nav>
@@ -133,29 +151,21 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-      <button
-        type="button"
-        onClick={() => setDesktopMenuHidden((current) => !current)}
-        className="hidden lg:flex fixed top-5 right-5 z-40 items-center gap-2 rounded-xl border border-border bg-card/90 px-3 py-2 text-sm text-muted-foreground shadow-lg backdrop-blur hover:text-foreground hover:bg-card"
-      >
-        {desktopMenuHidden ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        <span>{desktopMenuHidden ? 'Mostrar menu' : 'Ocultar menu'}</span>
-      </button>
-
       {desktopMenuHidden && (
         <button
           type="button"
           onClick={() => setDesktopMenuHidden(false)}
-          className="hidden lg:flex fixed top-5 left-5 z-40 items-center justify-center rounded-xl border border-border bg-card/90 p-2 text-muted-foreground shadow-lg backdrop-blur hover:text-foreground hover:bg-card"
+          className="fixed left-4 top-1/2 z-40 hidden -translate-y-1/2 items-center gap-2 rounded-r-2xl rounded-l-xl border border-border bg-card/90 px-2.5 py-3 text-muted-foreground shadow-lg backdrop-blur hover:bg-card hover:text-foreground lg:flex"
           aria-label="Mostrar menu"
+          title="Mostrar menu"
         >
           <PanelLeftOpen className="h-4 w-4" />
+          <span className="text-xs font-medium">Menu</span>
         </button>
       )}
 
-      <main className={`flex-1 pt-14 lg:pt-0 transition-all duration-200 ${desktopMenuHidden ? 'lg:ml-0' : 'lg:ml-64'}`}>
-        <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <main className={`flex-1 pt-14 transition-all duration-200 lg:pt-0 ${desktopMenuHidden ? 'lg:ml-0' : 'lg:ml-64'}`}>
+        <div className="mx-auto max-w-[1400px] p-3 sm:p-4 md:p-6 lg:p-8">
           {children}
         </div>
       </main>

@@ -164,22 +164,30 @@ const Programacao = () => {
     return found ?? null;
   }, [getMomentStatus, momentos]);
 
+  const totalPrevistoLabel = `${viewingCulto?.duracaoPrevista || 0}m`;
+  const cultoDataLonga = viewingCulto?.data
+    ? new Date(viewingCulto.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '--/--/----';
+  const cultoDataCurta = viewingCulto?.data
+    ? new Date(viewingCulto.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    : '--/--';
+
   const inputClass = 'w-full bg-muted/50 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground';
   const labelClass = 'text-xs text-muted-foreground font-medium mb-1.5 block';
   const statusLabel = (s: string) => s === 'planejado' ? 'Planejado' : s === 'em_andamento' ? 'Em andamento' : 'Finalizado';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-24 sm:space-y-6 sm:pb-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-3xl font-display font-bold italic">Programacao</h1>
-          <p className="text-sm text-muted-foreground">Selecione um culto e gerencie a ordem completa dele.</p>
+          <h1 className="text-2xl font-display font-bold italic sm:text-3xl">Programacao</h1>
+          <p className="max-w-xl text-sm text-muted-foreground">Selecione um culto e gerencie a ordem completa dele.</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <button
             type="button"
             onClick={() => setShowCultoSelector(true)}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-4 py-3 text-left transition-colors hover:bg-muted/30 sm:min-w-[300px]"
+            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-card/70 px-4 py-3 text-left transition-colors hover:bg-muted/30 sm:min-w-[300px]"
           >
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto selecionado</p>
@@ -187,9 +195,24 @@ const Programacao = () => {
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </button>
-          <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
+          <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:rounded-lg sm:py-2.5">
             <Plus className="w-4 h-4" /> Novo Culto
           </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 sm:hidden">
+        <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Data</p>
+          <p className="mt-1 text-sm font-semibold">{cultoDataCurta}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Inicio</p>
+          <p className="mt-1 text-sm font-semibold">{viewingCulto?.horarioInicial || '--:--'}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Previsto</p>
+          <p className="mt-1 text-sm font-semibold">{totalPrevistoLabel}</p>
         </div>
       </div>
 
@@ -200,15 +223,15 @@ const Programacao = () => {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <div className="glass-card p-5">
+        <div className="glass-card p-4 sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto</p>
-              <h2 className="mt-1 break-words text-2xl font-display font-bold">{selectedCultoLabel}</h2>
-              <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted-foreground">
+              <h2 className="mt-1 break-words text-xl font-display font-bold sm:text-2xl">{selectedCultoLabel}</h2>
+              <div className="mt-3 hidden flex-wrap gap-2 text-sm text-muted-foreground sm:flex">
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
                   <Calendar className="w-3.5 h-3.5" />
-                  {viewingCulto?.data ? new Date(viewingCulto.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }) : '--/--/----'}
+                  {cultoDataLonga}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
                   <Clock className="w-3.5 h-3.5" />
@@ -216,33 +239,51 @@ const Programacao = () => {
                 </span>
                 <span className="inline-flex rounded-full bg-muted px-3 py-1">{statusLabel(viewingCulto?.status || 'planejado')}</span>
               </div>
+              <div className="mt-3 sm:hidden">
+                <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{statusLabel(viewingCulto?.status || 'planejado')}</span>
+              </div>
             </div>
-            <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
-              <button onClick={() => viewingCulto && openEditCulto(viewingCulto)} disabled={!viewingCulto} className="flex items-center justify-center gap-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 disabled:opacity-50">
-                <Edit2 className="w-3 h-3" /> Editar
+            <div className="grid w-full grid-cols-1 gap-2 min-[480px]:grid-cols-3 sm:w-auto sm:min-w-[320px]">
+              <button
+                onClick={() => viewingCulto && openEditCulto(viewingCulto)}
+                disabled={!viewingCulto}
+                className="group flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:border-primary/30 hover:bg-muted disabled:opacity-50 sm:min-h-0"
+              >
+                <Edit2 className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <span>Editar</span>
               </button>
-              <button onClick={() => viewingCultoId && duplicateCulto(viewingCultoId)} disabled={!viewingCultoId} className="flex items-center justify-center gap-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 disabled:opacity-50">
-                <Copy className="w-3 h-3" /> Duplicar
+              <button
+                onClick={() => viewingCultoId && duplicateCulto(viewingCultoId)}
+                disabled={!viewingCultoId}
+                className="group flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:border-primary/30 hover:bg-muted disabled:opacity-50 sm:min-h-0"
+              >
+                <Copy className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <span>Duplicar</span>
               </button>
-              <button onClick={() => viewingCultoId && handleDeleteCulto(viewingCultoId)} disabled={!viewingCultoId} className="flex items-center justify-center gap-1 rounded-lg bg-destructive/15 px-3 py-2 text-xs text-destructive transition-colors hover:bg-destructive/25 disabled:opacity-50">
-                <Trash2 className="w-3 h-3" /> Excluir
+              <button
+                onClick={() => viewingCultoId && handleDeleteCulto(viewingCultoId)}
+                disabled={!viewingCultoId}
+                className="group flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive transition-all hover:border-destructive/40 hover:bg-destructive/15 disabled:opacity-50 sm:min-h-0"
+              >
+                <Trash2 className="h-4 w-4 text-destructive transition-transform group-hover:scale-105" />
+                <span>Excluir</span>
               </button>
             </div>
           </div>
         </div>
 
-        <div className="glass-card p-5">
+        <div className="glass-card p-4 sm:p-5">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Momento do culto</p>
           {currentMoment ? (
             <div className="mt-3 space-y-3">
               <div>
-                <p className="break-words text-xl font-display font-bold">{currentMoment.atividade}</p>
+                <p className="break-words text-lg font-display font-bold sm:text-xl">{currentMoment.atividade}</p>
                 <p className="break-words text-sm text-muted-foreground">
                   {currentMoment.responsavel}
                   {currentMoment.ministerio ? ` - ${currentMoment.ministerio}` : ''}
                 </p>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+              <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground min-[420px]:grid-cols-3">
                 <div className="rounded-lg bg-muted/50 p-3">
                   <p className="uppercase tracking-wide">Inicio</p>
                   <p className="mt-1 font-mono text-sm text-foreground">{currentMoment.horarioInicio}</p>
@@ -274,7 +315,7 @@ const Programacao = () => {
             </div>
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Previsto</p>
-              <p className="mt-1 text-lg font-bold">{viewingCulto?.duracaoPrevista || 0}m</p>
+              <p className="mt-1 text-lg font-bold">{totalPrevistoLabel}</p>
             </div>
           </div>
         </div>
@@ -286,7 +327,7 @@ const Programacao = () => {
             <h3 className="text-lg font-display font-semibold">Momentos</h3>
             <p className="text-sm text-muted-foreground">A lista abaixo mostra apenas o culto escolhido.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden flex-wrap items-center gap-2 sm:flex">
             {momentos.length > 0 && (
               <>
                 <button
@@ -309,8 +350,32 @@ const Programacao = () => {
           </div>
         </div>
 
+        {momentos.length > 0 && (
+          <div className="mb-4 grid grid-cols-3 gap-2 sm:hidden">
+            <button
+              onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-3 py-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80"
+            >
+              <ImageDown className="h-4 w-4" /> Imagem
+            </button>
+            <button
+              onClick={() => exportarProgramacao(viewingCulto, momentos)}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Planilha
+            </button>
+            <button
+              onClick={openAddMomento}
+              disabled={isSubmitting}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-3 py-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" /> Momento
+            </button>
+          </div>
+        )}
+
         {momentos.length === 0 ? (
-          <div className="glass-card p-8 text-center text-muted-foreground">
+          <div className="glass-card p-6 text-center text-muted-foreground sm:p-8">
             <p>Nenhum momento cadastrado.</p>
             <button onClick={openAddMomento} className="mt-3 text-sm text-primary hover:underline">+ Adicionar primeiro momento</button>
           </div>
@@ -329,26 +394,44 @@ const Programacao = () => {
                   const idx = momentos.findIndex((x) => x.id === m.id);
                   const status = getMomentStatus(idx);
                   const isExecuting = status === 'executando';
+                  const isDone = status === 'concluido';
 
                   return (
-                    <div key={m.id} className={`glass-card p-4 transition-colors ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="shrink-0 rounded-xl bg-muted/40 p-3 text-left sm:min-w-[110px] sm:text-center">
-                          <p className="text-sm font-mono font-bold text-primary">{m.horarioInicio}</p>
-                          <p className="text-[11px] text-muted-foreground">{m.duracao} minutos</p>
-                          <p className="text-[11px] text-muted-foreground">{calcularHorarioTermino(m.horarioInicio, m.duracao)}</p>
+                    <div key={m.id} className={`glass-card p-3.5 transition-colors sm:p-4 ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                        <div className="flex items-start justify-between gap-3 sm:block sm:shrink-0">
+                          <div className="rounded-2xl bg-muted/40 p-3 text-left sm:min-w-[110px] sm:rounded-xl sm:text-center">
+                            <p className="text-sm font-mono font-bold text-primary">{m.horarioInicio}</p>
+                            <p className="text-[11px] text-muted-foreground">{m.duracao} minutos</p>
+                            <p className="text-[11px] text-muted-foreground">{calcularHorarioTermino(m.horarioInicio, m.duracao)}</p>
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-2 sm:hidden">
+                            <button onClick={() => openEditMomento(m)} className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                              Editar
+                            </button>
+                            <button onClick={() => removeMomento(m.id)} className="rounded-xl bg-destructive/15 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/25">
+                              Excluir
+                            </button>
+                          </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`break-words font-semibold ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>{m.atividade}</p>
+                          <div className="flex flex-wrap items-start gap-2">
+                            <p className={`min-w-0 flex-1 break-words font-semibold ${isDone ? 'text-muted-foreground line-through' : ''}`}>{m.atividade}</p>
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                              isExecuting ? 'status-executing' : isDone ? 'status-completed' : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {isExecuting ? 'Ao vivo' : isDone ? 'Concluido' : 'Planejado'}
+                            </span>
+                          </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span className="text-sm text-muted-foreground">{m.responsavel}</span>
                             {m.ministerio && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{m.ministerio}</span>}
                           </div>
                           {m.acaoSonoplastia && (
-                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">Sonoplastia: {m.acaoSonoplastia}</p>
+                            <p className="mt-2 rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">Sonoplastia: {m.acaoSonoplastia}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <div className="hidden items-center gap-2 self-end sm:flex sm:self-auto">
                           <button onClick={() => openEditMomento(m)} className="rounded-lg p-1.5 transition-colors hover:bg-muted">
                             <Edit2 className="w-4 h-4 text-muted-foreground" />
                           </button>
@@ -369,7 +452,7 @@ const Programacao = () => {
 
       {showCultoSelector && (
         <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
-          <div className="absolute inset-y-0 right-0 w-full max-w-md border-l border-border bg-card shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 top-20 w-full rounded-t-3xl border border-border bg-card shadow-2xl sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-md sm:rounded-none sm:border-l sm:border-t-0">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Selecionar culto</p>
@@ -422,8 +505,8 @@ const Programacao = () => {
       )}
 
       {showCultoForm && editingCulto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-border bg-card p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="w-full max-w-2xl rounded-t-3xl border border-border bg-card p-5 shadow-2xl sm:rounded-3xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto</p>
@@ -519,8 +602,8 @@ const Programacao = () => {
       )}
 
       {showMomentoForm && editingMomento && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-4xl rounded-3xl border border-border bg-card p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-0 backdrop-blur-sm sm:p-4">
+          <div className="mx-auto mt-12 w-full max-w-4xl rounded-t-3xl border border-border bg-card p-5 shadow-2xl sm:mt-0 sm:rounded-3xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Momento</p>
