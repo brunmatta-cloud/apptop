@@ -285,53 +285,57 @@ function PainelCerimonialista() {
       {safeCulto.status === 'em_andamento' && (
         <div className="glass-card p-4 sm:p-5">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Controles</h3>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            <button type="button" onClick={voltar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
-              <SkipBack className="w-4 h-4" /> <span className="hidden sm:inline">Voltar</span>
-            </button>
-            {isPaused ? (
-              <button type="button" onClick={retomar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))] hover:bg-[hsl(var(--status-alert))]/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
-                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
-                  <Play className="w-4 h-4 transition-transform duration-200 ease-out" />
-                  <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+              <button type="button" onClick={voltar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
+                <SkipBack className="w-4 h-4" /> <span className="hidden sm:inline">Voltar</span>
+              </button>
+              {isPaused ? (
+                <button type="button" onClick={retomar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))] hover:bg-[hsl(var(--status-alert))]/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                  <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
+                    <Play className="w-4 h-4 transition-transform duration-200 ease-out" />
+                    <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
+                  </span>
+                </button>
+              ) : (
+                <button type="button" onClick={pausar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                  <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
+                    <Pause className="w-4 h-4 transition-transform duration-200 ease-out" />
+                    <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
+                  </span>
+                </button>
+              )}
+              <button type="button" onClick={avancar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                <span className="hidden sm:inline">{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="w-4 h-4" />
+              </button>
+              <button type="button" onClick={pular} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
+                <FastForward className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
+              </button>
+              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+                <Check className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
+                disabled={isCommandLocked}
+                className={`w-full sm:w-auto min-w-[220px] px-6 sm:px-10 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-3 text-base font-semibold disabled:opacity-50 disabled:pointer-events-none ${
+                  moderadorReleaseActive
+                    ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
+                    : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25'
+                }`}
+              >
+                <Users className="w-5 h-5" />
+                <span>
+                  {activeCommand === 'toggle-moderador-release'
+                    ? 'Sincronizando...'
+                    : moderadorReleaseActive
+                      ? 'Liberacao ativa'
+                      : 'Liberar'}
                 </span>
               </button>
-            ) : (
-              <button type="button" onClick={pausar} disabled={isCommandLocked} className="px-4 sm:px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
-                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
-                  <Pause className="w-4 h-4 transition-transform duration-200 ease-out" />
-                  <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
-                </span>
-              </button>
-            )}
-            <button type="button" onClick={avancar} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
-              <span className="hidden sm:inline">{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={pular} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none">
-              <FastForward className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
-            </button>
-            <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
-              <Check className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
-              disabled={isCommandLocked}
-              className={`px-3 sm:px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none ${
-                moderadorReleaseActive
-                  ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
-                  : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {activeCommand === 'toggle-moderador-release'
-                  ? 'Sincronizando...'
-                  : moderadorReleaseActive
-                    ? 'Liberacao ativa'
-                    : 'Liberar'}
-              </span>
-            </button>
+            </div>
           </div>
         </div>
       )}
