@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { Culto, ExecutionMode, MomentoProgramacao } from '@/types/culto';
+import type { Culto, ExecutionMode, ModeradorCallStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus, CronometroSettings, RemoteCultoState, TimerSnapshot, UiSyncState } from '@/features/culto-sync/domain';
 import {
   defaultRemoteState,
@@ -381,6 +381,8 @@ export const useCeremonySession = () => {
     voltar: () => run('back', 'back'),
     pular: () => run('skip', 'skip'),
     finalizarCulto: () => run('finish', 'finish'),
+    toggleModeradorRelease: (active: boolean) => run('toggle-moderador-release', 'toggle_moderador_release', { active }),
+    updateModeradorStatus: (id: string, status: ModeradorCallStatus) => run('update-moderador-status', 'update_moderador_status', { id, status }),
     marcarChamado: (id: string) => run('mark-called', 'mark_called', { id }),
     adjustCurrentMomentDuration: (deltaSeconds: number) => run('adjust-duration', 'adjust_duration', { deltaSeconds }),
     setExecutionMode: (mode: ExecutionMode) => run('set-execution-mode', 'set_execution_mode', { mode }),

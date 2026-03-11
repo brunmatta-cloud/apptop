@@ -34,6 +34,9 @@ export type Database = {
           message: string
           message_font_size: number | null
           message_text_color: string | null
+          moderador_release_active: boolean | null
+          moderador_release_by: string | null
+          moderador_release_updated_at: string | null
           moment_accumulated_ms: number
           moment_elapsed_seconds: number
           moment_paused_at: string | null
@@ -74,6 +77,9 @@ export type Database = {
           message?: string
           message_font_size?: number | null
           message_text_color?: string | null
+          moderador_release_active?: boolean | null
+          moderador_release_by?: string | null
+          moderador_release_updated_at?: string | null
           moment_accumulated_ms?: number
           moment_elapsed_seconds?: number
           moment_paused_at?: string | null
@@ -114,6 +120,9 @@ export type Database = {
           message?: string
           message_font_size?: number | null
           message_text_color?: string | null
+          moderador_release_active?: boolean | null
+          moderador_release_by?: string | null
+          moderador_release_updated_at?: string | null
           moment_accumulated_ms?: number
           moment_elapsed_seconds?: number
           moment_paused_at?: string | null
@@ -221,6 +230,9 @@ export type Database = {
           execution_mode: string
           id: number
           moment_accumulated_ms: number
+          moderador_release_active: boolean
+          moderador_release_by: string | null
+          moderador_release_updated_at: string | null
           moment_paused_at: string | null
           moment_started_at: string | null
           next_command: string
@@ -245,6 +257,9 @@ export type Database = {
           execution_mode?: string
           id?: number
           moment_accumulated_ms?: number
+          moderador_release_active?: boolean
+          moderador_release_by?: string | null
+          moderador_release_updated_at?: string | null
           moment_paused_at?: string | null
           moment_started_at?: string | null
           next_command?: string
@@ -269,6 +284,9 @@ export type Database = {
           execution_mode?: string
           id?: number
           moment_accumulated_ms?: number
+          moderador_release_active?: boolean
+          moderador_release_by?: string | null
+          moderador_release_updated_at?: string | null
           moment_paused_at?: string | null
           moment_started_at?: string | null
           next_command?: string

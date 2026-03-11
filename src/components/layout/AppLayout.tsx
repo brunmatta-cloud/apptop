@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, BarChart3, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, BarChart3, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/cerimonialista', label: 'Cerimonialista', icon: Radio },
   { to: '/sonoplastia', label: 'Sonoplastia', icon: Volume2 },
   { to: '/chamada', label: 'Chamada', icon: Users },
+  { to: '/moderador', label: 'Moderador', icon: ShieldCheck },
   { to: '/linha-do-tempo', label: 'Linha do Tempo', icon: Clock },
   { to: '/cronometro', label: 'Cronômetro', icon: Timer },
   { to: '/cronometro-controle', label: 'Controle Timer', icon: SlidersHorizontal },

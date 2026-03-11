@@ -35,6 +35,9 @@ const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefine
   observacao: momento?.observacao || '',
   antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento?.antecedenciaChamada)) : 0,
   chamado: Boolean(momento?.chamado),
+  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+    ? momento.moderadorStatus
+    : 'pendente',
   duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento?.duracaoOriginal) : undefined,
 });
 
@@ -70,6 +73,7 @@ function PainelCerimonialista() {
     avancar, voltar, pausar, retomar, pular, iniciarCulto, finalizarCulto,
     getMomentStatus, marcarChamado, adjustCurrentMomentDuration,
     pendingAction, isSubmitting, lastError, connectionStatus,
+    moderadorReleaseActive, toggleModeradorRelease,
   } = cultoData;
 
   const {
@@ -308,6 +312,25 @@ function PainelCerimonialista() {
             </button>
             <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="px-3 sm:px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
               <Check className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
+              disabled={isCommandLocked}
+              className={`px-3 sm:px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none ${
+                moderadorReleaseActive
+                  ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
+                  : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {activeCommand === 'toggle-moderador-release'
+                  ? 'Sincronizando...'
+                  : moderadorReleaseActive
+                    ? 'Liberacao ativa'
+                    : 'Liberar'}
+              </span>
             </button>
           </div>
         </div>

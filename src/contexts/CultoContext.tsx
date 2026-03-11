@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Culto, ExecutionMode, MomentStatus, MomentoProgramacao } from '@/types/culto';
+import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
 import { useCeremonySession } from '@/contexts/SyncStoreContext';
 import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
@@ -32,6 +32,11 @@ interface CultoContextType {
   pular: () => void;
   iniciarCulto: () => void;
   finalizarCulto: () => void;
+  moderadorReleaseActive: boolean;
+  moderadorReleaseUpdatedAt: string | null;
+  moderadorReleaseBy: string | null;
+  toggleModeradorRelease: (active: boolean) => void;
+  updateModeradorStatus: (id: string, status: ModeradorCallStatus) => void;
   getMomentStatus: (index: number) => MomentStatus;
   marcarChamado: (id: string) => void;
   addMomento: (m: MomentoProgramacao) => void;
@@ -78,6 +83,11 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     pular: model.pular,
     iniciarCulto: model.iniciarCulto,
     finalizarCulto: model.finalizarCulto,
+    moderadorReleaseActive: model.remoteState.moderadorReleaseActive,
+    moderadorReleaseUpdatedAt: model.remoteState.moderadorReleaseUpdatedAt,
+    moderadorReleaseBy: model.remoteState.moderadorReleaseBy,
+    toggleModeradorRelease: model.toggleModeradorRelease,
+    updateModeradorStatus: model.updateModeradorStatus,
     getMomentStatus: model.getMomentStatus,
     marcarChamado: model.marcarChamado,
     addMomento: model.addMomento,

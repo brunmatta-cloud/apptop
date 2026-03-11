@@ -23,6 +23,9 @@ const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefine
   observacao: momento?.observacao || '',
   antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento.antecedenciaChamada)) : 0,
   chamado: Boolean(momento?.chamado),
+  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+    ? momento.moderadorStatus
+    : 'pendente',
   duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento.duracaoOriginal) : undefined,
 });
 

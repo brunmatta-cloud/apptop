@@ -21,6 +21,8 @@ import {
   setExecutionModeTransition,
   setMomentosTransition,
   startCultoTransition,
+  toggleModeradorReleaseTransition,
+  updateModeradorStatusTransition,
   updateCultoTransition,
   updateMomentoTransition,
   withMutationMetadata,
@@ -139,6 +141,14 @@ const runLegacyTransition = (command: string, state: RemoteCultoState, payload: 
       return finishCultoTransition(state, nowIso, nowMs);
     case 'mark_called':
       return markCalledTransition(state, String(payload.id ?? ''));
+    case 'toggle_moderador_release':
+      return toggleModeradorReleaseTransition(state, Boolean(payload.active), actor, nowIso);
+    case 'update_moderador_status':
+      return updateModeradorStatusTransition(
+        state,
+        String(payload.id ?? ''),
+        String(payload.status ?? 'pendente') as 'pendente' | 'chamado' | 'confirmado' | 'ausente',
+      );
     case 'adjust_duration':
       return adjustCurrentMomentDurationTransition(state, Number(payload.deltaSeconds ?? 0));
     case 'set_execution_mode':

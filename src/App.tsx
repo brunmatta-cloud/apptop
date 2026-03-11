@@ -17,6 +17,7 @@ const PainelSonoplastia = React.lazy(() => import("./pages/PainelSonoplastia"));
 const PainelChamada = React.lazy(() => import("./pages/PainelChamada"));
 const Programacao = React.lazy(() => import("./pages/Programacao"));
 const LinhaDoTempo = React.lazy(() => import("./pages/LinhaDoTempo"));
+const Moderador = React.lazy(() => import("./pages/Moderador"));
 const GeradorArtes = React.lazy(() => import("./pages/GeradorArtes"));
 const ModoFoco = React.lazy(() => import("./pages/ModoFoco"));
 const Configuracoes = React.lazy(() => import("./pages/Configuracoes"));
@@ -65,6 +66,7 @@ const App = () => (
                     <Route path="/programacao" element={withPageGuard(<Programacao />)} />
                     <Route path="/editor" element={withPageGuard(<Programacao />)} />
                     <Route path="/linha-do-tempo" element={withPageGuard(<LinhaDoTempo />)} />
+                    <Route path="/moderador" element={withPageGuard(<Moderador />)} />
                     <Route path="/artes" element={withPageGuard(<GeradorArtes />)} />
                     <Route path="/foco" element={withPageGuard(<ModoFoco />)} />
                     <Route path="/configuracoes" element={withPageGuard(<Configuracoes />)} />

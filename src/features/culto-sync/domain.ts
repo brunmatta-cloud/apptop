@@ -1,5 +1,5 @@
 import type { Tables } from '@/integrations/supabase/types';
-import type { Culto, CultoStatus, ExecutionMode, MomentStatus, MomentoProgramacao } from '@/types/culto';
+import type { Culto, CultoStatus, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import { calcularHorarioTermino } from '@/types/culto';
 
 export type SyncRow = Tables<'culto_sync_state'>;
@@ -45,6 +45,9 @@ export interface RemoteCultoState {
   currentCommand: string;
   nextCommand: string;
   currentStage: string;
+  moderadorReleaseActive: boolean;
+  moderadorReleaseUpdatedAt: string | null;
+  moderadorReleaseBy: string | null;
   revision: number;
   updatedAt: string;
   updatedBy: string;
@@ -156,6 +159,9 @@ export const defaultRemoteState: RemoteCultoState = {
   currentCommand: '',
   nextCommand: '',
   currentStage: '',
+  moderadorReleaseActive: false,
+  moderadorReleaseUpdatedAt: null,
+  moderadorReleaseBy: null,
   revision: 0,
   updatedAt: DEFAULT_TIMESTAMP,
   updatedBy: 'system',
@@ -194,6 +200,9 @@ const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefine
   antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento.antecedenciaChamada)) : 0,
   chamado: Boolean(momento?.chamado),
   duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento.duracaoOriginal) : undefined,
+  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+    ? momento.moderadorStatus
+    : 'pendente',
 });
 
 const normalizeMomentosRecord = (value: unknown, cultos: Culto[]) => {
@@ -292,6 +301,21 @@ export const normalizeRemoteState = (row?: Partial<SyncRow> | Partial<SessionSta
     currentCommand: typeof row?.current_command === 'string' ? row.current_command : typeof rowState?.currentCommand === 'string' ? rowState.currentCommand : '',
     nextCommand: typeof row?.next_command === 'string' ? row.next_command : typeof rowState?.nextCommand === 'string' ? rowState.nextCommand : '',
     currentStage: typeof row?.current_stage === 'string' ? row.current_stage : typeof rowState?.currentStage === 'string' ? rowState.currentStage : '',
+    moderadorReleaseActive: typeof (row as { moderador_release_active?: unknown } | undefined)?.moderador_release_active === 'boolean'
+      ? Boolean((row as { moderador_release_active?: boolean }).moderador_release_active)
+      : typeof rowState?.moderadorReleaseActive === 'boolean'
+        ? rowState.moderadorReleaseActive
+        : false,
+    moderadorReleaseUpdatedAt: typeof (row as { moderador_release_updated_at?: unknown } | undefined)?.moderador_release_updated_at === 'string'
+      ? String((row as { moderador_release_updated_at?: string }).moderador_release_updated_at)
+      : typeof rowState?.moderadorReleaseUpdatedAt === 'string'
+        ? rowState.moderadorReleaseUpdatedAt
+        : null,
+    moderadorReleaseBy: typeof (row as { moderador_release_by?: unknown } | undefined)?.moderador_release_by === 'string'
+      ? String((row as { moderador_release_by?: string }).moderador_release_by)
+      : typeof rowState?.moderadorReleaseBy === 'string'
+        ? rowState.moderadorReleaseBy
+        : null,
     revision: Number.isFinite(row?.revision) ? Math.max(0, Number(row.revision)) : Number.isFinite(rowState?.revision) ? Math.max(0, Number(rowState.revision)) : 0,
     updatedAt: typeof row?.updated_at === 'string' ? row.updated_at : typeof rowState?.updatedAt === 'string' ? rowState.updatedAt : DEFAULT_TIMESTAMP,
     updatedBy: typeof row?.updated_by === 'string' && row.updated_by ? row.updated_by : typeof rowState?.updatedBy === 'string' && rowState.updatedBy ? rowState.updatedBy : 'system',
@@ -538,7 +562,36 @@ export const markCalledTransition = (state: RemoteCultoState, id: string): Trans
     ...state,
     allMomentos: {
       ...state.allMomentos,
-      [state.activeCultoId]: getActiveMomentos(state).map((momento) => momento.id === id ? { ...momento, chamado: true } : momento),
+      [state.activeCultoId]: getActiveMomentos(state).map((momento) => momento.id === id ? { ...momento, chamado: true, moderadorStatus: 'chamado' } : momento),
+    },
+  },
+});
+
+export const toggleModeradorReleaseTransition = (state: RemoteCultoState, active: boolean, actorId: string, nowIso: string): TransitionResult => ({
+  ok: true,
+  state: {
+    ...state,
+    moderadorReleaseActive: active,
+    moderadorReleaseUpdatedAt: nowIso,
+    moderadorReleaseBy: actorId,
+  },
+});
+
+export const updateModeradorStatusTransition = (state: RemoteCultoState, id: string, status: ModeradorCallStatus): TransitionResult => ({
+  ok: true,
+  state: {
+    ...state,
+    allMomentos: {
+      ...state.allMomentos,
+      [state.activeCultoId]: getActiveMomentos(state).map((momento) => (
+        momento.id === id
+          ? {
+              ...momento,
+              chamado: status === 'pendente' ? momento.chamado : true,
+              moderadorStatus: status,
+            }
+          : momento
+      )),
     },
   },
 });
@@ -791,6 +844,9 @@ export const buildRowPayload = (state: RemoteCultoState) => {
     moment_accumulated_ms: state.momentAccumulatedMs,
     current_command: state.currentCommand,
     next_command: state.nextCommand,
+    moderador_release_active: state.moderadorReleaseActive,
+    moderador_release_updated_at: state.moderadorReleaseUpdatedAt,
+    moderador_release_by: state.moderadorReleaseBy,
     revision: state.revision,
     updated_at: state.updatedAt,
     updated_by: state.updatedBy,
