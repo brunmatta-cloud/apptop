@@ -99,6 +99,7 @@ const Moderador = () => {
   const [lockedNextMomentId, setLockedNextMomentId] = useState<string | null>(nextMoment?.id ?? null);
   const [pendingReleaseMomentId, setPendingReleaseMomentId] = useState<string | null>(null);
   const [releasedHoldMomentId, setReleasedHoldMomentId] = useState<string | null>(null);
+  const [awaitingReleaseClearAdvance, setAwaitingReleaseClearAdvance] = useState(false);
   const currentMomentEnd = currentMoment ? calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao) : '--:--';
   const nextMomentEnd = nextMoment ? calcularHorarioTermino(nextMoment.horarioInicio, nextMoment.duracao) : '--:--';
   const currentRemainingMs = currentMoment
@@ -191,11 +192,20 @@ const Moderador = () => {
       if (pendingReleaseMomentId && currentMoment) {
         setPendingReleaseMomentId(null);
         setReleasedHoldMomentId(currentMoment.id);
+        setAwaitingReleaseClearAdvance(false);
       }
     } else if (releaseDeactivated) {
-      setReleasedHoldMomentId(null);
-      setLockedNextMomentId(nextMoment?.id ?? null);
+      if (releasedHoldMomentId) {
+        setAwaitingReleaseClearAdvance(true);
+      } else {
+        setLockedNextMomentId(nextMoment?.id ?? null);
+      }
     } else if (currentChanged && currentMoment) {
+      if (!moderadorReleaseActive && releasedHoldMomentId && awaitingReleaseClearAdvance) {
+        setReleasedHoldMomentId(null);
+        setAwaitingReleaseClearAdvance(false);
+        setLockedNextMomentId(nextMoment?.id ?? null);
+      } else
       if (moderadorReleaseActive) {
         if (!releasedHoldMomentId) {
           setPendingReleaseMomentId(null);
@@ -220,7 +230,7 @@ const Moderador = () => {
 
     previousCurrentIndexRef.current = currentIndex;
     previousReleaseActiveRef.current = moderadorReleaseActive;
-  }, [currentIndex, currentMoment, moderadorReleaseActive, nextMoment, pendingReleaseMomentId, lockedNextMomentId, releasedHoldMomentId]);
+  }, [currentIndex, currentMoment, moderadorReleaseActive, nextMoment, pendingReleaseMomentId, lockedNextMomentId, releasedHoldMomentId, awaitingReleaseClearAdvance]);
 
   return (
     <div className={`-m-4 md:-m-6 lg:-m-8 min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 transition-colors duration-300 ${
