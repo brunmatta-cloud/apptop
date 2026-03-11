@@ -1,6 +1,6 @@
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino, tipoMomentoLabel } from '@/types/culto';
-import { Volume2, Mic, Video, PlayCircle, Bell } from 'lucide-react';
+import { Volume2, Mic, Video, PlayCircle, Bell, Maximize, Minimize } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState, useRef, useMemo, memo } from 'react';
 import { toast } from '@/hooks/use-toast';
@@ -12,7 +12,9 @@ const PainelSonoplastia = memo(() => {
   const { culto, momentos, currentIndex, momentElapsedMs, isPaused, getMomentStatus } = useCulto();
   const { currentTime, formatTime } = useClock();
   const [alerts, setAlerts] = useState<{ id: string; message: string; time: Date }[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const alertedRef = useRef<Set<string>>(new Set());
+  const pageRef = useRef<HTMLDivElement | null>(null);
 
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
@@ -55,6 +57,15 @@ const PainelSonoplastia = memo(() => {
     alertedRef.current.clear();
   }, [currentIndex]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === pageRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   const mediaIcon = (tipo: string) => {
     switch (tipo) {
       case 'audio': return <Mic className="w-5 h-5" />;
@@ -66,8 +77,19 @@ const PainelSonoplastia = memo(() => {
   const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
   const isNextUrgent = remainingMsUntilNext <= 10000;
 
+  const toggleFullscreen = async () => {
+    if (!pageRef.current) return;
+
+    if (document.fullscreenElement === pageRef.current) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await pageRef.current.requestFullscreen();
+  };
+
   return (
-    <div className="space-y-6">
+    <div ref={pageRef} className={`space-y-6 ${isFullscreen ? 'min-h-screen bg-background p-4 sm:p-6' : ''}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -79,7 +101,17 @@ const PainelSonoplastia = memo(() => {
             <p className="text-muted-foreground text-sm">{culto.nome}</p>
           </div>
         </div>
-        <span className="text-xl sm:text-2xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="hidden lg:flex items-center gap-2 rounded-xl border border-border bg-card/80 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            <span>{isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}</span>
+          </button>
+          <span className="text-xl sm:text-2xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
+        </div>
       </div>
 
       {/* Próxima ação */}

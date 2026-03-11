@@ -1,8 +1,7 @@
+import { useMemo, useState } from 'react';
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
-import { StatusBadge } from '@/components/culto/StatusBadge';
 import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown } from 'lucide-react';
-import { useState } from 'react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
 import { exportarProgramacao } from '@/utils/exportProgramacao';
 import { exportarProgramacaoImagem } from '@/utils/exportProgramacaoImagem';
@@ -11,10 +10,23 @@ import { useMomentProgress } from '@/hooks/useMomentProgress';
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 
 const emptyMomento = (cultoId: string, ordem: number): MomentoProgramacao => ({
-  id: crypto.randomUUID(), cultoId, ordem, bloco: '', horarioInicio: '19:00', duracao: 5,
-  atividade: '', responsavel: '', ministerio: '', funcao: '', fotoUrl: '',
-  tipoMomento: 'nenhum', tipoMidia: 'nenhum', acaoSonoplastia: '', observacao: '',
-  antecedenciaChamada: 10, chamado: false,
+  id: crypto.randomUUID(),
+  cultoId,
+  ordem,
+  bloco: '',
+  horarioInicio: '19:00',
+  duracao: 5,
+  atividade: '',
+  responsavel: '',
+  ministerio: '',
+  funcao: '',
+  fotoUrl: '',
+  tipoMomento: 'nenhum',
+  tipoMidia: 'nenhum',
+  acaoSonoplastia: '',
+  observacao: '',
+  antecedenciaChamada: 10,
+  chamado: false,
 });
 
 const emptyCulto = (): Culto => ({
@@ -36,7 +48,7 @@ const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) =
 
   return (
     <div className="mt-3">
-      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
         <span>{displayPercent}%</span>
         <span>{isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}</span>
       </div>
@@ -68,31 +80,31 @@ const Programacao = () => {
   const [editingCulto, setEditingCulto] = useState<Culto | null>(null);
   const [newBlocoMode, setNewBlocoMode] = useState(false);
   const [newBlocoName, setNewBlocoName] = useState('');
+  const [showCultoSelector, setShowCultoSelector] = useState(false);
 
   const viewingCultoId = activeCultoId;
-  const viewingCulto = cultos.find(c => c.id === viewingCultoId) || culto;
+  const viewingCulto = cultos.find((c) => c.id === viewingCultoId) || culto;
+  const selectedCultoLabel = viewingCulto?.nome || 'Selecione um culto';
 
   const selectCulto = (id: string) => {
     setActiveCultoId(id);
   };
 
-  const blocosExistentes = [...new Set(momentos.map(m => m.bloco).filter(Boolean))];
+  const blocosExistentes = [...new Set(momentos.map((m) => m.bloco).filter(Boolean))];
 
   const openAddMomento = () => {
     if (!viewingCultoId || !viewingCulto) return;
 
     const novoMomento = emptyMomento(viewingCultoId, momentos.length);
-    
-    // Se houver momentos, calcular horário e ordem baseado no último
+
     if (momentos.length > 0) {
       const ultimoMomento = momentos[momentos.length - 1];
       novoMomento.ordem = ultimoMomento.ordem + 1;
       novoMomento.horarioInicio = calcularHorarioTermino(ultimoMomento.horarioInicio, ultimoMomento.duracao);
     } else {
-      // Se não houver momentos, usar o horário inicial do culto
       novoMomento.horarioInicio = viewingCulto.horarioInicial;
     }
-    
+
     setEditingMomento(novoMomento);
     setNewBlocoMode(false);
     setNewBlocoName('');
@@ -106,7 +118,7 @@ const Programacao = () => {
 
   const saveMomento = () => {
     if (!editingMomento) return;
-    if (momentos.find(m => m.id === editingMomento.id)) {
+    if (momentos.find((m) => m.id === editingMomento.id)) {
       updateMomento(editingMomento);
     } else {
       addMomento(editingMomento);
@@ -127,7 +139,7 @@ const Programacao = () => {
 
   const saveCulto = () => {
     if (!editingCulto) return;
-    if (cultos.find(c => c.id === editingCulto.id)) {
+    if (cultos.find((c) => c.id === editingCulto.id)) {
       updateCulto(editingCulto);
     } else {
       addCulto(editingCulto);
@@ -147,61 +159,38 @@ const Programacao = () => {
     return acc;
   }, {});
 
-  const inputClass = "w-full bg-muted/50 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground";
-  const labelClass = "text-xs text-muted-foreground font-medium mb-1.5 block";
+  const currentMoment = useMemo(() => {
+    const found = momentos.find((momento, index) => getMomentStatus(index) === 'executando');
+    return found ?? null;
+  }, [getMomentStatus, momentos]);
 
-  const statusLabel = (s: string) => s === 'planejado' ? 'Planejado' : s === 'em_andamento' ? 'Em Andamento' : 'Finalizado';
+  const inputClass = 'w-full bg-muted/50 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground';
+  const labelClass = 'text-xs text-muted-foreground font-medium mb-1.5 block';
+  const statusLabel = (s: string) => s === 'planejado' ? 'Planejado' : s === 'em_andamento' ? 'Em andamento' : 'Finalizado';
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-3xl font-display font-bold italic">Programação</h1>
-          <p className="text-muted-foreground text-sm">Gerencie os cultos e suas programações</p>
+          <h1 className="text-3xl font-display font-bold italic">Programacao</h1>
+          <p className="text-sm text-muted-foreground">Selecione um culto e gerencie a ordem completa dele.</p>
         </div>
-        <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
-          <Plus className="w-4 h-4" /> Novo Culto
-        </button>
-      </div>
-
-      {/* Cultos list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {cultos.map(c => {
-          const isSelected = c.id === viewingCultoId;
-          return (
-            <div
-              key={c.id}
-              onClick={() => selectCulto(c.id)}
-              className={`glass-card cursor-pointer p-4 sm:p-5 transition-all ${isSelected ? 'ring-2 ring-primary border-primary/30' : 'hover:bg-muted/20'}`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h2 className="font-display font-semibold">{c.nome || 'Sem nome'}</h2>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {statusLabel(c.status)}
-                  </span>
-                </div>
-                {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-              </div>
-              <div className="flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-3">
-                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {new Date(c.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {c.horarioInicial}</span>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/50 pt-3" onClick={e => e.stopPropagation()}>
-                <button onClick={() => openEditCulto(c)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
-                  <Edit2 className="w-3 h-3" /> Editar
-                </button>
-                <button onClick={() => duplicateCulto(c.id)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
-                  <Copy className="w-3 h-3" /> Duplicar
-                </button>
-                <button onClick={() => handleDeleteCulto(c.id)} className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors">
-                  <Trash2 className="w-3 h-3" /> Excluir
-                </button>
-              </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setShowCultoSelector(true)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-4 py-3 text-left transition-colors hover:bg-muted/30 sm:min-w-[300px]"
+          >
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto selecionado</p>
+              <p className="truncate font-semibold">{selectedCultoLabel}</p>
             </div>
-          );
-        })}
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+          <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
+            <Plus className="w-4 h-4" /> Novo Culto
+          </button>
+        </div>
       </div>
 
       {lastError && (
@@ -210,12 +199,93 @@ const Programacao = () => {
         </div>
       )}
 
-      {/* Momentos do culto selecionado */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <div className="glass-card p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto</p>
+              <h2 className="mt-1 break-words text-2xl font-display font-bold">{selectedCultoLabel}</h2>
+              <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {viewingCulto?.data ? new Date(viewingCulto.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }) : '--/--/----'}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {viewingCulto?.horarioInicial || '--:--'}
+                </span>
+                <span className="inline-flex rounded-full bg-muted px-3 py-1">{statusLabel(viewingCulto?.status || 'planejado')}</span>
+              </div>
+            </div>
+            <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
+              <button onClick={() => viewingCulto && openEditCulto(viewingCulto)} disabled={!viewingCulto} className="flex items-center justify-center gap-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 disabled:opacity-50">
+                <Edit2 className="w-3 h-3" /> Editar
+              </button>
+              <button onClick={() => viewingCultoId && duplicateCulto(viewingCultoId)} disabled={!viewingCultoId} className="flex items-center justify-center gap-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 disabled:opacity-50">
+                <Copy className="w-3 h-3" /> Duplicar
+              </button>
+              <button onClick={() => viewingCultoId && handleDeleteCulto(viewingCultoId)} disabled={!viewingCultoId} className="flex items-center justify-center gap-1 rounded-lg bg-destructive/15 px-3 py-2 text-xs text-destructive transition-colors hover:bg-destructive/25 disabled:opacity-50">
+                <Trash2 className="w-3 h-3" /> Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card p-5">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Momento do culto</p>
+          {currentMoment ? (
+            <div className="mt-3 space-y-3">
+              <div>
+                <p className="break-words text-xl font-display font-bold">{currentMoment.atividade}</p>
+                <p className="break-words text-sm text-muted-foreground">
+                  {currentMoment.responsavel}
+                  {currentMoment.ministerio ? ` • ${currentMoment.ministerio}` : ''}
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="uppercase tracking-wide">Inicio</p>
+                  <p className="mt-1 font-mono text-sm text-foreground">{currentMoment.horarioInicio}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="uppercase tracking-wide">Duracao</p>
+                  <p className="mt-1 font-mono text-sm text-foreground">{currentMoment.duracao} min</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="uppercase tracking-wide">Fim</p>
+                  <p className="mt-1 font-mono text-sm text-foreground">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
+                </div>
+              </div>
+              <ExecutingMomentProgress momento={currentMoment} />
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+              Nenhum momento em execucao agora.
+            </div>
+          )}
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Momentos</p>
+              <p className="mt-1 text-lg font-bold">{momentos.length}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Inicio</p>
+              <p className="mt-1 text-lg font-bold">{viewingCulto?.horarioInicial || '--:--'}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Previsto</p>
+              <p className="mt-1 text-lg font-bold">{viewingCulto?.duracaoPrevista || 0}m</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-lg font-display font-semibold">
-            Itens da Programação — {viewingCulto.nome || 'Selecione um culto'}
-          </h3>
+          <div>
+            <h3 className="text-lg font-display font-semibold">Momentos</h3>
+            <p className="text-sm text-muted-foreground">A lista abaixo mostra apenas o culto escolhido.</p>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {momentos.length > 0 && (
               <>
@@ -223,7 +293,7 @@ const Programacao = () => {
                   onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
                   className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
                 >
-                  <ImageDown className="w-4 h-4" /> Exportar Imagem
+                  <ImageDown className="w-4 h-4" /> Imagem
                 </button>
                 <button
                   onClick={() => exportarProgramacao(viewingCulto, momentos)}
@@ -248,17 +318,18 @@ const Programacao = () => {
           Object.entries(blocos).map(([bloco, items]) => (
             <div key={bloco} className="mb-6">
               {bloco && (
-                <div className="flex items-center gap-3 mb-3">
+                <div className="mb-3 flex items-center gap-3">
                   <div className="h-[1px] flex-1 bg-border" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{bloco}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{bloco}</span>
                   <div className="h-[1px] flex-1 bg-border" />
                 </div>
               )}
               <div className="space-y-2">
-                {items.map(m => {
-                  const idx = momentos.findIndex(x => x.id === m.id);
+                {items.map((m) => {
+                  const idx = momentos.findIndex((x) => x.id === m.id);
                   const status = getMomentStatus(idx);
                   const isExecuting = status === 'executando';
+
                   return (
                     <div key={m.id} className={`glass-card p-4 transition-colors ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -271,24 +342,22 @@ const Programacao = () => {
                           <p className={`break-words font-semibold ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>{m.atividade}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span className="text-sm text-muted-foreground">{m.responsavel}</span>
-                            {m.ministerio && <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{m.ministerio}</span>}
+                            {m.ministerio && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{m.ministerio}</span>}
                           </div>
                           {m.acaoSonoplastia && (
-                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">🎧 {m.acaoSonoplastia}</p>
+                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">Sonoplastia: {m.acaoSonoplastia}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-2 self-end sm:self-auto">
-                          <button onClick={() => openEditMomento(m)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                          <button onClick={() => openEditMomento(m)} className="rounded-lg p-1.5 transition-colors hover:bg-muted">
                             <Edit2 className="w-4 h-4 text-muted-foreground" />
                           </button>
-                          <button onClick={() => removeMomento(m.id)} className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors">
+                          <button onClick={() => removeMomento(m.id)} className="rounded-lg p-1.5 transition-colors hover:bg-destructive/20">
                             <Trash2 className="w-4 h-4 text-destructive/70" />
                           </button>
                         </div>
                       </div>
-                      {isExecuting && (
-                        <ExecutingMomentProgress momento={m} />
-                      )}
+                      {isExecuting && <ExecutingMomentProgress momento={m} />}
                     </div>
                   );
                 })}
@@ -298,115 +367,56 @@ const Programacao = () => {
         )}
       </div>
 
-      {/* Momento Form Modal */}
-      {showMomentoForm && editingMomento && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
-          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display font-bold">
-                {momentos.find(m => m.id === editingMomento.id) ? 'Editar Momento' : 'Novo Momento'}
-              </h2>
-              <button onClick={() => { setShowMomentoForm(false); setEditingMomento(null); }} className="text-muted-foreground hover:text-foreground">✕</button>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div><label className={labelClass}>Ordem</label><input type="number" className={inputClass} value={editingMomento.ordem} onChange={e => setEditingMomento({ ...editingMomento, ordem: Number(e.target.value) })} /></div>
+      {showCultoSelector && (
+        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
+          <div className="absolute inset-y-0 right-0 w-full max-w-md border-l border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
-                <label className={labelClass}>Bloco</label>
-                <select 
-                  className={inputClass} 
-                  value={newBlocoMode ? '__novo__' : (editingMomento.bloco === '' ? '__sem_bloco__' : editingMomento.bloco)}
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (val === '__sem_bloco__') {
-                      setNewBlocoMode(false);
-                      setNewBlocoName('');
-                      setEditingMomento({ ...editingMomento, bloco: '' });
-                    } else if (val === '__novo__') {
-                      setNewBlocoMode(true);
-                      setNewBlocoName('');
-                      setEditingMomento({ ...editingMomento, bloco: '' });
-                    } else {
-                      setNewBlocoMode(false);
-                      setNewBlocoName('');
-                      setEditingMomento({ ...editingMomento, bloco: val });
-                    }
-                  }}
-                >
-                  <option value="__sem_bloco__">Sem bloco</option>
-                  {blocosExistentes.map(b => <option key={b} value={b}>{b}</option>)}
-                  <option value="__novo__">+ Novo bloco...</option>
-                </select>
-                {newBlocoMode && (
-                  <input 
-                    className={`${inputClass} mt-2`} 
-                    placeholder="Nome do novo bloco"
-                    value={newBlocoName}
-                    onChange={e => {
-                      setNewBlocoName(e.target.value);
-                      setEditingMomento({ ...editingMomento, bloco: e.target.value });
-                    }} 
-                  />
-                )}
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Selecionar culto</p>
+                <h2 className="text-lg font-display font-bold">Programas cadastrados</h2>
               </div>
-              <div><label className={labelClass}>Horário!!!</label><input type="time" className={inputClass} value={editingMomento.horarioInicio} onChange={e => setEditingMomento({ ...editingMomento, horarioInicio: e.target.value })} /></div>
-              <div><label className={labelClass}>Duração (min)</label><input type="number" className={inputClass} value={editingMomento.duracao} onChange={e => setEditingMomento({ ...editingMomento, duracao: Number(e.target.value) })} /></div>
+              <button onClick={() => setShowCultoSelector(false)} className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground hover:bg-muted/80">
+                Fechar
+              </button>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-              <div><label className={labelClass}>Atividade</label><input className={inputClass} placeholder="Ex: Louvor Especial" value={editingMomento.atividade} onChange={e => setEditingMomento({ ...editingMomento, atividade: e.target.value })} /></div>
-              <div><label className={labelClass}>Responsável</label><input className={inputClass} placeholder="Nome" value={editingMomento.responsavel} onChange={e => setEditingMomento({ ...editingMomento, responsavel: e.target.value })} /></div>
-              <div><label className={labelClass}>Ministério</label><input className={inputClass} placeholder="Ex: Louvor" value={editingMomento.ministerio} onChange={e => setEditingMomento({ ...editingMomento, ministerio: e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div><label className={labelClass}>Função</label><input className={inputClass} placeholder="Ex: Cantor(a)" value={editingMomento.funcao} onChange={e => setEditingMomento({ ...editingMomento, funcao: e.target.value })} /></div>
-              <div>
-                <label className={labelClass}>Tipo de Momento</label>
-                <select className={inputClass} value={editingMomento.tipoMomento} onChange={e => setEditingMomento({ ...editingMomento, tipoMomento: e.target.value as TipoMomento })}>
-                  {TIPOS_MOMENTO.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
-                </select>
+            <div className="max-h-[calc(100vh-88px)] overflow-y-auto p-4">
+              <div className="space-y-3">
+                {cultos.map((c) => {
+                  const isSelected = c.id === viewingCultoId;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        selectCulto(c.id);
+                        setShowCultoSelector(false);
+                      }}
+                      className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                        isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-display font-semibold">{c.nome || 'Sem nome'}</p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(c.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                              <Clock className="h-3 w-3" />
+                              {c.horarioInicial}
+                            </span>
+                            <span className="inline-flex rounded-full bg-muted px-2.5 py-1">{statusLabel(c.status)}</span>
+                          </div>
+                        </div>
+                        {isSelected && <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <div><label className={labelClass}>Tipo de Mídia</label><input className={inputClass} placeholder="Ex: MP4, MP3" value={editingMomento.tipoMidia} onChange={e => setEditingMomento({ ...editingMomento, tipoMidia: e.target.value as TipoMidia })} /></div>
-              <div><label className={labelClass}>Antecedência (min)</label><input type="number" className={inputClass} value={editingMomento.antecedenciaChamada} onChange={e => setEditingMomento({ ...editingMomento, antecedenciaChamada: Number(e.target.value) })} /></div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              <div><label className={labelClass}>Ação da Sonoplastia</label><input className={inputClass} placeholder="Ex: Iniciar reprodução" value={editingMomento.acaoSonoplastia} onChange={e => setEditingMomento({ ...editingMomento, acaoSonoplastia: e.target.value })} /></div>
-              <div><label className={labelClass}>Observação</label><textarea className={inputClass + " min-h-[80px] resize-none"} placeholder="Notas adicionais..." value={editingMomento.observacao} onChange={e => setEditingMomento({ ...editingMomento, observacao: e.target.value })} /></div>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">Horário previsto: <span className="font-mono font-bold text-primary">{calcularHorarioTermino(editingMomento.horarioInicio, editingMomento.duracao)}</span></p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowMomentoForm(false); setEditingMomento(null); }} className="px-5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-sm">Cancelar</button>
-              <button onClick={saveMomento} disabled={isSubmitting} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">💾 Salvar</button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Culto Form Modal */}
-      {showCultoForm && editingCulto && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
-          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display font-bold">
-                {cultos.find(c => c.id === editingCulto.id) ? 'Editar Culto' : 'Novo Culto'}
-              </h2>
-              <button onClick={() => { setShowCultoForm(false); setEditingCulto(null); }} className="text-muted-foreground hover:text-foreground">✕</button>
-            </div>
-            <div className="space-y-4">
-              <div><label className={labelClass}>Nome do Culto</label><input className={inputClass} placeholder="Ex: Culto de Domingo" value={editingCulto.nome} onChange={e => setEditingCulto({ ...editingCulto, nome: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className={labelClass}>Data</label><input type="date" className={inputClass} value={editingCulto.data} onChange={e => setEditingCulto({ ...editingCulto, data: e.target.value })} /></div>
-                <div><label className={labelClass}>Horário Inicial</label><input type="time" className={inputClass} value={editingCulto.horarioInicial} onChange={e => setEditingCulto({ ...editingCulto, horarioInicial: e.target.value })} /></div>
-              </div>
-              <div><label className={labelClass}>Duração Prevista (min)</label><input type="number" className={inputClass} value={editingCulto.duracaoPrevista} onChange={e => setEditingCulto({ ...editingCulto, duracaoPrevista: Number(e.target.value) })} /></div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => { setShowCultoForm(false); setEditingCulto(null); }} className="px-5 py-2.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-sm">Cancelar</button>
-              <button onClick={saveCulto} disabled={isSubmitting} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">💾 Salvar</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Programacao;

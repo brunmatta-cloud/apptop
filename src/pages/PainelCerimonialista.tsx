@@ -168,7 +168,7 @@ function PainelCerimonialista() {
   }, [setExecutionMode]);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-[hsl(142_71%_45%/0.2)] flex items-center justify-center shrink-0">
@@ -206,7 +206,7 @@ function PainelCerimonialista() {
       )}
 
       {!isDataReady && (
-        <div className="glass-card p-4 sm:p-5">
+        <div className="glass-card border border-border/60 p-4 sm:p-5">
           <p className="text-sm text-muted-foreground">
             Carregando dados do painel. Os comandos ficam bloqueados ate o estado ficar consistente.
           </p>
@@ -234,7 +234,7 @@ function PainelCerimonialista() {
         </div>
       </div>
 
-      <div className="glass-card p-4">
+        <div className="glass-card border border-border/60 p-4">
         <div className="progress-bar h-2.5 rounded-full">
           <div
             className="progress-bar-fill rounded-full"
@@ -248,7 +248,7 @@ function PainelCerimonialista() {
       </div>
 
       {currentMoment && (
-        <div className="glass-card p-4 sm:p-5">
+        <div className="glass-card border border-status-executing/20 p-4 sm:p-5">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-2.5 h-2.5 rounded-full bg-status-executing animate-pulse" />
             <span className="text-xs font-semibold text-status-executing uppercase tracking-wider">Momento em execucao</span>
@@ -269,12 +269,12 @@ function PainelCerimonialista() {
                     style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
                   />
                 </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1.5 gap-2">
+                <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                   <span>{currentMoment.horarioInicio}</span>
-                  <span className="font-mono font-semibold text-foreground">
+                  <span className="text-center font-mono font-semibold text-foreground">
                     {isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}
                   </span>
-                  <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
+                  <span className="text-right">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
                 </div>
               </div>
             </div>
@@ -283,36 +283,36 @@ function PainelCerimonialista() {
       )}
 
       {safeCulto.status === 'em_andamento' && (
-        <div className="glass-card p-4 sm:p-5">
+        <div className="glass-card border border-primary/15 p-4 sm:p-5">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Controles</h3>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
-              <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <SkipBack className="w-4 h-4" /> <span className="hidden sm:inline">Voltar</span>
+              <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <SkipBack className="w-4 h-4" /> <span>Voltar</span>
               </button>
               {isPaused ? (
-                <button type="button" onClick={retomar} disabled={isCommandLocked} className="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-6">
+                <button type="button" onClick={retomar} disabled={isCommandLocked} className="col-span-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-6">
                   <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                     <Play className="w-4 h-4 transition-transform duration-200 ease-out" />
                     <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
                   </span>
                 </button>
               ) : (
-                <button type="button" onClick={pausar} disabled={isCommandLocked} className="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-6">
+                <button type="button" onClick={pausar} disabled={isCommandLocked} className="col-span-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-6">
                   <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                     <Pause className="w-4 h-4 transition-transform duration-200 ease-out" />
                     <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
                   </span>
                 </button>
               )}
-              <button type="button" onClick={avancar} disabled={isCommandLocked} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <span className="hidden sm:inline">{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="w-4 h-4" />
+              <button type="button" onClick={avancar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="w-4 h-4" />
               </button>
-              <button type="button" onClick={pular} disabled={isCommandLocked} className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <FastForward className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
+              <button type="button" onClick={pular} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <FastForward className="w-4 h-4" /> <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
-              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="col-span-2 flex w-full items-center justify-center gap-2 rounded-lg bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-5">
-                <Check className="w-4 h-4" /> <span className="hidden sm:inline">{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
+              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="col-span-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-1 sm:px-5">
+                <Check className="w-4 h-4" /> <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
               </button>
             </div>
             <div className="flex justify-center">
@@ -320,7 +320,7 @@ function PainelCerimonialista() {
                 type="button"
                 onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
                 disabled={isCommandLocked}
-                className={`w-full sm:w-auto min-w-[220px] px-6 sm:px-10 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-3 text-base font-semibold disabled:opacity-50 disabled:pointer-events-none ${
+                  className={`w-full sm:w-auto min-w-[220px] min-h-14 px-6 sm:px-10 py-3.5 rounded-2xl transition-colors flex items-center justify-center gap-3 text-base font-semibold shadow-sm disabled:opacity-50 disabled:pointer-events-none ${
                   moderadorReleaseActive
                     ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
                     : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25'
@@ -341,7 +341,7 @@ function PainelCerimonialista() {
       )}
 
       {safeCulto.status === 'em_andamento' && (
-        <div className="glass-card p-4 sm:p-5">
+        <div className="glass-card border border-border/60 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               <Timer className="w-4 h-4" /> Controle rapido
@@ -350,18 +350,18 @@ function PainelCerimonialista() {
               Completo <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button type="button" onClick={() => safeAdjustDuration(-60)} disabled={isCommandLocked} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            <button type="button" onClick={() => safeAdjustDuration(-60)} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-destructive/20 px-3 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/30 disabled:pointer-events-none disabled:opacity-50">
               <Minus className="w-3 h-3" /> 1min
             </button>
-            <button type="button" onClick={() => safeAdjustDuration(60)} disabled={isCommandLocked} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[hsl(var(--status-completed)/0.2)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.3)] transition-colors text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
+            <button type="button" onClick={() => safeAdjustDuration(60)} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[hsl(var(--status-completed)/0.2)] px-3 py-2 text-sm font-semibold text-[hsl(var(--status-completed))] transition-colors hover:bg-[hsl(var(--status-completed)/0.3)] disabled:pointer-events-none disabled:opacity-50">
               <Plus className="w-3 h-3" /> 1min
             </button>
             <button
               type="button"
               onClick={safeToggleBlink}
               disabled={isCommandLocked}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                className={`flex min-h-11 items-center justify-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
                 isBlinking ? 'bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))]' : 'bg-muted hover:bg-muted/80'
               } disabled:opacity-50 disabled:pointer-events-none`}
             >
@@ -369,31 +369,31 @@ function PainelCerimonialista() {
               {isBlinking ? 'Parar' : 'Piscar'}
             </button>
             {showMessage ? (
-              <button type="button" onClick={safeClearMessage} disabled={isCommandLocked} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none">
+               <button type="button" onClick={safeClearMessage} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-destructive/20 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/30 disabled:pointer-events-none disabled:opacity-50">
                 <EyeOff className="w-3 h-3" /> Tirar Msg
               </button>
             ) : (
-              <div className="flex min-w-0 w-full items-center gap-1 sm:w-auto">
+              <div className="col-span-2 flex min-w-0 w-full items-center gap-1 sm:w-auto">
                 <input
                   type="text"
                   value={msgDraft}
                   onChange={(event) => setMsgDraft(event.target.value)}
                   onKeyDown={(event) => { if (event.key === 'Enter') handleSendMessage(); }}
                   placeholder="Mensagem..."
-                  className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-40"
+                  className="w-full rounded-xl border border-border bg-muted px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 sm:w-40"
                 />
                 <button
                   type="button"
                   onClick={handleSendMessage}
                   disabled={!msgDraft.trim() || isCommandLocked}
-                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="min-h-11 rounded-xl bg-primary px-3 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   <Send className="w-3 h-3" />
                 </button>
               </div>
             )}
             {currentAdjustment !== 0 && (
-              <span className={`text-xs font-semibold ${currentAdjustment > 0 ? 'text-[hsl(var(--status-alert))]' : 'text-[hsl(var(--status-completed))]'}`}>
+              <span className={`col-span-2 text-xs font-semibold ${currentAdjustment > 0 ? 'text-[hsl(var(--status-alert))]' : 'text-[hsl(var(--status-completed))]'}`}>
                 Ajuste: {currentAdjustment > 0 ? '+' : ''}{currentAdjustment}s
               </span>
             )}
@@ -402,7 +402,7 @@ function PainelCerimonialista() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
-        <div className="space-y-4 min-w-0">
+        <div className="order-2 space-y-4 min-w-0 xl:order-1">
           <div className="glass-card p-4 sm:p-5">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Programacao completa</h3>
             {safeMomentos.length === 0 ? (
@@ -440,8 +440,8 @@ function PainelCerimonialista() {
           </div>
         </div>
 
-        <div className="space-y-4 min-w-0">
-          <div className="glass-card p-4 sm:p-5">
+        <div className="order-1 space-y-4 min-w-0 xl:order-2">
+          <div className="glass-card border border-status-alert/20 p-4 sm:p-5">
             <h3 className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
               <Users className="w-4 h-4 text-status-alert" />
               <span className="text-status-alert">Painel de Chamada</span>
@@ -451,7 +451,7 @@ function PainelCerimonialista() {
             ) : (
               <div className="space-y-3">
                 {chamadaItems.map((momento) => (
-                  <div key={momento.id} className="p-3 rounded-lg bg-status-alert/10 border border-status-alert/20">
+                  <div key={momento.id} className="rounded-xl border border-status-alert/20 bg-status-alert/10 p-3">
                     <p className="font-semibold text-sm">{momento.responsavel}</p>
                     <p className="text-xs text-muted-foreground">{momento.ministerio} • {momento.funcao}</p>
                     <p className="text-xs text-muted-foreground">{momento.atividade} as {momento.horarioInicio}</p>
@@ -459,7 +459,7 @@ function PainelCerimonialista() {
                       type="button"
                       onClick={() => marcarChamado(momento.id)}
                       disabled={isCommandLocked}
-                      className="mt-2 text-xs px-3 py-1 rounded bg-status-completed/20 text-status-completed hover:bg-status-completed/30 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-status-completed/20 px-3 py-2 text-xs text-status-completed transition-colors hover:bg-status-completed/30 disabled:pointer-events-none disabled:opacity-50"
                     >
                       <Check className="w-3 h-3" /> Marcar como chamado
                     </button>
@@ -469,23 +469,26 @@ function PainelCerimonialista() {
             )}
           </div>
 
-          <div className="glass-card p-4 sm:p-5">
+          <div className="glass-card border border-border/60 p-4 sm:p-5">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Proximos Momentos</h3>
             {nextMoments.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nenhum proximo momento</p>
             ) : (
               <div className="space-y-2">
                 {nextMoments.map((momento) => (
-                  <div key={momento.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/20">
-                    <span className="text-xs font-mono text-muted-foreground shrink-0">{momento.horarioInicio}</span>
-                    <span className="text-sm flex-1 truncate">{momento.atividade}</span>
+                  <div key={momento.id} className="flex items-start gap-3 rounded-lg p-3 hover:bg-muted/20">
+                    <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-mono text-muted-foreground">{momento.horarioInicio}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="block text-sm break-words">{momento.atividade}</span>
+                      <span className="block text-xs text-muted-foreground truncate">{momento.responsavel}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="glass-card p-4 sm:p-5">
+          <div className="glass-card border border-border/60 p-4 sm:p-5">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Modo de execucao</h3>
             <select
               value={executionMode}

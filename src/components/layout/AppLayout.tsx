@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, BarChart3, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, BarChart3, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,8 +22,20 @@ const navItems = [
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopMenuHidden, setDesktopMenuHidden] = useState(false);
   const location = useLocation();
   const currentNav = navItems.find((item) => item.to === location.pathname);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('app.desktopMenuHidden');
+    if (stored === 'true') {
+      setDesktopMenuHidden(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('app.desktopMenuHidden', String(desktopMenuHidden));
+  }, [desktopMenuHidden]);
 
   // Full-screen pages without layout
   if (location.pathname === '/foco' || location.pathname === '/cronometro') {
@@ -33,7 +45,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
+      <aside className={`hidden lg:flex flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30 transition-all duration-200 ${desktopMenuHidden ? 'w-0 overflow-hidden border-r-0' : 'w-64'}`}>
         <div className="p-5 pb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
@@ -122,7 +134,27 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0">
+      <button
+        type="button"
+        onClick={() => setDesktopMenuHidden((current) => !current)}
+        className="hidden lg:flex fixed top-5 right-5 z-40 items-center gap-2 rounded-xl border border-border bg-card/90 px-3 py-2 text-sm text-muted-foreground shadow-lg backdrop-blur hover:text-foreground hover:bg-card"
+      >
+        {desktopMenuHidden ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        <span>{desktopMenuHidden ? 'Mostrar menu' : 'Ocultar menu'}</span>
+      </button>
+
+      {desktopMenuHidden && (
+        <button
+          type="button"
+          onClick={() => setDesktopMenuHidden(false)}
+          className="hidden lg:flex fixed top-5 left-5 z-40 items-center justify-center rounded-xl border border-border bg-card/90 p-2 text-muted-foreground shadow-lg backdrop-blur hover:text-foreground hover:bg-card"
+          aria-label="Mostrar menu"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      )}
+
+      <main className={`flex-1 pt-14 lg:pt-0 transition-all duration-200 ${desktopMenuHidden ? 'lg:ml-0' : 'lg:ml-64'}`}>
         <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
           {children}
         </div>
