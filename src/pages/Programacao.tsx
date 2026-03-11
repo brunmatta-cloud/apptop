@@ -239,7 +239,7 @@ const Programacao = () => {
                 <p className="break-words text-xl font-display font-bold">{currentMoment.atividade}</p>
                 <p className="break-words text-sm text-muted-foreground">
                   {currentMoment.responsavel}
-                  {currentMoment.ministerio ? ` • ${currentMoment.ministerio}` : ''}
+                  {currentMoment.ministerio ? ` - ${currentMoment.ministerio}` : ''}
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
