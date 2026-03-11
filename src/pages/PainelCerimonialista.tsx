@@ -320,7 +320,7 @@ function PainelCerimonialista() {
                 type="button"
                 onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
                 disabled={isCommandLocked}
-                  className={`w-full sm:w-auto min-w-[220px] min-h-14 px-6 sm:px-10 py-3.5 rounded-2xl transition-colors flex items-center justify-center gap-3 text-base font-semibold shadow-sm disabled:opacity-50 disabled:pointer-events-none ${
+                className={`w-full sm:w-auto min-w-[220px] min-h-14 px-6 sm:px-10 py-3.5 rounded-2xl transition-colors flex items-center justify-center gap-3 text-base font-semibold shadow-sm disabled:opacity-50 disabled:pointer-events-none ${
                   moderadorReleaseActive
                     ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
                     : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/25'
@@ -361,7 +361,7 @@ function PainelCerimonialista() {
               type="button"
               onClick={safeToggleBlink}
               disabled={isCommandLocked}
-                className={`flex min-h-11 items-center justify-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+              className={`flex min-h-11 items-center justify-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
                 isBlinking ? 'bg-[hsl(var(--status-alert))] text-[hsl(var(--status-alert-foreground))]' : 'bg-muted hover:bg-muted/80'
               } disabled:opacity-50 disabled:pointer-events-none`}
             >

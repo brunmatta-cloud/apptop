@@ -420,3 +420,306 @@ const Programacao = () => {
           </div>
         </div>
       )}
+
+      {showCultoForm && editingCulto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto</p>
+                <h2 className="text-2xl font-display font-bold">
+                  {cultos.some((c) => c.id === editingCulto.id) ? 'Editar culto' : 'Novo culto'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCultoForm(false);
+                  setEditingCulto(null);
+                }}
+                className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/80"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className={labelClass}>Nome do culto</label>
+                <input
+                  value={editingCulto.nome}
+                  onChange={(e) => setEditingCulto({ ...editingCulto, nome: e.target.value })}
+                  className={inputClass}
+                  placeholder="Ex.: Culto Jovem"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Data</label>
+                <input
+                  type="date"
+                  value={editingCulto.data}
+                  onChange={(e) => setEditingCulto({ ...editingCulto, data: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Horario inicial</label>
+                <input
+                  type="time"
+                  value={editingCulto.horarioInicial}
+                  onChange={(e) => setEditingCulto({ ...editingCulto, horarioInicial: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Duracao prevista</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingCulto.duracaoPrevista}
+                  onChange={(e) => setEditingCulto({ ...editingCulto, duracaoPrevista: Number(e.target.value) || 0 })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Status</label>
+                <select
+                  value={editingCulto.status}
+                  onChange={(e) => setEditingCulto({ ...editingCulto, status: e.target.value as Culto['status'] })}
+                  className={inputClass}
+                >
+                  <option value="planejado">Planejado</option>
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="finalizado">Finalizado</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCultoForm(false);
+                  setEditingCulto(null);
+                }}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveCulto}
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Salvar culto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMomentoForm && editingMomento && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
+          <div className="mx-auto w-full max-w-4xl rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Momento</p>
+                <h2 className="text-2xl font-display font-bold">
+                  {momentos.some((m) => m.id === editingMomento.id) ? 'Editar momento' : 'Novo momento'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMomentoForm(false);
+                  setEditingMomento(null);
+                  setNewBlocoMode(false);
+                  setNewBlocoName('');
+                }}
+                className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/80"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className={labelClass}>Atividade</label>
+                <input
+                  value={editingMomento.atividade}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, atividade: e.target.value })}
+                  className={inputClass}
+                  placeholder="Ex.: Louvor congregacional"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Responsavel</label>
+                <input
+                  value={editingMomento.responsavel}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, responsavel: e.target.value })}
+                  className={inputClass}
+                  placeholder="Nome do participante"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Ministerio</label>
+                <input
+                  value={editingMomento.ministerio}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, ministerio: e.target.value })}
+                  className={inputClass}
+                  placeholder="Ex.: Louvor"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Bloco</label>
+                {newBlocoMode ? (
+                  <div className="space-y-2">
+                    <input
+                      value={newBlocoName}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewBlocoName(value);
+                        setEditingMomento({ ...editingMomento, bloco: value });
+                      }}
+                      className={inputClass}
+                      placeholder="Nome do novo bloco"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewBlocoMode(false)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Usar bloco existente
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      value={editingMomento.bloco}
+                      onChange={(e) => setEditingMomento({ ...editingMomento, bloco: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="">Sem bloco</option>
+                      {blocosExistentes.map((bloco) => (
+                        <option key={bloco} value={bloco}>
+                          {bloco}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewBlocoMode(true);
+                        setNewBlocoName(editingMomento.bloco || '');
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Criar novo bloco
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Horario inicial</label>
+                <input
+                  type="time"
+                  value={editingMomento.horarioInicio}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, horarioInicio: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Duracao (min)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingMomento.duracao}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, duracao: Number(e.target.value) || 0 })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Tipo de momento</label>
+                <select
+                  value={editingMomento.tipoMomento}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, tipoMomento: e.target.value as TipoMomento })}
+                  className={inputClass}
+                >
+                  {TIPOS_MOMENTO.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {tipo.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Tipo de midia</label>
+                <select
+                  value={editingMomento.tipoMidia}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, tipoMidia: e.target.value as TipoMidia })}
+                  className={inputClass}
+                >
+                  <option value="nenhum">Nenhum</option>
+                  <option value="audio">Audio</option>
+                  <option value="video">Video</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Acao sonoplastia</label>
+                <input
+                  value={editingMomento.acaoSonoplastia}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, acaoSonoplastia: e.target.value })}
+                  className={inputClass}
+                  placeholder="Ex.: Abrir microfone 2"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Antecedencia da chamada (min)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingMomento.antecedenciaChamada}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, antecedenciaChamada: Number(e.target.value) || 0 })}
+                  className={inputClass}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>Observacao</label>
+                <textarea
+                  value={editingMomento.observacao}
+                  onChange={(e) => setEditingMomento({ ...editingMomento, observacao: e.target.value })}
+                  className={`${inputClass} min-h-28 resize-y`}
+                  placeholder="Detalhes adicionais para a equipe"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMomentoForm(false);
+                  setEditingMomento(null);
+                  setNewBlocoMode(false);
+                  setNewBlocoName('');
+                }}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveMomento}
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Salvar momento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Programacao;

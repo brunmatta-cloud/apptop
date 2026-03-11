@@ -423,7 +423,7 @@ const Moderador = () => {
                       type="button"
                       onClick={() => updateModeradorStatus(momento.id, 'chamado')}
                       disabled={isSubmitting}
-                        className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       Chamar
                     </button>
@@ -431,7 +431,7 @@ const Moderador = () => {
                       type="button"
                       onClick={() => updateModeradorStatus(momento.id, 'confirmado')}
                       disabled={isSubmitting}
-                        className="w-full rounded-lg bg-emerald-500/20 px-3 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50"
+                      className="w-full rounded-lg bg-emerald-500/20 px-3 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50"
                     >
                       Confirmar
                     </button>
@@ -439,7 +439,7 @@ const Moderador = () => {
                       type="button"
                       onClick={() => updateModeradorStatus(momento.id, 'ausente')}
                       disabled={isSubmitting}
-                        className="w-full rounded-lg bg-destructive/20 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/30 disabled:opacity-50"
+                      className="w-full rounded-lg bg-destructive/20 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/30 disabled:opacity-50"
                     >
                       Ausente
                     </button>
