@@ -139,7 +139,7 @@ const Moderador = () => {
   return (
     <div className={`-m-4 md:-m-6 lg:-m-8 min-h-screen px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 transition-colors duration-300 ${
       moderadorReleaseActive
-        ? 'bg-[rgba(16,185,129,0.18)]'
+        ? 'bg-[linear-gradient(180deg,rgba(16,185,129,0.22)_0%,rgba(16,185,129,0.14)_30%,rgba(16,185,129,0.08)_60%,rgba(16,185,129,0.12)_100%)]'
         : ''
     }`}>
       <div className="space-y-6">
