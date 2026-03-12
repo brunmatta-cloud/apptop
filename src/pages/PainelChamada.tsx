@@ -305,7 +305,11 @@ const PainelChamada = memo(() => {
                 key={momento.id}
                 momento={momento}
                 action={
-                  <div className="inline-flex items-center gap-1 rounded-full border border-status-completed/30 bg-status-completed/10 px-3 py-1.5 text-[11px] font-semibold text-status-completed">
+                  <div className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+                    getModeradorStatus(momento) === 'pronto'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                      : 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+                  }`}>
                     <Check className="h-3.5 w-3.5" />
                     {getModeradorStatus(momento) === 'pronto' ? 'Pronto' : 'Chamado'}
                   </div>

@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino, type ModeradorCallStatus, type MomentStatus, type MomentoProgramacao } from '@/types/culto';
-import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo, User, Timer, X, ClipboardCheck } from 'lucide-react';
+import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo, User, Timer, X, ClipboardCheck, CheckCheck } from 'lucide-react';
 import { formatTimerMs } from '@/utils/time';
 
 type ModeradorNotice = {
@@ -23,6 +23,12 @@ const moderadorStatusLabel = (status: ModeradorCallStatus) => {
   if (status === 'chamado') return 'Chamado';
   if (status === 'pronto') return 'Pronto';
   return 'Pendente';
+};
+
+const moderadorStatusHint = (status: ModeradorCallStatus) => {
+  if (status === 'pronto') return 'Pessoa posicionada e pronta para entrar.';
+  if (status === 'chamado') return 'Pessoa avisada. Falta confirmar que ja esta no local.';
+  return 'Ainda precisa receber a chamada.';
 };
 
 const moderadorStatusClass = (status: ModeradorCallStatus) => {
@@ -91,8 +97,16 @@ const CallListSection = memo(function CallListSection({
           <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma chamada pendente agora.</p>
         ) : callItems.map((momento) => {
           const status = getModeradorStatus(momento);
+          const isCalled = status === 'chamado' || status === 'pronto';
+          const isReady = status === 'pronto';
           return (
-            <div key={momento.id} className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+            <div key={momento.id} className={`space-y-4 rounded-[1.2rem] border p-4 transition-colors ${
+              isReady
+                ? 'border-emerald-500/30 bg-emerald-500/10'
+                : isCalled
+                  ? 'border-sky-500/25 bg-sky-500/10'
+                  : 'border-border bg-muted/20'
+            }`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
@@ -107,23 +121,49 @@ const CallListSection = memo(function CallListSection({
                 <span>Termino: {calcularHorarioTermino(momento.horarioInicio, momento.duracao)}</span>
                 <span>Momento: {momento.atividade}</span>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => onUpdateStatus(momento.id, 'chamado')}
-                  disabled={isSubmitting}
-                  className="w-full rounded-xl bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-300 transition-colors hover:bg-sky-500/25 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  Marcar chamado
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onUpdateStatus(momento.id, 'pronto')}
-                  disabled={isSubmitting}
-                  className="w-full rounded-xl bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  Marcar pronto
-                </button>
+              <div className="rounded-2xl border border-border/60 bg-background/35 p-1.5">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateStatus(momento.id, 'chamado')}
+                    disabled={isSubmitting}
+                    className={`w-full rounded-[0.9rem] px-4 py-3 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 ${
+                      isCalled
+                        ? 'bg-sky-500 text-white shadow-[0_12px_30px_-22px_rgba(14,165,233,0.95)]'
+                        : 'bg-sky-500/15 text-sky-300 hover:bg-sky-500/25'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isCalled ? <CheckCheck className="h-4 w-4" /> : null}
+                      {isCalled ? 'Chamado confirmado' : 'Marcar chamado'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateStatus(momento.id, 'pronto')}
+                    disabled={isSubmitting}
+                    className={`w-full rounded-[0.9rem] px-4 py-3 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 ${
+                      isReady
+                        ? 'bg-emerald-500 text-white shadow-[0_12px_30px_-22px_rgba(16,185,129,0.95)]'
+                        : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isReady ? <CheckCheck className="h-4 w-4" /> : null}
+                      {isReady ? 'Pronto confirmado' : 'Marcar pronto'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${
+                isReady
+                  ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                  : isCalled
+                    ? 'border-sky-500/25 bg-sky-500/10 text-sky-300'
+                    : 'border-border bg-background/35 text-muted-foreground'
+              }`}>
+                <CheckCheck className="h-3.5 w-3.5" />
+                <span>{moderadorStatusHint(status)}</span>
               </div>
             </div>
           );
