@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentoProgramacao } from '@/types/culto';
-import type { ConnectionStatus, CronometroSettings, RemoteCultoState, TimerSnapshot, UiSyncState } from '@/features/culto-sync/domain';
+import type { ConnectionStatus, CronometroSettings, RemoteCultoState, UiSyncState } from '@/features/culto-sync/domain';
 import {
   advanceCultoTransition,
   backCultoTransition,
@@ -21,7 +21,6 @@ import { LIVE_TICK_MS } from '@/utils/time';
 
 interface SyncStoreContextValue {
   remoteState: RemoteCultoState;
-  timerSnapshot: TimerSnapshot;
   uiState: UiSyncState;
   actorId: string;
   refreshFromServer: (reason?: string) => Promise<void>;
@@ -177,7 +176,6 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const consecutiveRefreshFailuresRef = useRef(0);
   const hasSuccessfulSyncRef = useRef(false);
   const [remoteState, setRemoteState] = useState<RemoteCultoState>(defaultRemoteState);
-  const [timerSnapshot, setTimerSnapshot] = useState<TimerSnapshot>(() => getTimerSnapshot(defaultRemoteState));
   const [uiState, setUiState] = useState<UiSyncState>({
     isHydrating: true,
     isSubmitting: false,
@@ -226,7 +224,6 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     remoteStateRef.current = next;
     fingerprintRef.current = nextFingerprint;
     setRemoteState(next);
-    setTimerSnapshot(getTimerSnapshot(next));
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
   }, []);
 
@@ -395,12 +392,11 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const value = useMemo<SyncStoreContextValue>(() => ({
     remoteState,
-    timerSnapshot,
     uiState,
     actorId: actorIdRef.current,
     refreshFromServer,
     runCommand,
-  }), [refreshFromServer, remoteState, runCommand, timerSnapshot, uiState]);
+  }), [refreshFromServer, remoteState, runCommand, uiState]);
 
   return <SyncStoreContext.Provider value={value}>{children}</SyncStoreContext.Provider>;
 };
@@ -414,7 +410,7 @@ export const useSyncStore = () => {
 };
 
 export const useCeremonySession = () => {
-  const { remoteState, timerSnapshot, uiState, runCommand } = useSyncStore();
+  const { remoteState, uiState, runCommand } = useSyncStore();
   const culto = getActiveCulto(remoteState);
   const momentos = getActiveMomentos(remoteState);
 
@@ -426,7 +422,6 @@ export const useCeremonySession = () => {
     remoteState,
     culto,
     momentos,
-    timerSnapshot,
     uiState,
     currentIndex: remoteState.currentIndex,
     executionMode: remoteState.executionMode,

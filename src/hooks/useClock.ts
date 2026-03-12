@@ -1,23 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LIVE_TICK_MS } from '@/utils/time';
+
+const CLOCK_TICK_MS = 1000;
 
 /**
- * Shared clock hook - updates every 250ms but uses a stable ref
- * to avoid unnecessary re-renders across multiple components
+ * Shared clock hook aligned to whole seconds.
+ * The UI only shows HH:MM:SS, so updating faster than 1s just
+ * creates unnecessary re-renders on heavy desktop pages.
  */
 export function useClock() {
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
-    // Align to the next 250ms boundary for consistent updates
+    // Align to the next second boundary for stable clock updates.
     const now = Date.now();
-    const remainder = now % LIVE_TICK_MS;
-    const msUntilNextTick = remainder === 0 ? LIVE_TICK_MS : LIVE_TICK_MS - remainder;
+    const remainder = now % CLOCK_TICK_MS;
+    const msUntilNextTick = remainder === 0 ? CLOCK_TICK_MS : CLOCK_TICK_MS - remainder;
     
     let interval: ReturnType<typeof setInterval>;
     const timeout = setTimeout(() => {
       setCurrentTime(new Date());
-      interval = setInterval(() => setCurrentTime(new Date()), LIVE_TICK_MS);
+      interval = setInterval(() => setCurrentTime(new Date()), CLOCK_TICK_MS);
     }, msUntilNextTick);
 
     return () => {
