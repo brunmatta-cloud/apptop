@@ -479,7 +479,7 @@ function PainelCerimonialista() {
                 <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
 
-              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.42)] bg-[linear-gradient(180deg,hsl(var(--status-alert)/0.34)_0%,hsl(var(--status-alert)/0.2)_100%)] px-3 py-3 text-sm font-semibold text-white shadow-[0_16px_35px_-24px_hsl(var(--status-alert)/0.85)] transition-all hover:border-[hsl(var(--status-alert)/0.58)] hover:bg-[linear-gradient(180deg,hsl(var(--status-alert)/0.45)_0%,hsl(var(--status-alert)/0.26)_100%)] disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.42)] bg-[hsl(var(--status-alert))] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50">
                 <Play className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                 <span>{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
               </button>
