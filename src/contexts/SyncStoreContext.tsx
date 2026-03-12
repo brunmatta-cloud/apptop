@@ -2,12 +2,19 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus, CronometroSettings, RemoteCultoState, TimerSnapshot, UiSyncState } from '@/features/culto-sync/domain';
 import {
+  advanceCultoTransition,
+  backCultoTransition,
   defaultRemoteState,
+  finishCultoTransition,
   getActiveCulto,
   getActiveMomentos,
   getCurrentMoment,
   getMomentStatus,
   getTimerSnapshot,
+  pauseCultoTransition,
+  resumeCultoTransition,
+  startCultoTransition,
+  withMutationMetadata,
 } from '@/features/culto-sync/domain';
 import { getSessionState, sendSessionCommand, subscribeSessionState } from '@/features/culto-sync/service';
 import { LIVE_TICK_MS } from '@/utils/time';
@@ -22,7 +29,7 @@ interface SyncStoreContextValue {
 }
 
 const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
-const REFRESH_INTERVAL_MS = LIVE_TICK_MS;
+const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
 
@@ -92,6 +99,46 @@ const didCommandTakeEffect = (command: string, state: RemoteCultoState) => {
     default:
       return false;
   }
+};
+
+const getOptimisticTransitionState = (
+  state: RemoteCultoState,
+  command: string,
+  actorId: string,
+  nowIso: string,
+  nowMs: number,
+) => {
+  let result = null as ReturnType<typeof startCultoTransition> | null;
+
+  switch (command) {
+    case 'start':
+      result = startCultoTransition(state, nowIso);
+      break;
+    case 'pause':
+      result = pauseCultoTransition(state, nowIso, nowMs);
+      break;
+    case 'resume':
+      result = resumeCultoTransition(state, nowIso);
+      break;
+    case 'advance':
+    case 'skip':
+      result = advanceCultoTransition(state, nowIso, nowMs);
+      break;
+    case 'back':
+      result = backCultoTransition(state, nowIso, nowMs);
+      break;
+    case 'finish':
+      result = finishCultoTransition(state, nowIso, nowMs);
+      break;
+    default:
+      return null;
+  }
+
+  if (!result?.ok) {
+    return null;
+  }
+
+  return withMutationMetadata(result.state, actorId, nowIso);
 };
 
 const getNextConnectionStatus = ({
@@ -213,9 +260,10 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
 
         const expectedRevision = remoteStateRef.current.revision;
+        const baseState = remoteStateRef.current;
         const commandPayload = {
           ...payload,
-          activeCultoId: remoteStateRef.current.activeCultoId,
+          activeCultoId: baseState.activeCultoId,
         };
 
         setUiState((current) => ({
@@ -226,6 +274,20 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }));
 
         try {
+          const optimisticNowMs = Date.now();
+          const optimisticNowIso = new Date(optimisticNowMs).toISOString();
+          const optimisticState = getOptimisticTransitionState(
+            baseState,
+            command,
+            actorIdRef.current,
+            optimisticNowIso,
+            optimisticNowMs,
+          );
+
+          if (optimisticState) {
+            applyRemoteState(optimisticState, `${command}:optimistic`);
+          }
+
           const next = await sendSessionCommand({
             command,
             payload: commandPayload,
@@ -297,20 +359,8 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [applyRemoteState, refreshFromServer, updateConnectionStatus]);
 
   useEffect(() => {
-    let animationFrame = 0;
-    const tick = () => {
-      setTimerSnapshot(getTimerSnapshot(remoteStateRef.current));
-      animationFrame = window.requestAnimationFrame(tick);
-    };
-
-    animationFrame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, []);
-
-  useEffect(() => {
     const current = remoteStateRef.current;
     const currentMoment = getCurrentMoment(current);
-    const snapshot = getTimerSnapshot(current);
     if (
       current.executionMode !== 'automatico' ||
       current.timerStatus !== 'running' ||
@@ -320,18 +370,28 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
-    if (snapshot.momentElapsedMs < currentMoment.duracao * 60 * 1000) {
+    const snapshot = getTimerSnapshot(current);
+    const remainingMs = Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs);
+    if (remainingMs > 0) {
       autoAdvanceRevisionRef.current = null;
-      return;
-    }
+      const timeoutId = window.setTimeout(() => {
+        const latest = remoteStateRef.current;
+        if (
+          latest.executionMode !== 'automatico' ||
+          latest.timerStatus !== 'running' ||
+          latest.revision !== current.revision
+        ) {
+          return;
+        }
+        void runCommand('auto-advance', 'advance');
+      }, Math.max(50, remainingMs));
 
-    if (autoAdvanceRevisionRef.current === current.revision) {
-      return;
+      return () => window.clearTimeout(timeoutId);
     }
 
     autoAdvanceRevisionRef.current = current.revision;
     void runCommand('auto-advance', 'advance');
-  }, [runCommand, timerSnapshot]);
+  }, [remoteState, runCommand]);
 
   const value = useMemo<SyncStoreContextValue>(() => ({
     remoteState,

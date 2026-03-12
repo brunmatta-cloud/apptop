@@ -6,7 +6,7 @@ import {
   Play, Pause, SkipForward, SkipBack, FastForward, Users, Radio, Check,
   Plus, Minus, Zap, ZapOff, Send, EyeOff, Timer, ExternalLink
 } from 'lucide-react';
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
@@ -73,8 +73,6 @@ function PainelCerimonialista() {
   const cultoData = useCulto();
   const cronometroData = useCronometro();
   const [msgDraft, setMsgDraft] = useState('');
-  const [optimisticResumeAt, setOptimisticResumeAt] = useState<number | null>(null);
-  const [optimisticNowMs, setOptimisticNowMs] = useState<number | null>(null);
   const clockData = useClock();
 
   const {
@@ -104,30 +102,6 @@ function PainelCerimonialista() {
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const isDataReady = Boolean(culto) && Array.isArray(momentos);
 
-  useEffect(() => {
-    if (!isPaused) {
-      setOptimisticResumeAt(null);
-      setOptimisticNowMs(null);
-    }
-  }, [isPaused]);
-
-  useEffect(() => {
-    if (!optimisticResumeAt || !isPaused) {
-      return;
-    }
-
-    let animationFrame = 0;
-    const tick = () => {
-      setOptimisticNowMs(Date.now());
-      animationFrame = window.requestAnimationFrame(tick);
-    };
-
-    setOptimisticNowMs(Date.now());
-    animationFrame = window.requestAnimationFrame(tick);
-
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [isPaused, optimisticResumeAt]);
-
   const currentMoment = safeCurrentIndex < 0 || safeCurrentIndex >= safeMomentos.length
     ? null
     : safeMomentos[safeCurrentIndex] ?? null;
@@ -153,20 +127,12 @@ function PainelCerimonialista() {
     [safeMomentos, safeCurrentIndex]
   );
 
-  const displayMomentElapsedMs = useMemo(() => {
-    if (!optimisticResumeAt || !isPaused) {
-      return safeMomentElapsedMs;
-    }
-    const baseNowMs = optimisticNowMs ?? Date.now();
-    return safeMomentElapsedMs + Math.max(0, baseNowMs - optimisticResumeAt);
-  }, [isPaused, optimisticNowMs, optimisticResumeAt, safeMomentElapsedMs]);
-
-  const { percent: currentMomentPercent, formattedRemaining } = useMomentProgress(currentMoment, displayMomentElapsedMs);
+  const { percent: currentMomentPercent, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
   const currentAdjustment = getAdjustmentLabel(currentMoment);
   const isCommandLocked = isSubmitting;
   const activeCommand = pendingAction ?? '';
   const currentMomentTotalMs = currentMoment ? currentMoment.duracao * 60 * 1000 : 0;
-  const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - displayMomentElapsedMs) : 0;
+  const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - safeMomentElapsedMs) : 0;
   const isCurrentMomentWarning = !!currentMoment && !isPaused && currentMomentRemainingMs <= 60000 && currentMomentRemainingMs > 20000;
   const isCurrentMomentDanger = !!currentMoment && !isPaused && currentMomentRemainingMs <= 20000;
 
@@ -212,19 +178,6 @@ function PainelCerimonialista() {
       setExecutionMode(mode);
     }
   }, [setExecutionMode]);
-
-  const handleResume = useCallback(() => {
-    const nowMs = Date.now();
-    setOptimisticResumeAt(nowMs);
-    setOptimisticNowMs(nowMs);
-    retomar();
-  }, [retomar]);
-
-  const handlePause = useCallback(() => {
-    setOptimisticResumeAt(null);
-    setOptimisticNowMs(null);
-    pausar();
-  }, [pausar]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 sm:space-y-6">
@@ -495,13 +448,13 @@ function PainelCerimonialista() {
               <button type="button" onClick={pular} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <FastForward className="h-4 w-4" /> <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
-              <button type="button" onClick={handleResume} disabled={isCommandLocked || !isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
+              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
                 <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                   <Play className="h-4 w-4 transition-transform duration-200 ease-out" />
                   <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
                 </span>
               </button>
-              <button type="button" onClick={handlePause} disabled={isCommandLocked || isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
+              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
                 <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                   <Pause className="h-4 w-4 transition-transform duration-200 ease-out" />
                   <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
@@ -526,12 +479,12 @@ function PainelCerimonialista() {
                 <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
 
-              <button type="button" onClick={handleResume} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.42)] bg-[hsl(var(--status-alert))] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.42)] bg-[hsl(var(--status-alert))] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50">
                 <Play className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                 <span>{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
               </button>
 
-              <button type="button" onClick={handlePause} disabled={isCommandLocked || isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/90 px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/90 px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary disabled:pointer-events-none disabled:opacity-50">
                 <Pause className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                 <span>{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
               </button>
