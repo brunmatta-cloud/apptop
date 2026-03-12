@@ -27,6 +27,88 @@ const ColorField = ({
   </div>
 );
 
+const DialControl = ({
+  label,
+  value,
+  min,
+  max,
+  step,
+  suffix = '',
+  accent,
+  onChange,
+  formatter,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
+  accent: string;
+  onChange: (value: number) => void;
+  formatter?: (value: number) => string;
+}) => {
+  const normalized = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+  const displayValue = formatter ? formatter(value) : `${value}${suffix}`;
+
+  const adjust = (delta: number) => {
+    const nextValue = Math.min(max, Math.max(min, Number((value + delta).toFixed(2))));
+    onChange(nextValue);
+  };
+
+  return (
+    <div className="rounded-[1.75rem] border border-border/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_58%),rgba(15,23,42,0.72)] p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.9)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
+          <p className="mt-1 text-sm font-medium text-foreground/80">Ajuste visual rapido</p>
+        </div>
+        <div className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          {suffix || 'nivel'}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-center">
+        <div
+          className="relative flex h-36 w-36 items-center justify-center rounded-full"
+          style={{
+            background: `conic-gradient(${accent} 0% ${normalized}%, rgba(148,163,184,0.14) ${normalized}% 100%)`,
+          }}
+        >
+          <div className="absolute inset-[10px] rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),rgba(15,23,42,0.96)_62%)]" />
+          <div className="relative text-center">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Valor</p>
+            <p className="mt-1 font-mono text-2xl font-black text-foreground">{displayValue}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => adjust(-step)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/60 text-foreground transition-colors hover:bg-muted"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <Slider value={[value]} onValueChange={([next]) => onChange(next)} min={min} max={max} step={step} className="flex-1" />
+        <button
+          type="button"
+          onClick={() => adjust(step)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background/60 text-foreground transition-colors hover:bg-muted"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+        <span>{formatter ? formatter(min) : `${min}${suffix}`}</span>
+        <span>{formatter ? formatter(max) : `${max}${suffix}`}</span>
+      </div>
+    </div>
+  );
+};
+
 const CronometroControle = () => {
   const { momentos, currentIndex, culto, momentElapsedMs, adjustCurrentMomentDuration } = useCulto();
   const {
@@ -326,15 +408,27 @@ const CronometroControle = () => {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
             <Settings2 className="w-4 h-4" /> Limites de Cor
           </h3>
-          <div className="space-y-5">
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Amarelo em: {orangeThreshold}s</label>
-              <Slider value={[orangeThreshold]} onValueChange={([value]) => setOrangeThreshold(value)} min={10} max={600} step={5} />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Vermelho em: {redThreshold}s</label>
-              <Slider value={[redThreshold]} onValueChange={([value]) => setRedThreshold(value)} min={5} max={300} step={5} />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <DialControl
+              label="Amarelo"
+              value={orangeThreshold}
+              min={10}
+              max={600}
+              step={5}
+              suffix="s"
+              accent={warningColor}
+              onChange={setOrangeThreshold}
+            />
+            <DialControl
+              label="Vermelho"
+              value={redThreshold}
+              min={5}
+              max={300}
+              step={5}
+              suffix="s"
+              accent={dangerColor}
+              onChange={setRedThreshold}
+            />
           </div>
         </div>
 
@@ -342,23 +436,51 @@ const CronometroControle = () => {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
             <Type className="w-4 h-4" /> Tamanho das Fontes
           </h3>
-          <div className="space-y-5">
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Momento: {topFontSize.toFixed(1)}rem</label>
-              <Slider value={[topFontSize]} onValueChange={([value]) => setTopFontSize(value)} min={1.25} max={8} step={0.25} />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Cronometro: {timerFontSize.toFixed(1)}rem</label>
-              <Slider value={[timerFontSize]} onValueChange={([value]) => setTimerFontSize(value)} min={6} max={40} step={0.5} />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Responsavel: {bottomFontSize.toFixed(1)}rem</label>
-              <Slider value={[bottomFontSize]} onValueChange={([value]) => setBottomFontSize(value)} min={1} max={6} step={0.25} />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Mensagem: {messageFontSize.toFixed(1)}rem</label>
-              <Slider value={[messageFontSize]} onValueChange={([value]) => setMessageFontSize(value)} min={2} max={24} step={0.5} />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <DialControl
+              label="Momento"
+              value={topFontSize}
+              min={1.25}
+              max={8}
+              step={0.25}
+              suffix="rem"
+              accent={topTextColor}
+              onChange={setTopFontSize}
+              formatter={(next) => `${next.toFixed(1)}rem`}
+            />
+            <DialControl
+              label="Cronometro"
+              value={timerFontSize}
+              min={6}
+              max={40}
+              step={0.5}
+              suffix="rem"
+              accent={timerTextColor}
+              onChange={setTimerFontSize}
+              formatter={(next) => `${next.toFixed(1)}rem`}
+            />
+            <DialControl
+              label="Responsavel"
+              value={bottomFontSize}
+              min={1}
+              max={6}
+              step={0.25}
+              suffix="rem"
+              accent={bottomTextColor}
+              onChange={setBottomFontSize}
+              formatter={(next) => `${next.toFixed(1)}rem`}
+            />
+            <DialControl
+              label="Mensagem"
+              value={messageFontSize}
+              min={2}
+              max={24}
+              step={0.5}
+              suffix="rem"
+              accent={messageTextColor}
+              onChange={setMessageFontSize}
+              formatter={(next) => `${next.toFixed(1)}rem`}
+            />
           </div>
         </div>
 
