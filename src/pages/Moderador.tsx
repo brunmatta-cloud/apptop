@@ -458,13 +458,13 @@ const Moderador = () => {
   };
 
   return (
-    <div className={`-m-4 min-h-screen overflow-x-clip px-4 py-4 transition-colors duration-300 md:-m-6 md:px-6 md:py-6 lg:-m-8 lg:px-8 lg:py-8 ${
+    <div className={`min-h-full overflow-x-hidden px-3 pb-28 pt-3 transition-colors duration-300 sm:-m-4 sm:px-4 sm:py-4 sm:pb-24 md:-m-6 md:px-6 md:py-6 lg:-m-8 lg:px-8 lg:py-8 ${
       moderadorReleaseActive
         ? 'bg-[linear-gradient(180deg,rgba(16,185,129,0.22)_0%,rgba(16,185,129,0.14)_30%,rgba(16,185,129,0.08)_60%,rgba(16,185,129,0.12)_100%)]'
         : ''
     }`}>
       {notices.length > 0 && (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-h-[45vh] w-[min(92vw,380px)] flex-col gap-3 overflow-y-auto pr-1">
+        <div className="pointer-events-none fixed bottom-3 right-3 z-50 flex max-h-[40vh] w-[min(calc(100vw-1.5rem),380px)] flex-col gap-3 overflow-y-auto pr-1 sm:bottom-4 sm:right-4 sm:max-h-[45vh] sm:w-[min(92vw,380px)]">
           {notices.map((notice) => (
             <div
               key={notice.id}
@@ -494,7 +494,7 @@ const Moderador = () => {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-5 sm:space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20">
