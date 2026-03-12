@@ -27,9 +27,11 @@ interface SyncStoreContextValue {
   runCommand: (actionKey: string, command: string, payload?: Record<string, unknown>) => Promise<void>;
 }
 
-const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
-const SyncCommandContext = createContext<Omit<SyncStoreContextValue, 'remoteState'> | null>(null);
+type SyncCommandContextValue = Omit<SyncStoreContextValue, 'remoteState'>;
+
+const SyncCommandContext = createContext<SyncCommandContextValue | null>(null);
 let liveRemoteStateSnapshot: RemoteCultoState = defaultRemoteState;
+let liveServerClockOffsetMs = 0;
 const liveRemoteStateListeners = new Set<() => void>();
 
 const publishLiveRemoteState = (state: RemoteCultoState) => {
@@ -45,14 +47,13 @@ const subscribeLiveRemoteState = (listener: () => void) => {
 };
 
 export const getLiveRemoteStateSnapshot = () => liveRemoteStateSnapshot;
+export const getLiveServerNowMs = () => Date.now() - liveServerClockOffsetMs;
 
 const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
 const TIMER_COMMANDS = new Set(['start', 'resume', 'pause', 'advance', 'skip', 'back', 'finish']);
 const ENABLE_TIMER_FLOW_DEBUG = false;
-const START_TRACE_WINDOW_MS = 5000;
-const START_TRACE_SAMPLE_MS = 500;
 
 const createActorId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -79,11 +80,6 @@ type TimerFlowTrace = {
   rpcResolvedAtMs?: number;
   realtimeAppliedAtMs?: number;
   confirmRefreshAtMs?: number;
-};
-
-type StartTrace = {
-  id: string;
-  startedAtMs: number;
 };
 
 const getStateFingerprint = (state: RemoteCultoState) => JSON.stringify({
@@ -130,6 +126,15 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   }
 
   return fallback;
+};
+
+const updateServerClockOffset = (state: RemoteCultoState, receivedAtMs: number) => {
+  const serverUpdatedAtMs = Date.parse(state.updatedAt);
+  if (!Number.isFinite(serverUpdatedAtMs) || serverUpdatedAtMs <= 0) {
+    return;
+  }
+
+  liveServerClockOffsetMs = receivedAtMs - serverUpdatedAtMs;
 };
 
 const didCommandTakeEffect = (command: string, state: RemoteCultoState) => {
@@ -218,13 +223,13 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const remoteStateRef = useRef<RemoteCultoState>(defaultRemoteState);
   const fingerprintRef = useRef(getStateFingerprint(defaultRemoteState));
   const autoAdvanceRevisionRef = useRef<number | null>(null);
+  const autoAdvanceTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const realtimeStatusRef = useRef('CONNECTING');
   const lastSuccessfulSyncAtRef = useRef<number | null>(null);
   const consecutiveRefreshFailuresRef = useRef(0);
   const hasSuccessfulSyncRef = useRef(false);
   const timerFlowTraceRef = useRef<TimerFlowTrace | null>(null);
-  const startTraceRef = useRef<StartTrace | null>(null);
-  const [remoteState, setRemoteState] = useState<RemoteCultoState>(defaultRemoteState);
+  const runCommandRef = useRef<SyncStoreContextValue['runCommand'] | null>(null);
   const [uiState, setUiState] = useState<UiSyncState>({
     isHydrating: true,
     isSubmitting: false,
@@ -249,7 +254,53 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUiState((current) => current.connectionStatus === resolved ? current : { ...current, connectionStatus: resolved });
   }, []);
 
+  const syncAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimeoutRef.current) {
+      window.clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
+
+    const current = remoteStateRef.current;
+    const currentMoment = getCurrentMoment(current);
+
+    if (
+      current.executionMode !== 'automatico' ||
+      current.timerStatus !== 'running' ||
+      !currentMoment
+    ) {
+      autoAdvanceRevisionRef.current = null;
+      return;
+    }
+
+    const snapshot = getTimerSnapshot(current, getLiveServerNowMs());
+    const remainingMs = Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs);
+
+    if (remainingMs > 0) {
+      autoAdvanceRevisionRef.current = null;
+      autoAdvanceTimeoutRef.current = window.setTimeout(() => {
+        const latest = remoteStateRef.current;
+        if (
+          latest.executionMode !== 'automatico' ||
+          latest.timerStatus !== 'running' ||
+          latest.revision !== current.revision
+        ) {
+          return;
+        }
+        runCommandRef.current?.('auto-advance', 'advance');
+      }, Math.max(50, remainingMs));
+      return;
+    }
+
+    if (autoAdvanceRevisionRef.current === current.revision) {
+      return;
+    }
+
+    autoAdvanceRevisionRef.current = current.revision;
+    runCommandRef.current?.('auto-advance', 'advance');
+  }, []);
+
   const applyRemoteState = useCallback((next: RemoteCultoState, origin: string) => {
+    const receivedAtMs = Date.now();
     const nextFingerprint = getStateFingerprint(next);
     const currentFingerprint = fingerprintRef.current;
 
@@ -278,13 +329,14 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     remoteStateRef.current = next;
     fingerprintRef.current = nextFingerprint;
+    updateServerClockOffset(next, receivedAtMs);
     publishLiveRemoteState(next);
-    setRemoteState(next);
+    syncAutoAdvance();
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
 
     const activeTrace = timerFlowTraceRef.current;
     if (activeTrace) {
-      const nowMs = Date.now();
+      const nowMs = receivedAtMs;
       if (origin.endsWith(':optimistic') && activeTrace.optimisticAppliedAtMs == null) {
         activeTrace.optimisticAppliedAtMs = nowMs;
       }
@@ -319,7 +371,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         (window as Window & { __timerFlowTrace?: TimerFlowTrace | null }).__timerFlowTrace = activeTrace;
       }
     }
-  }, []);
+  }, [syncAutoAdvance]);
 
   const refreshFromServer = useCallback(async (reason = 'manual-refresh') => {
     try {
@@ -365,15 +417,9 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }));
 
         try {
-          const optimisticNowMs = Date.now();
+          const optimisticNowMs = getLiveServerNowMs();
           const optimisticNowIso = new Date(optimisticNowMs).toISOString();
           const isTimerCommand = TIMER_COMMANDS.has(command);
-          if (command === 'start') {
-            startTraceRef.current = {
-              id: `start-trace-${optimisticNowMs}`,
-              startedAtMs: optimisticNowMs,
-            };
-          }
           if (TIMER_COMMANDS.has(command)) {
             const trace: TimerFlowTrace = {
               id: `${command}-${optimisticNowMs}`,
@@ -464,6 +510,8 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return queueRef.current;
   }, [applyRemoteState, refreshFromServer, uiState.isHydrating, updateConnectionStatus]);
 
+  runCommandRef.current = runCommand;
+
   useEffect(() => {
     void refreshFromServer('bootstrap');
 
@@ -492,104 +540,14 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [applyRemoteState, refreshFromServer, updateConnectionStatus]);
 
   useEffect(() => {
-    const current = remoteStateRef.current;
-    const currentMoment = getCurrentMoment(current);
-    if (
-      current.executionMode !== 'automatico' ||
-      current.timerStatus !== 'running' ||
-      !currentMoment
-    ) {
-      autoAdvanceRevisionRef.current = null;
-      return;
-    }
-
-    const snapshot = getTimerSnapshot(current);
-    const remainingMs = Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs);
-    if (remainingMs > 0) {
-      autoAdvanceRevisionRef.current = null;
-      const timeoutId = window.setTimeout(() => {
-        const latest = remoteStateRef.current;
-        if (
-          latest.executionMode !== 'automatico' ||
-          latest.timerStatus !== 'running' ||
-          latest.revision !== current.revision
-        ) {
-          return;
-        }
-        void runCommand('auto-advance', 'advance');
-      }, Math.max(50, remainingMs));
-
-      return () => window.clearTimeout(timeoutId);
-    }
-
-    autoAdvanceRevisionRef.current = current.revision;
-    void runCommand('auto-advance', 'advance');
-  }, [remoteState, runCommand]);
-
-  useEffect(() => {
-    const trace = startTraceRef.current;
-    if (!trace) {
-      return;
-    }
-
-    const logSample = () => {
-      const activeTrace = startTraceRef.current;
-      if (!activeTrace) {
-        return;
-      }
-
-      const nowMs = Date.now();
-      if (nowMs - activeTrace.startedAtMs > START_TRACE_WINDOW_MS) {
-        startTraceRef.current = null;
-        return;
-      }
-
-      const state = remoteStateRef.current;
-      const currentMoment = getCurrentMoment(state);
-      const snapshot = getTimerSnapshot(state, nowMs);
-      const currentRemainingMs = currentMoment
-        ? Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs)
-        : 0;
-
-      console.info('[sync:start-trace]', {
-        id: activeTrace.id,
-        msFromStart: nowMs - activeTrace.startedAtMs,
-        timerStatus: state.timerStatus,
-        startedAt: state.startedAt,
-        momentStartedAt: state.momentStartedAt,
-        accumulatedMs: state.accumulatedMs,
-        momentAccumulatedMs: state.momentAccumulatedMs,
-        currentIndex: state.currentIndex,
-        currentMoment: currentMoment
-          ? {
-              id: currentMoment.id,
-              atividade: currentMoment.atividade,
-              horarioInicio: currentMoment.horarioInicio,
-              duracao: currentMoment.duracao,
-            }
-          : null,
-        momentElapsedMs: snapshot.momentElapsedMs,
-        currentRemainingMs,
-      });
-    };
-
-    logSample();
-    const interval = window.setInterval(logSample, START_TRACE_SAMPLE_MS);
-
     return () => {
-      window.clearInterval(interval);
+      if (autoAdvanceTimeoutRef.current) {
+        window.clearTimeout(autoAdvanceTimeoutRef.current);
+      }
     };
-  }, [remoteState]);
+  }, []);
 
-  const value = useMemo<SyncStoreContextValue>(() => ({
-    remoteState,
-    uiState,
-    actorId: actorIdRef.current,
-    refreshFromServer,
-    runCommand,
-  }), [refreshFromServer, remoteState, runCommand, uiState]);
-
-  const commandValue = useMemo<Omit<SyncStoreContextValue, 'remoteState'>>(() => ({
+  const commandValue = useMemo<SyncCommandContextValue>(() => ({
     uiState,
     actorId: actorIdRef.current,
     refreshFromServer,
@@ -598,17 +556,21 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <SyncCommandContext.Provider value={commandValue}>
-      <SyncStoreContext.Provider value={value}>{children}</SyncStoreContext.Provider>
+      {children}
     </SyncCommandContext.Provider>
   );
 };
 
 export const useSyncStore = () => {
-  const context = useContext(SyncStoreContext);
+  const context = useContext(SyncCommandContext);
   if (!context) {
     throw new Error('useSyncStore must be used within SyncStoreProvider');
   }
-  return context;
+  const remoteState = useLiveRemoteState();
+  return useMemo(() => ({
+    remoteState,
+    ...context,
+  }), [context, remoteState]);
 };
 
 export const useSyncCommands = () => {

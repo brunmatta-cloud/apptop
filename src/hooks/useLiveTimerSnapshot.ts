@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLiveRemoteState } from '@/contexts/SyncStoreContext';
+import { getLiveServerNowMs, useLiveRemoteState } from '@/contexts/SyncStoreContext';
 import { getTimerSnapshot } from '@/features/culto-sync/domain';
 
 export const useLiveTimerSnapshot = () => {
   const remoteState = useLiveRemoteState();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(() => getLiveServerNowMs());
 
   useEffect(() => {
-    setNowMs(Date.now());
+    setNowMs(getLiveServerNowMs());
   }, [
     remoteState.timerStatus,
     remoteState.startedAt,
@@ -16,6 +16,7 @@ export const useLiveTimerSnapshot = () => {
     remoteState.momentAccumulatedMs,
     remoteState.currentIndex,
     remoteState.activeCultoId,
+    remoteState.updatedAt,
   ]);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export const useLiveTimerSnapshot = () => {
     let frameId = 0;
 
     const tick = () => {
-      setNowMs(Date.now());
+      setNowMs(getLiveServerNowMs());
       frameId = window.requestAnimationFrame(tick);
     };
 
@@ -41,6 +42,7 @@ export const useLiveTimerSnapshot = () => {
     remoteState.timerStatus,
     remoteState.startedAt,
     remoteState.momentStartedAt,
+    remoteState.updatedAt,
   ]);
 
   return useMemo(() => getTimerSnapshot(remoteState, nowMs), [remoteState, nowMs]);
