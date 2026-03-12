@@ -1,21 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getLiveServerNowMs, useLiveRemoteState } from '@/contexts/SyncStoreContext';
 
 const CLOCK_TICK_MS = 1000;
 
 export function useClock() {
-  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const remoteState = useLiveRemoteState();
+  const [currentTime, setCurrentTime] = useState(() => new Date(getLiveServerNowMs()));
 
   useEffect(() => {
-    setCurrentTime(new Date());
+    setCurrentTime(new Date(getLiveServerNowMs()));
 
     const interval = window.setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(new Date(getLiveServerNowMs()));
     }, CLOCK_TICK_MS);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, []);
+  }, [remoteState.updatedAt]);
 
   const formatTime = useCallback(
     (d: Date) =>
