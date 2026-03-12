@@ -57,53 +57,52 @@ const DialControl = ({
   };
 
   return (
-    <div className="rounded-[1.4rem] border border-border/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_58%),rgba(15,23,42,0.72)] p-3 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.9)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
-          <p className="mt-1 text-xs font-medium text-foreground/70">Ajuste visual rapido</p>
-        </div>
-        <div className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {suffix || 'nivel'}
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-center">
+    <div className="rounded-[1.2rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(15,23,42,0.78)_100%)] p-3 shadow-[0_16px_38px_-28px_rgba(15,23,42,0.88)]">
+      <div className="flex items-center gap-3">
         <div
-          className="relative flex h-28 w-28 items-center justify-center rounded-full sm:h-32 sm:w-32"
+          className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
           style={{
             background: `conic-gradient(${accent} 0% ${normalized}%, rgba(148,163,184,0.14) ${normalized}% 100%)`,
           }}
         >
-          <div className="absolute inset-[8px] rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),rgba(15,23,42,0.96)_62%)]" />
-          <div className="relative text-center">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Valor</p>
-            <p className="mt-1 font-mono text-xl font-black text-foreground sm:text-2xl">{displayValue}</p>
+          <div className="absolute inset-[5px] rounded-full bg-[rgba(15,23,42,0.94)]" />
+          <span className="relative font-mono text-xs font-black text-foreground">{Math.round(normalized)}%</span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
+              <p className="mt-1 font-mono text-lg font-black leading-none text-foreground">{displayValue}</p>
+            </div>
+            <div className="rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              {suffix || 'nivel'}
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => adjust(-step)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/60 text-foreground transition-colors hover:bg-muted"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <Slider value={[value]} onValueChange={([next]) => onChange(next)} min={min} max={max} step={step} className="flex-1" />
+            <button
+              type="button"
+              onClick={() => adjust(step)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border/70 bg-background/60 text-foreground transition-colors hover:bg-muted"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>{formatter ? formatter(min) : `${min}${suffix}`}</span>
+            <span>{formatter ? formatter(max) : `${max}${suffix}`}</span>
           </div>
         </div>
-      </div>
-
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => adjust(-step)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/60 text-foreground transition-colors hover:bg-muted"
-        >
-          <Minus className="h-4 w-4" />
-        </button>
-        <Slider value={[value]} onValueChange={([next]) => onChange(next)} min={min} max={max} step={step} className="flex-1" />
-        <button
-          type="button"
-          onClick={() => adjust(step)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-background/60 text-foreground transition-colors hover:bg-muted"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>{formatter ? formatter(min) : `${min}${suffix}`}</span>
-        <span>{formatter ? formatter(max) : `${max}${suffix}`}</span>
       </div>
     </div>
   );
@@ -324,7 +323,7 @@ const CronometroControle = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="glass-card p-5">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
             <Timer className="w-4 h-4" /> Ajuste de Tempo
@@ -408,7 +407,7 @@ const CronometroControle = () => {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
             <Settings2 className="w-4 h-4" /> Limites de Cor
           </h3>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2.5">
             <DialControl
               label="Amarelo"
               value={orangeThreshold}
@@ -436,7 +435,7 @@ const CronometroControle = () => {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
             <Type className="w-4 h-4" /> Tamanho das Fontes
           </h3>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2.5">
             <DialControl
               label="Momento"
               value={topFontSize}
