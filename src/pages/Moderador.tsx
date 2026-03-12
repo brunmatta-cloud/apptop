@@ -4,6 +4,8 @@ import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/Cu
 import { calcularHorarioTermino, type ModeradorCallStatus, type MomentStatus, type MomentoProgramacao } from '@/types/culto';
 import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo, User, Timer, X, ClipboardCheck, CheckCheck } from 'lucide-react';
 import { formatTimerMs } from '@/utils/time';
+import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
 
 type ModeradorNotice = {
   id: string;
@@ -31,9 +33,9 @@ const moderadorStatusHint = (status: ModeradorCallStatus) => {
   return 'Ainda precisa receber a chamada.';
 };
 
-const moderadorStatusClass = (status: ModeradorCallStatus) => {
-  if (status === 'chamado') return 'border-sky-500/25 bg-sky-500/15 text-sky-300';
-  if (status === 'pronto') return 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300';
+const moderadorStatusClass = (status: ModeradorCallStatus, isLight: boolean) => {
+  if (status === 'chamado') return isLight ? 'border-sky-500/25 bg-sky-500/12 text-sky-700' : 'border-sky-500/25 bg-sky-500/15 text-sky-300';
+  if (status === 'pronto') return isLight ? 'border-emerald-500/25 bg-emerald-500/12 text-emerald-700' : 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300';
   return 'border-border bg-muted text-muted-foreground';
 };
 
@@ -57,15 +59,17 @@ const queueBadgeClass = ({
   releaseActive,
   status,
   isPreparing,
+  isLight,
 }: {
   releaseActive: boolean;
   status: ModeradorCallStatus;
   isPreparing: boolean;
+  isLight: boolean;
 }) => {
-  if (status === 'pronto') return 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300';
-  if (status === 'chamado') return 'border-sky-500/25 bg-sky-500/15 text-sky-300';
+  if (status === 'pronto') return isLight ? 'border-emerald-500/25 bg-emerald-500/12 text-emerald-700' : 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300';
+  if (status === 'chamado') return isLight ? 'border-sky-500/25 bg-sky-500/12 text-sky-700' : 'border-sky-500/25 bg-sky-500/15 text-sky-300';
   if (!releaseActive) return 'border-primary/20 bg-primary/10 text-primary';
-  if (isPreparing) return 'border-amber-500/25 bg-amber-500/15 text-amber-300';
+  if (isPreparing) return isLight ? 'border-amber-500/25 bg-amber-500/12 text-amber-700' : 'border-amber-500/25 bg-amber-500/15 text-amber-300';
   return 'border-border bg-muted text-muted-foreground';
 };
 
@@ -73,10 +77,12 @@ const CallListSection = memo(function CallListSection({
   callItems,
   isSubmitting,
   onUpdateStatus,
+  isLight,
 }: {
   callItems: MomentoProgramacao[];
   isSubmitting: boolean;
   onUpdateStatus: (id: string, status: ModeradorCallStatus) => void;
+  isLight: boolean;
 }) {
   return (
     <div className="glass-card min-w-0 p-5">
@@ -112,7 +118,7 @@ const CallListSection = memo(function CallListSection({
                   <p className="truncate font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
                   <p className="truncate text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} | {momento.atividade}</p>
                 </div>
-                <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(status)}`}>
+                <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(status, isLight)}`}>
                   {moderadorStatusLabel(status)}
                 </span>
               </div>
@@ -130,7 +136,9 @@ const CallListSection = memo(function CallListSection({
                     className={`w-full rounded-[0.9rem] px-4 py-3 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 ${
                       isCalled
                         ? 'bg-sky-500 text-white shadow-[0_12px_30px_-22px_rgba(14,165,233,0.95)]'
-                        : 'bg-sky-500/15 text-sky-300 hover:bg-sky-500/25'
+                        : isLight
+                          ? 'bg-sky-500/12 text-sky-700 hover:bg-sky-500/18'
+                          : 'bg-sky-500/15 text-sky-300 hover:bg-sky-500/25'
                     }`}
                   >
                     <span className="inline-flex items-center gap-2">
@@ -145,7 +153,9 @@ const CallListSection = memo(function CallListSection({
                     className={`w-full rounded-[0.9rem] px-4 py-3 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-50 ${
                       isReady
                         ? 'bg-emerald-500 text-white shadow-[0_12px_30px_-22px_rgba(16,185,129,0.95)]'
-                        : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                        : isLight
+                          ? 'bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/18'
+                          : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
                     }`}
                   >
                     <span className="inline-flex items-center gap-2">
@@ -157,9 +167,13 @@ const CallListSection = memo(function CallListSection({
               </div>
               <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${
                 isReady
-                  ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                  ? isLight
+                    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700'
+                    : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
                   : isCalled
-                    ? 'border-sky-500/25 bg-sky-500/10 text-sky-300'
+                    ? isLight
+                      ? 'border-sky-500/25 bg-sky-500/10 text-sky-700'
+                      : 'border-sky-500/25 bg-sky-500/10 text-sky-300'
                     : 'border-border bg-background/35 text-muted-foreground'
               }`}>
                 <CheckCheck className="h-3.5 w-3.5" />
@@ -176,9 +190,11 @@ const CallListSection = memo(function CallListSection({
 const QueueSection = memo(function QueueSection({
   queueItems,
   moderadorReleaseActive,
+  isLight,
 }: {
   queueItems: MomentoProgramacao[];
   moderadorReleaseActive: boolean;
+  isLight: boolean;
 }) {
   return (
     <div className="glass-card min-w-0 p-5">
@@ -199,7 +215,7 @@ const QueueSection = memo(function QueueSection({
                 <p className="truncate text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} | {momento.atividade}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{momento.horarioInicio}</p>
               </div>
-              <span className={`rounded-full border px-2.5 py-1 text-xs ${queueBadgeClass({ releaseActive: moderadorReleaseActive, status, isPreparing })}`}>
+              <span className={`rounded-full border px-2.5 py-1 text-xs ${queueBadgeClass({ releaseActive: moderadorReleaseActive, status, isPreparing, isLight })}`}>
                 {queueBadgeLabel({ releaseActive: moderadorReleaseActive, status, isPreparing })}
               </span>
             </div>
@@ -219,6 +235,7 @@ const TimelineSection = memo(function TimelineSection({
   getMomentStatusForIndex,
   safeMomentElapsedMs,
   isPaused,
+  isLight,
 }: {
   momentos: MomentoProgramacao[];
   totalMinutes: number;
@@ -228,6 +245,7 @@ const TimelineSection = memo(function TimelineSection({
   getMomentStatusForIndex: (index: number) => MomentStatus;
   safeMomentElapsedMs: number;
   isPaused: boolean;
+  isLight: boolean;
 }) {
   return (
     <div className="glass-card min-w-0 overflow-hidden p-5">
@@ -300,7 +318,7 @@ const TimelineSection = memo(function TimelineSection({
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(moderadorStatus)}`}>
+                    <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(moderadorStatus, isLight)}`}>
                       {moderadorStatusLabel(moderadorStatus)}
                     </span>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-white ${
@@ -338,6 +356,8 @@ const TimelineSection = memo(function TimelineSection({
 });
 
 const Moderador = () => {
+  const { resolvedTheme = 'dark' } = useTheme();
+  const isLight = resolvedTheme === 'light';
   const {
     toggleModeradorRelease,
     updateModeradorStatus,
@@ -465,7 +485,9 @@ const Moderador = () => {
   return (
     <div className={`min-h-full overflow-x-hidden px-3 pb-28 pt-3 transition-colors duration-300 sm:-m-4 sm:px-4 sm:py-4 sm:pb-24 md:-m-6 md:px-6 md:py-6 lg:-m-8 lg:px-8 lg:py-8 ${
       moderadorReleaseActive
-        ? 'bg-[linear-gradient(180deg,rgba(16,185,129,0.22)_0%,rgba(16,185,129,0.14)_30%,rgba(16,185,129,0.08)_60%,rgba(16,185,129,0.12)_100%)]'
+        ? isLight
+          ? 'bg-[linear-gradient(180deg,rgba(236,253,245,0.92)_0%,rgba(220,252,231,0.66)_30%,rgba(240,253,250,0.88)_100%)]'
+          : 'bg-[linear-gradient(180deg,rgba(16,185,129,0.22)_0%,rgba(16,185,129,0.14)_30%,rgba(16,185,129,0.08)_60%,rgba(16,185,129,0.12)_100%)]'
         : ''
     }`}>
       {notices.length > 0 && (
@@ -475,8 +497,12 @@ const Moderador = () => {
               key={notice.id}
               className={`pointer-events-auto rounded-2xl border shadow-2xl backdrop-blur-xl ${
                 notice.tone === 'alert'
-                  ? 'border-destructive/40 bg-[rgba(127,29,29,0.92)] text-destructive-foreground'
-                  : 'border-amber-500/35 bg-[rgba(120,53,15,0.92)] text-amber-50'
+                  ? isLight
+                    ? 'border-destructive/25 bg-[linear-gradient(180deg,rgba(254,242,242,0.98)_0%,rgba(254,226,226,0.9)_100%)] text-red-950'
+                    : 'border-destructive/40 bg-[rgba(127,29,29,0.92)] text-destructive-foreground'
+                  : isLight
+                    ? 'border-amber-400/30 bg-[linear-gradient(180deg,rgba(255,247,237,0.98)_0%,rgba(254,243,199,0.88)_100%)] text-amber-950'
+                    : 'border-amber-500/35 bg-[rgba(120,53,15,0.92)] text-amber-50'
               }`}
             >
               <div className="flex items-start gap-3 p-4">
@@ -487,7 +513,12 @@ const Moderador = () => {
                 <button
                   type="button"
                   onClick={() => dismissNotice(notice.id)}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-black/10 text-white transition-colors hover:bg-black/20"
+                  className={cn(
+                    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors",
+                    isLight
+                      ? 'border-black/10 bg-black/5 text-foreground hover:bg-black/10'
+                      : 'border-white/20 bg-black/10 text-white hover:bg-black/20'
+                  )}
                   aria-label="Fechar notificacao"
                   title="Fechar notificacao"
                 >
@@ -503,7 +534,7 @@ const Moderador = () => {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20">
-              <ShieldCheck className="h-5 w-5 text-emerald-400" />
+              <ShieldCheck className={`h-5 w-5 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`} />
             </div>
             <div>
               <h1 className="font-display text-2xl font-bold">Moderador</h1>
@@ -576,15 +607,15 @@ const Moderador = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <BellRing className={`h-5 w-5 ${
-                  isReleasePending ? 'text-amber-300' : moderadorReleaseActive ? 'text-emerald-300' : 'text-muted-foreground'
+                  isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-700' : 'text-emerald-300') : 'text-muted-foreground'
                 }`} />
-                <span className={`text-xs uppercase tracking-[0.28em] ${isReleasePending ? 'text-amber-300' : 'text-muted-foreground'}`}>
+                <span className={`text-xs uppercase tracking-[0.28em] ${isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : 'text-muted-foreground'}`}>
                   {isReleasePending ? 'Liberacao pendente' : 'Proxima pessoa'}
                 </span>
               </div>
               <div className="space-y-2">
                 <h2 className={`text-3xl font-black leading-none tracking-tight sm:text-5xl ${
-                  isReleasePending ? 'text-amber-300' : moderadorReleaseActive ? 'text-emerald-200' : 'text-foreground'
+                  isReleasePending ? (isLight ? 'text-amber-900' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-900' : 'text-emerald-200') : 'text-foreground'
                 }`}>
                   {displayedNextMoment?.responsavel || 'Nenhuma pessoa na fila'}
                 </h2>
@@ -599,14 +630,14 @@ const Moderador = () => {
               </div>
               {isReleasePending ? (
                 <>
-                  <p className="text-sm text-amber-300 sm:text-base">Essa pessoa ja iniciou sem receber a liberacao.</p>
+                  <p className={`text-sm sm:text-base ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>Essa pessoa ja iniciou sem receber a liberacao.</p>
                   <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.22em] text-amber-300/80">Tempo excedente sem liberacao</p>
-                    <p className="font-mono text-5xl font-black leading-none text-amber-300 sm:text-7xl">
+                    <p className={`text-xs uppercase tracking-[0.22em] ${isLight ? 'text-amber-700/90' : 'text-amber-300/80'}`}>Tempo excedente sem liberacao</p>
+                    <p className={`font-mono text-5xl font-black leading-none sm:text-7xl ${isLight ? 'text-amber-900' : 'text-amber-300'}`}>
                       {formatTimerMs(pendingReleaseElapsedMs)}
                     </p>
                   </div>
-                  <p className="text-xs text-amber-300">O card so vai avancar depois que a liberacao verde sair.</p>
+                  <p className={`text-xs ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>O card so vai avancar depois que a liberacao verde sair.</p>
                 </>
               ) : (
                 <>
@@ -618,7 +649,7 @@ const Moderador = () => {
 
             <div className="flex flex-col items-start gap-4 xl:items-end">
               <div className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-                isReleasePending ? 'text-amber-300' : moderadorReleaseActive ? 'text-emerald-300' : 'text-muted-foreground'
+                isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-700' : 'text-emerald-300') : 'text-muted-foreground'
               }`}>
                 {isReleasePending ? 'Liberacao pendente' : moderadorReleaseActive ? 'Liberacao ativa' : 'Aguardando liberacao'}
               </div>
@@ -630,7 +661,9 @@ const Moderador = () => {
                   isReleasePending
                     ? 'bg-amber-500 text-amber-950 hover:bg-amber-400'
                     : moderadorReleaseActive
-                      ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
+                      ? isLight
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                        : 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
                       : 'bg-muted text-foreground hover:bg-muted/80'
                 } disabled:pointer-events-none disabled:opacity-50`}
               >
@@ -649,10 +682,12 @@ const Moderador = () => {
             callItems={callItems}
             isSubmitting={isSubmitting}
             onUpdateStatus={handleUpdateModeradorStatus}
+            isLight={isLight}
           />
           <QueueSection
             queueItems={queueItems}
             moderadorReleaseActive={moderadorReleaseActive}
+            isLight={isLight}
           />
         </div>
 
@@ -665,6 +700,7 @@ const Moderador = () => {
           getMomentStatusForIndex={getMomentStatus}
           safeMomentElapsedMs={safeMomentElapsedMs}
           isPaused={isPaused}
+          isLight={isLight}
         />
       </div>
     </div>

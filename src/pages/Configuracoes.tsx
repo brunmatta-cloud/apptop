@@ -72,6 +72,33 @@ const themeOptions: ThemeOption[] = [
   },
 ];
 
+const settingsSections = [
+  {
+    id: "aparencia" as const,
+    label: "Aparencia",
+    description: "Tema, contraste e leitura",
+    icon: Palette,
+  },
+  {
+    id: "cronometro" as const,
+    label: "Cronometro",
+    description: "Tipografia, alertas e paleta",
+    icon: BellRing,
+  },
+  {
+    id: "sistema" as const,
+    label: "Sistema",
+    description: "Sessao, revisao e garantias",
+    icon: Server,
+  },
+  {
+    id: "sobre" as const,
+    label: "Sobre",
+    description: "Modulos e principios do app",
+    icon: Info,
+  },
+];
+
 const connectionLabel = (status: string) => {
   if (status === "online") return "Sincronizado";
   if (status === "degraded") return "Sincronizacao parcial";
@@ -79,9 +106,9 @@ const connectionLabel = (status: string) => {
   return "Conectando";
 };
 
-const connectionBadgeClass = (status: string) => {
-  if (status === "online") return "border-emerald-500/25 bg-emerald-500/12 text-emerald-400";
-  if (status === "degraded") return "border-amber-500/25 bg-amber-500/12 text-amber-300";
+const connectionBadgeClass = (status: string, isLight: boolean) => {
+  if (status === "online") return isLight ? "border-emerald-500/25 bg-emerald-500/12 text-emerald-700" : "border-emerald-500/25 bg-emerald-500/12 text-emerald-400";
+  if (status === "degraded") return isLight ? "border-amber-500/25 bg-amber-500/12 text-amber-700" : "border-amber-500/25 bg-amber-500/12 text-amber-300";
   if (status === "offline") return "border-destructive/25 bg-destructive/12 text-destructive";
   return "border-border/70 bg-muted/60 text-muted-foreground";
 };
@@ -220,6 +247,7 @@ const Configuracoes = () => {
   } = useCronometro();
   const remoteState = useLiveRemoteState();
   const { theme = "dark", resolvedTheme = "dark", setTheme } = useTheme();
+  const isLight = resolvedTheme === "light";
 
   const updatedAtLabel = useMemo(() => {
     const parsedDate = Date.parse(remoteState.updatedAt);
@@ -237,7 +265,7 @@ const Configuracoes = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
         <Card className="glass-card overflow-hidden border-border/60">
           <CardHeader className="pb-4">
             <div className="flex items-start gap-3">
@@ -265,7 +293,7 @@ const Configuracoes = () => {
             </div>
             <div className="rounded-[1.25rem] border border-border/70 bg-background/55 p-4">
               <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Sincronizacao</p>
-              <Badge className={cn("mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold", connectionBadgeClass(connectionStatus))}>
+              <Badge className={cn("mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold", connectionBadgeClass(connectionStatus, isLight))}>
                 {connectionLabel(connectionStatus)}
               </Badge>
               <p className="mt-2 text-xs text-muted-foreground">Status da sessao compartilhada em tempo real.</p>
@@ -297,7 +325,7 @@ const Configuracoes = () => {
             <div className="rounded-[1.6rem] border border-border/70 bg-card/90 p-4 shadow-[0_24px_50px_-40px_rgba(15,23,42,0.4)]">
               <div className="mb-4 flex items-center justify-between text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                 <span>Painel</span>
-                <span>{resolvedTheme === "light" ? "Claro" : "Escuro"}</span>
+                <span>{isLight ? "Claro" : "Escuro"}</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
                 <div className="rounded-[1.2rem] border border-border/70 bg-sidebar/90 p-3">
@@ -315,7 +343,10 @@ const Configuracoes = () => {
                         <div className="h-2.5 w-20 rounded-full bg-foreground/90" />
                         <div className="mt-2 h-2 w-28 rounded-full bg-muted-foreground/50" />
                       </div>
-                      <div className="rounded-full border border-emerald-500/25 bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">
+                      <div className={cn(
+                        "rounded-full border border-emerald-500/25 bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold",
+                        isLight ? "text-emerald-700" : "text-emerald-400"
+                      )}>
                         Online
                       </div>
                     </div>
@@ -365,15 +396,57 @@ const Configuracoes = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="aparencia" className="space-y-4">
-        <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-[1.2rem] border border-border/70 bg-card/70 p-2">
-          <TabsTrigger value="aparencia" className="rounded-xl px-4 py-2">Aparencia</TabsTrigger>
-          <TabsTrigger value="cronometro" className="rounded-xl px-4 py-2">Cronometro</TabsTrigger>
-          <TabsTrigger value="sistema" className="rounded-xl px-4 py-2">Sistema</TabsTrigger>
-          <TabsTrigger value="sobre" className="rounded-xl px-4 py-2">Sobre</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="aparencia" className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
+        <div className="space-y-4 xl:sticky xl:top-6">
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-[1.5rem] border border-border/70 bg-card/70 p-3">
+            {settingsSections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <TabsTrigger
+                  key={section.id}
+                  value={section.id}
+                  className={cn(
+                    "h-auto justify-start rounded-[1rem] border border-transparent px-4 py-4 text-left",
+                    "data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
+                    "data-[state=inactive]:bg-background/50 data-[state=inactive]:text-foreground"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-current/15 bg-current/10">
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{section.label}</p>
+                      <p className="mt-1 text-xs leading-5 opacity-75">{section.description}</p>
+                    </div>
+                  </div>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
 
-        <TabsContent value="aparencia" className="space-y-4">
+          <Card className="glass-card hidden border-border/60 xl:block">
+            <CardHeader className="pb-3">
+              <CardDescription className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                Painel lateral
+              </CardDescription>
+              <CardTitle className="text-lg font-display">Visao profissional</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-[1.15rem] border border-border/70 bg-background/55 p-4">
+                <p className="text-sm font-semibold text-foreground">Navegacao clara</p>
+                <p className="mt-2 text-sm text-muted-foreground">Secoes fixas na lateral deixam desktop e tablet mais organizados.</p>
+              </div>
+              <div className="rounded-[1.15rem] border border-border/70 bg-background/55 p-4">
+                <p className="text-sm font-semibold text-foreground">Mesmo motor</p>
+                <p className="mt-2 text-sm text-muted-foreground">As opcoes continuam usando a mesma logica e os mesmos controles do app.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+        <TabsContent value="aparencia" className="mt-0 space-y-4">
           <Card className="glass-card border-border/60">
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -430,7 +503,7 @@ const Configuracoes = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cronometro" className="space-y-4">
+        <TabsContent value="cronometro" className="mt-0 space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Card className="glass-card border-border/60">
               <CardHeader>
@@ -504,7 +577,7 @@ const Configuracoes = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="sistema" className="space-y-4">
+        <TabsContent value="sistema" className="mt-0 space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Card className="glass-card border-border/60">
               <CardHeader>
@@ -531,7 +604,7 @@ const Configuracoes = () => {
                 </div>
                 <div className="rounded-[1.25rem] border border-border/70 bg-background/55 p-4">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Conexao</p>
-                  <Badge className={cn("mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold", connectionBadgeClass(connectionStatus))}>
+                  <Badge className={cn("mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold", connectionBadgeClass(connectionStatus, isLight))}>
                     {connectionLabel(connectionStatus)}
                   </Badge>
                 </div>
@@ -566,7 +639,7 @@ const Configuracoes = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="sobre" className="space-y-4">
+        <TabsContent value="sobre" className="mt-0 space-y-4">
           <Card className="glass-card border-border/60">
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -619,6 +692,7 @@ const Configuracoes = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

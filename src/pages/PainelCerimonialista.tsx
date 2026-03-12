@@ -12,6 +12,8 @@ import { useClock } from '@/hooks/useClock';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTimerMs } from '@/utils/time';
+import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
 
 const emptyCultoFallback = {
   nome: 'Culto carregando...',
@@ -57,9 +59,9 @@ const getAdjustmentLabel = (momento: MomentoProgramacao | null) => {
   return Math.round((momento.duracao - momento.duracaoOriginal) * 60);
 };
 
-const connectionBadge = (status: string) => {
-  if (status === 'online') return 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10';
-  if (status === 'degraded') return 'border-amber-500/30 text-amber-300 bg-amber-500/10';
+const connectionBadge = (status: string, isLight: boolean) => {
+  if (status === 'online') return isLight ? 'border-emerald-500/30 text-emerald-700 bg-emerald-500/10' : 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10';
+  if (status === 'degraded') return isLight ? 'border-amber-500/30 text-amber-700 bg-amber-500/10' : 'border-amber-500/30 text-amber-300 bg-amber-500/10';
   return 'border-border text-muted-foreground bg-muted/40';
 };
 
@@ -77,6 +79,8 @@ function PainelCerimonialista() {
   const [msgDraft, setMsgDraft] = useState('');
   const clockData = useClock();
   const isMobile = useIsMobile();
+  const { resolvedTheme = 'dark' } = useTheme();
+  const isLight = resolvedTheme === 'light';
 
   const {
     executionMode, setExecutionMode,
@@ -137,6 +141,44 @@ function PainelCerimonialista() {
   const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - safeMomentElapsedMs) : 0;
   const isCurrentMomentWarning = !!currentMoment && !isPaused && currentMomentRemainingMs <= 60000 && currentMomentRemainingMs > 20000;
   const isCurrentMomentDanger = !!currentMoment && !isPaused && currentMomentRemainingMs <= 20000;
+  const currentMomentCardClass = isCurrentMomentDanger
+    ? isLight
+      ? 'border-red-300/70 bg-[linear-gradient(180deg,rgba(255,245,245,0.98)_0%,rgba(254,226,226,0.7)_100%)] shadow-[0_18px_50px_-30px_rgba(239,68,68,0.28)]'
+      : 'border-red-500/50 bg-[linear-gradient(180deg,rgba(239,68,68,0.24)_0%,rgba(239,68,68,0.1)_100%)]'
+    : isCurrentMomentWarning
+      ? isLight
+        ? 'border-amber-300/70 bg-[linear-gradient(180deg,rgba(255,251,235,0.98)_0%,rgba(254,243,199,0.78)_100%)] shadow-[0_18px_50px_-30px_rgba(245,158,11,0.25)]'
+        : 'border-amber-500/50 bg-[linear-gradient(180deg,rgba(245,158,11,0.24)_0%,rgba(245,158,11,0.1)_100%)]'
+      : isLight
+        ? 'border-status-executing/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(239,246,255,0.9)_100%)] shadow-[0_18px_50px_-30px_rgba(37,99,235,0.16)]'
+        : 'border-status-executing/20 bg-[linear-gradient(180deg,rgba(15,23,42,0.92)_0%,rgba(15,23,42,0.82)_100%)]';
+  const currentMomentAccentClass = isCurrentMomentDanger
+    ? isLight ? 'text-red-700' : 'text-red-200'
+    : isCurrentMomentWarning
+      ? isLight ? 'text-amber-700' : 'text-amber-200'
+      : isLight ? 'text-[hsl(var(--status-executing))]' : 'text-status-executing';
+  const currentMomentTimeClass = isCurrentMomentDanger
+    ? isLight ? 'text-red-900' : 'text-red-100'
+    : isCurrentMomentWarning
+      ? isLight ? 'text-amber-900' : 'text-amber-100'
+      : 'text-foreground';
+  const currentMomentHintClass = isCurrentMomentDanger
+    ? isLight ? 'text-red-800/90' : 'text-red-100/90'
+    : isCurrentMomentWarning
+      ? isLight ? 'text-amber-800/90' : 'text-amber-100/90'
+      : 'text-muted-foreground';
+  const releaseCardClass = isLight
+    ? 'border-emerald-300/45 bg-[linear-gradient(180deg,rgba(236,253,245,0.98)_0%,rgba(209,250,229,0.64)_100%)]'
+    : 'border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.14)_0%,rgba(16,185,129,0.06)_100%)]';
+  const releaseEyebrowClass = isLight ? 'text-emerald-700' : 'text-emerald-300';
+  const releaseDescriptionClass = isLight ? 'text-emerald-900/80' : 'text-emerald-50/80';
+  const releaseButtonClass = moderadorReleaseActive
+    ? isLight
+      ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+      : 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
+    : isLight
+      ? 'border border-emerald-300/60 bg-white/90 text-emerald-700 hover:bg-emerald-50'
+      : 'border border-emerald-400/20 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25';
 
   const handleSendMessage = useCallback(() => {
     try {
@@ -199,7 +241,7 @@ function PainelCerimonialista() {
             <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Agora</p>
             <span className="text-xl font-mono font-bold text-primary sm:text-2xl">{formatTime(currentTime)}</span>
           </div>
-          <div className={`rounded-2xl border px-4 py-3 text-center sm:text-left ${connectionBadge(connectionStatus)}`}>
+          <div className={`rounded-2xl border px-4 py-3 text-center sm:text-left ${connectionBadge(connectionStatus, isLight)}`}>
             <p className="text-[11px] uppercase tracking-[0.24em]">Conexao</p>
             <span className="mt-1 block text-sm font-semibold">{connectionLabel(connectionStatus)}</span>
           </div>
@@ -268,26 +310,27 @@ function PainelCerimonialista() {
 
       {currentMoment && (
         <div className="sticky top-2 z-20 sm:top-3 lg:top-4">
-          <div className={`glass-card border p-3 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.85)] backdrop-blur-xl sm:p-4 ${
-            isCurrentMomentDanger
-              ? 'border-red-500/50 bg-[linear-gradient(180deg,rgba(239,68,68,0.24)_0%,rgba(239,68,68,0.1)_100%)]'
-              : isCurrentMomentWarning
-                ? 'border-amber-500/50 bg-[linear-gradient(180deg,rgba(245,158,11,0.24)_0%,rgba(245,158,11,0.1)_100%)]'
-                : 'border-status-executing/20 bg-[linear-gradient(180deg,rgba(15,23,42,0.92)_0%,rgba(15,23,42,0.82)_100%)]'
-          }`}>
+          <div className={cn(
+            "glass-card border p-3 backdrop-blur-xl sm:p-4",
+            currentMomentCardClass
+          )}>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(230px,0.8fr)] lg:items-center">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`h-2 w-2 rounded-full animate-pulse ${
                     isCurrentMomentDanger ? 'bg-red-400' : isCurrentMomentWarning ? 'bg-amber-400' : 'bg-status-executing'
                   }`} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-[0.24em] ${
-                    isCurrentMomentDanger ? 'text-red-200' : isCurrentMomentWarning ? 'text-amber-200' : 'text-status-executing'
-                  }`}>Momento em execucao</span>
-                  <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.24em]", currentMomentAccentClass)}>Momento em execucao</span>
+                  <span className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
+                    isLight ? 'border-border/80 bg-white/80' : 'border-border/60 bg-background/60'
+                  )}>
                     {currentMoment.funcao}
                   </span>
-                  <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  <span className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
+                    isLight ? 'border-border/80 bg-white/80' : 'border-border/60 bg-background/60'
+                  )}>
                     {currentMoment.ministerio}
                   </span>
                 </div>
@@ -295,29 +338,32 @@ function PainelCerimonialista() {
                   {currentMoment.atividade}
                 </h2>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-[280px]">
-                  <div className="rounded-2xl border border-border/60 bg-background/55 px-3 py-2.5">
+                  <div className={cn(
+                    "rounded-2xl border px-3 py-2.5",
+                    isLight ? 'border-border/80 bg-white/82' : 'border-border/60 bg-background/55'
+                  )}>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
                     <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{currentMoment.horarioInicio}</p>
                   </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/55 px-3 py-2.5">
+                  <div className={cn(
+                    "rounded-2xl border px-3 py-2.5",
+                    isLight ? 'border-border/80 bg-white/82' : 'border-border/60 bg-background/55'
+                  )}>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
                     <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[1.4rem] border border-border/60 bg-background/60 px-4 py-3 text-center lg:px-5">
-                <p className={`text-[10px] font-semibold uppercase tracking-[0.24em] ${
-                  isCurrentMomentDanger ? 'text-red-200' : isCurrentMomentWarning ? 'text-amber-200' : 'text-muted-foreground'
-                }`}>Tempo restante</p>
-                <p className={`mt-2 font-mono text-4xl font-black leading-none sm:text-5xl lg:text-[3.5rem] ${
-                  isCurrentMomentDanger ? 'text-red-100' : isCurrentMomentWarning ? 'text-amber-100' : 'text-foreground'
-                }`}>
+              <div className={cn(
+                "rounded-[1.4rem] border px-4 py-3 text-center lg:px-5",
+                isLight ? 'border-border/80 bg-white/84' : 'border-border/60 bg-background/60'
+              )}>
+                <p className={cn("text-[10px] font-semibold uppercase tracking-[0.24em]", isCurrentMomentDanger || isCurrentMomentWarning ? currentMomentAccentClass : 'text-muted-foreground')}>Tempo restante</p>
+                <p className={cn("mt-2 font-mono text-4xl font-black leading-none sm:text-5xl lg:text-[3.5rem]", currentMomentTimeClass)}>
                   {formatTimerMs(currentMomentRemainingMs)}
                 </p>
-                <p className={`mt-2 text-xs sm:text-sm ${
-                  isCurrentMomentDanger ? 'text-red-100/90' : isCurrentMomentWarning ? 'text-amber-100/90' : 'text-muted-foreground'
-                }`}>
+                <p className={cn("mt-2 text-xs sm:text-sm", currentMomentHintClass)}>
                   {isPaused
                     ? 'Cronometro pausado'
                     : isCurrentMomentDanger
@@ -345,14 +391,14 @@ function PainelCerimonialista() {
         aria-hidden={!isLive}
         className={`${isLive ? 'block' : 'pointer-events-none max-h-0 overflow-hidden opacity-0'} transition-opacity duration-200`}
       >
-        <div className="glass-card border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.14)_0%,rgba(16,185,129,0.06)_100%)] p-4 sm:p-5 lg:p-6">
+        <div className={cn("glass-card border p-4 sm:p-5 lg:p-6", releaseCardClass)}>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-300">Liberacao do moderador</p>
+              <p className={cn("text-[11px] uppercase tracking-[0.24em]", releaseEyebrowClass)}>Liberacao do moderador</p>
               <h3 className="mt-2 text-2xl font-display font-bold sm:text-3xl">
                 {moderadorReleaseActive ? 'Liberacao ativa' : 'Aguardando liberar a proxima entrada'}
               </h3>
-              <p className="mt-2 text-sm text-emerald-50/80 sm:text-base">
+              <p className={cn("mt-2 text-sm sm:text-base", releaseDescriptionClass)}>
                 Use este controle separado para sinalizar de forma clara quando o moderador pode liberar a pessoa no palco.
               </p>
             </div>
@@ -361,11 +407,10 @@ function PainelCerimonialista() {
               type="button"
               onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
               disabled={isCommandLocked}
-              className={`flex min-h-16 w-full items-center justify-center gap-3 rounded-[1.6rem] px-6 py-4 text-base font-semibold shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                moderadorReleaseActive
-                  ? 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
-                  : 'border border-emerald-400/20 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25'
-              }`}
+              className={cn(
+                "flex min-h-16 w-full items-center justify-center gap-3 rounded-[1.6rem] px-6 py-4 text-base font-semibold shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-50",
+                releaseButtonClass
+              )}
             >
               <Users className="h-5 w-5" />
               <span>

@@ -3,6 +3,8 @@ import { Users, Play, Phone, Clock, Check, User, ArrowRight, BellRing } from 'lu
 import { useMemo, memo } from 'react';
 import { useClock } from '@/hooks/useClock';
 import type { MomentoProgramacao } from '@/types/culto';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 
 const getModeradorStatus = (momento: MomentoProgramacao) => {
   if (momento.moderadorStatus === 'chamado' || momento.moderadorStatus === 'pronto') {
@@ -29,17 +31,25 @@ const QueueRow = ({
   tone = 'default',
   leadLabel,
   action,
+  isLight,
 }: {
   momento: MomentoProgramacao;
   tone?: 'default' | 'alert' | 'live';
   leadLabel?: string;
   action?: React.ReactNode;
+  isLight: boolean;
 }) => {
   const toneClass = tone === 'alert'
-    ? 'border-status-alert/30 bg-[linear-gradient(180deg,rgba(245,158,11,0.12)_0%,rgba(245,158,11,0.04)_100%)]'
+    ? isLight
+      ? 'border-status-alert/35 bg-[linear-gradient(180deg,rgba(255,251,235,0.98)_0%,rgba(255,247,237,0.86)_100%)]'
+      : 'border-status-alert/30 bg-[linear-gradient(180deg,rgba(245,158,11,0.12)_0%,rgba(245,158,11,0.04)_100%)]'
     : tone === 'live'
-      ? 'border-status-executing/25 bg-[linear-gradient(180deg,rgba(59,130,246,0.12)_0%,rgba(59,130,246,0.04)_100%)]'
-      : 'border-border/60 bg-background/35';
+      ? isLight
+        ? 'border-status-executing/30 bg-[linear-gradient(180deg,rgba(239,246,255,0.98)_0%,rgba(235,245,255,0.88)_100%)]'
+        : 'border-status-executing/25 bg-[linear-gradient(180deg,rgba(59,130,246,0.12)_0%,rgba(59,130,246,0.04)_100%)]'
+      : isLight
+        ? 'border-border/80 bg-card/84'
+        : 'border-border/60 bg-background/35';
 
   return (
     <div className={`flex flex-col gap-3 rounded-[1.35rem] border p-3 sm:flex-row sm:items-center sm:gap-4 ${toneClass}`}>
@@ -63,11 +73,11 @@ const QueueRow = ({
   );
 };
 
-const EmptyState = ({ message, accent = 'default' }: { message: string; accent?: 'default' | 'alert' | 'live' }) => {
+const EmptyState = ({ message, accent = 'default', isLight }: { message: string; accent?: 'default' | 'alert' | 'live'; isLight: boolean }) => {
   const accentClass = accent === 'alert'
-    ? 'border-status-alert/20 text-status-alert/80'
+    ? isLight ? 'border-status-alert/25 bg-status-alert/5 text-[hsl(var(--status-alert))]' : 'border-status-alert/20 text-status-alert/80'
     : accent === 'live'
-      ? 'border-status-executing/20 text-status-executing/80'
+      ? isLight ? 'border-status-executing/25 bg-status-executing/5 text-[hsl(var(--status-executing))]' : 'border-status-executing/20 text-status-executing/80'
       : 'border-border/60 text-muted-foreground';
 
   return (
@@ -78,6 +88,8 @@ const EmptyState = ({ message, accent = 'default' }: { message: string; accent?:
 };
 
 const PainelChamada = memo(() => {
+  const { resolvedTheme = 'dark' } = useTheme();
+  const isLight = resolvedTheme === 'light';
   const { marcarChamado, isSubmitting } = useCultoControls();
   const { culto, momentos, currentIndex } = useLiveCultoView();
   const { momentElapsedSeconds } = useCultoTimer();
@@ -150,7 +162,12 @@ const PainelChamada = memo(() => {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
         <div className="space-y-6">
-          <div className="glass-card border border-status-alert/25 bg-[linear-gradient(180deg,rgba(245,158,11,0.14)_0%,rgba(245,158,11,0.05)_100%)] p-4 sm:p-5 lg:p-6">
+          <div className={cn(
+            "glass-card border p-4 sm:p-5 lg:p-6",
+            isLight
+              ? 'border-status-alert/30 bg-[linear-gradient(180deg,rgba(255,251,235,0.98)_0%,rgba(255,247,237,0.84)_100%)]'
+              : 'border-status-alert/25 bg-[linear-gradient(180deg,rgba(245,158,11,0.14)_0%,rgba(245,158,11,0.05)_100%)]'
+          )}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -166,7 +183,12 @@ const PainelChamada = memo(() => {
             </div>
 
             {primaryCall ? (
-              <div className="mt-5 rounded-[1.7rem] border border-status-alert/30 bg-[rgba(15,23,42,0.52)] p-4 sm:p-5">
+              <div className={cn(
+                "mt-5 rounded-[1.7rem] border p-4 sm:p-5",
+                isLight
+                  ? 'border-status-alert/25 bg-white/88 shadow-[0_24px_60px_-42px_rgba(245,158,11,0.25)]'
+                  : 'border-status-alert/30 bg-[rgba(15,23,42,0.52)]'
+              )}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex min-w-0 items-start gap-4">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-status-alert/10">
@@ -196,7 +218,7 @@ const PainelChamada = memo(() => {
               </div>
             ) : (
               <div className="mt-5">
-                <EmptyState message="Ninguem para chamar agora." accent="alert" />
+                <EmptyState message="Ninguem para chamar agora." accent="alert" isLight={isLight} />
               </div>
             )}
 
@@ -207,6 +229,7 @@ const PainelChamada = memo(() => {
                     key={momento.momento.id}
                     momento={momento.momento}
                     tone="alert"
+                    isLight={isLight}
                     leadLabel={formatLeadTime(momento.adjustedMinutes)}
                     action={
                       <button
@@ -241,6 +264,7 @@ const PainelChamada = memo(() => {
                     key={momento.id}
                     momento={momento}
                     tone="live"
+                    isLight={isLight}
                     action={
                       <div className="inline-flex items-center gap-2 rounded-full border border-status-executing/30 bg-status-executing/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-status-executing">
                         <Play className="h-3.5 w-3.5" />
@@ -251,7 +275,7 @@ const PainelChamada = memo(() => {
                 ))}
               </div>
             ) : (
-              <EmptyState message="Ninguem em execucao." accent="live" />
+              <EmptyState message="Ninguem em execucao." accent="live" isLight={isLight} />
             )}
           </div>
         </div>
@@ -273,6 +297,7 @@ const PainelChamada = memo(() => {
                 <QueueRow
                   key={momento.momento.id}
                   momento={momento.momento}
+                  isLight={isLight}
                   leadLabel={formatLeadTime(momento.adjustedMinutes)}
                   action={
                     <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
@@ -284,7 +309,7 @@ const PainelChamada = memo(() => {
               ))}
             </div>
           ) : (
-            <EmptyState message="Nenhum proximo na fila de chamada." />
+            <EmptyState message="Nenhum proximo na fila de chamada." isLight={isLight} />
           )}
         </div>
       </div>
@@ -306,11 +331,16 @@ const PainelChamada = memo(() => {
               <QueueRow
                 key={momento.id}
                 momento={momento}
+                isLight={isLight}
                 action={
                   <div className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
                     getModeradorStatus(momento) === 'pronto'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      : 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+                      ? isLight
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                      : isLight
+                        ? 'border-sky-500/30 bg-sky-500/10 text-sky-700'
+                        : 'border-sky-500/30 bg-sky-500/10 text-sky-300'
                   }`}>
                     <Check className="h-3.5 w-3.5" />
                     {getModeradorStatus(momento) === 'pronto' ? 'Pronto' : 'Chamado'}
@@ -320,7 +350,7 @@ const PainelChamada = memo(() => {
             ))}
           </div>
         ) : (
-          <EmptyState message="Nenhum chamado registrado ainda." />
+          <EmptyState message="Nenhum chamado registrado ainda." isLight={isLight} />
         )}
       </div>
     </div>
