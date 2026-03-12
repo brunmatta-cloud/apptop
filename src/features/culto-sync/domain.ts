@@ -382,15 +382,21 @@ const parseTimestamp = (value: string | null) => {
   return Number.isFinite(timestamp) ? timestamp : null;
 };
 
-const getRunningDelta = (startedAt: string | null, fallbackStartedAt: string | null, nowMs: number) => {
-  const startedMs = parseTimestamp(startedAt) ?? parseTimestamp(fallbackStartedAt);
+const getRunningDelta = (startedAt: string | null, nowMs: number) => {
+  const startedMs = parseTimestamp(startedAt);
   return startedMs == null ? 0 : Math.max(0, nowMs - startedMs);
 };
 
 export const getTimerSnapshot = (state: RemoteCultoState, nowMs = Date.now()): TimerSnapshot => {
   const running = state.timerStatus === 'running';
-  const elapsedMs = state.accumulatedMs + (running ? getRunningDelta(state.startedAt, state.updatedAt, nowMs) : 0);
-  const momentElapsedMs = state.momentAccumulatedMs + (running ? getRunningDelta(state.momentStartedAt, state.updatedAt, nowMs) : 0);
+
+  const elapsedMs = running
+    ? state.accumulatedMs + getRunningDelta(state.startedAt, nowMs)
+    : state.accumulatedMs;
+
+  const momentElapsedMs = running
+    ? state.momentAccumulatedMs + getRunningDelta(state.momentStartedAt, nowMs)
+    : state.momentAccumulatedMs;
 
   return {
     elapsedMs,
