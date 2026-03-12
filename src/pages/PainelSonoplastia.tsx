@@ -1,4 +1,5 @@
 import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useSyncStore } from '@/contexts/SyncStoreContext';
 import { calcularHorarioTermino, tipoMomentoLabel } from '@/types/culto';
 import { Volume2, Mic, Video, PlayCircle, Bell, Maximize, Minimize } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -9,9 +10,148 @@ import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTimerMs } from '@/utils/time';
 
+const NextSoundActionCard = memo(function NextSoundActionCard({
+  currentMoment,
+  nextSoundAction,
+  momentos,
+  currentIndex,
+  mediaIcon,
+}: {
+  currentMoment: typeof undefined | typeof null | any;
+  nextSoundAction: typeof undefined | typeof null | any;
+  momentos: any[];
+  currentIndex: number;
+  mediaIcon: (tipo: string) => React.ReactNode;
+}) {
+  const { momentElapsedMs } = useCultoTimer();
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+  const remainingMsUntilNext = useMemo(() => {
+    if (!currentMoment || !nextSoundAction) return Infinity;
+    const nextIdx = momentos.findIndex((x) => x.id === nextSoundAction.id);
+    if (nextIdx <= currentIndex) return Infinity;
+    const currentRemaining = Math.max(0, currentMoment.duracao * 60 * 1000 - safeMomentElapsedMs);
+    const betweenMs = momentos.slice(currentIndex + 1, nextIdx).reduce((s, m) => s + m.duracao * 60 * 1000, 0);
+    return currentRemaining + betweenMs;
+  }, [currentIndex, currentMoment, momentos, nextSoundAction, safeMomentElapsedMs]);
+  const isNextUrgent = remainingMsUntilNext <= 10000;
+
+  return (
+    <div className={`glass-card p-4 sm:p-6 transition-all ${isNextUrgent ? 'ring-2 ring-status-alert border-status-alert/50' : ''}`}>
+      <div className="flex items-center gap-2 mb-4">
+        <PlayCircle className={`w-4 h-4 ${isNextUrgent ? 'text-status-alert' : 'text-status-next'}`} />
+        <span className={`text-xs font-semibold uppercase tracking-wider ${isNextUrgent ? 'text-status-alert' : 'text-status-next'}`}>Próxima Ação</span>
+      </div>
+      {nextSoundAction ? (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className={`flex flex-col items-center justify-center shrink-0 ${isNextUrgent ? 'animate-pulse' : ''}`}>
+            <span className={`font-mono font-black leading-none ${isNextUrgent ? 'text-status-alert' : 'text-primary'} ${remainingMsUntilNext < 60000 ? 'text-5xl sm:text-7xl' : 'text-4xl sm:text-5xl'}`}>
+              {remainingMsUntilNext < Infinity ? formatTimerMs(remainingMsUntilNext) : '--:--'}
+            </span>
+            <span className={`text-xs mt-1 ${isNextUrgent ? 'text-status-alert font-bold' : 'text-muted-foreground'}`}>
+              {isNextUrgent ? 'ATENCAO!' : 'até próxima ação'}
+            </span>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${isNextUrgent ? 'bg-status-alert/20' : 'bg-muted'}`}>
+                {mediaIcon(nextSoundAction.tipoMidia)}
+              </div>
+              <div className="min-w-0">
+                <p className="font-display font-bold text-base sm:text-lg truncate">{nextSoundAction.atividade}</p>
+                <p className="text-sm text-muted-foreground truncate">{nextSoundAction.responsavel}</p>
+              </div>
+            </div>
+            {nextSoundAction.acaoSonoplastia && (
+              <div className={`mt-3 p-3 rounded-lg ${isNextUrgent ? 'bg-status-alert/10 border border-status-alert/30' : 'bg-primary/10 border border-primary/20'}`}>
+                <p className={`text-[11px] uppercase tracking-wider font-semibold mb-0.5 ${isNextUrgent ? 'text-status-alert' : 'text-primary'}`}>Ação</p>
+                <p className="text-sm font-semibold">{nextSoundAction.acaoSonoplastia}</p>
+              </div>
+            )}
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-mono">{nextSoundAction.horarioInicio}</span>
+              <span>•</span>
+              <span>{nextSoundAction.tipoMidia === 'nenhum' ? 'Sem mídia' : nextSoundAction.tipoMidia === 'audio' ? 'Música' : 'Vídeo'}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center py-2">Nenhuma próxima ação</p>
+      )}
+    </div>
+  );
+});
+
+const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
+  currentMoment,
+  mediaIcon,
+  isPaused,
+}: {
+  currentMoment: typeof undefined | typeof null | any;
+  mediaIcon: (tipo: string) => React.ReactNode;
+  isPaused: boolean;
+}) {
+  const { momentElapsedMs } = useCultoTimer();
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+  const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
+
+  if (!currentMoment) {
+    return (
+      <div className="glass-card p-8 text-center text-muted-foreground">
+        <Volume2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+        <p>Aguardando início do culto</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-card p-4 sm:p-6 bg-muted/40 border border-muted-foreground/10">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="w-2.5 h-2.5 rounded-full bg-status-executing animate-pulse" />
+        <span className="text-xs font-semibold text-status-executing uppercase tracking-wider">Executando Agora</span>
+      </div>
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+          {mediaIcon(currentMoment.tipoMidia)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg sm:text-xl font-display font-bold truncate">{currentMoment.atividade}</h2>
+          <p className="text-muted-foreground text-sm truncate">{currentMoment.responsavel}</p>
+        </div>
+      </div>
+
+      {currentMoment.acaoSonoplastia && (
+        <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+          <p className="text-[11px] text-primary uppercase tracking-wider font-semibold mb-0.5">Ação</p>
+          <p className="text-sm font-medium">{currentMoment.acaoSonoplastia}</p>
+        </div>
+      )}
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+          <span>Tipo: {tipoMomentoLabel(currentMoment.tipoMomento)}</span>
+          <span>Mídia: {currentMoment.tipoMidia === 'nenhum' ? 'Nenhuma' : currentMoment.tipoMidia === 'audio' ? 'Música' : 'Vídeo'}</span>
+        </div>
+        <div className="progress-bar h-2 rounded-full">
+          <div className="progress-bar-fill rounded-full" style={{ transform: `scaleX(${currentProgress / 100})`, transformOrigin: 'left', width: '100%' }} />
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+          <span>{currentMoment.horarioInicio}</span>
+          <span className="font-mono font-semibold text-foreground">
+            {isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}
+          </span>
+          <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const PainelSonoplastia = memo(() => {
   const { culto, momentos, currentIndex, getMomentStatus } = useCulto();
-  const { momentElapsedMs, isPaused } = useCultoTimer();
+  const { remoteState } = useSyncStore();
+  const { momentElapsedMs } = useCultoTimer();
+  const isPaused = remoteState.timerStatus === 'paused';
   const { currentTime, formatTime } = useClock();
   const isMobile = useIsMobile();
   const [alerts, setAlerts] = useState<{ id: string; message: string; time: Date }[]>([]);
@@ -36,6 +176,9 @@ const PainelSonoplastia = memo(() => {
     const betweenMs = momentos.slice(currentIndex + 1, nextIdx).reduce((s, m) => s + m.duracao * 60 * 1000, 0);
     return currentRemaining + betweenMs;
   }, [currentMoment, nextSoundAction, momentos, currentIndex, safeMomentElapsedMs]);
+
+  const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
+  const isNextUrgent = remainingMsUntilNext <= 10000;
 
   useEffect(() => {
     if (!nextSoundAction) return;
@@ -76,9 +219,6 @@ const PainelSonoplastia = memo(() => {
       default: return <Volume2 className="w-5 h-5" />;
     }
   };
-
-  const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
-  const isNextUrgent = remainingMsUntilNext <= 10000;
 
   const toggleFullscreen = async () => {
     if (!pageRef.current) return;
