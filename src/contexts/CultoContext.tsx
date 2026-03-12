@@ -1,9 +1,8 @@
 import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
-import type { ConnectionStatus } from '@/features/culto-sync/domain';
-import { getActiveCulto, getActiveMomentos, getMomentStatus } from '@/features/culto-sync/domain';
-import { getLiveRemoteStateSnapshot, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
-import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
+import type { ConnectionStatus, RemoteCultoState, TimerSnapshot } from '@/features/culto-sync/domain';
+import { getActiveCulto, getActiveMomentos, getMomentStatus, getTimerSnapshot } from '@/features/culto-sync/domain';
+import { getLiveRemoteStateSnapshot, getLiveServerNowMs, subscribeLiveRemoteStateStore, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 
 interface CultoContextType {
   cultos: Culto[];
@@ -48,6 +47,153 @@ interface CultoContextType {
 }
 
 const CultoContext = React.createContext<CultoContextType | null>(null);
+
+let globalTimerSnapshotStore: TimerSnapshot = getTimerSnapshot(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+const globalTimerListeners = new Set<() => void>();
+let globalTimerFrameId: number | null = null;
+let globalTimerUnsubscribeRemote: (() => void) | null = null;
+let globalTimerSubscriberCount = 0;
+
+const emitGlobalTimerSnapshot = () => {
+  const nextSnapshot = getTimerSnapshot(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+  if (
+    nextSnapshot.elapsedMs === globalTimerSnapshotStore.elapsedMs &&
+    nextSnapshot.momentElapsedMs === globalTimerSnapshotStore.momentElapsedMs &&
+    nextSnapshot.isRunning === globalTimerSnapshotStore.isRunning
+  ) {
+    return;
+  }
+
+  globalTimerSnapshotStore = nextSnapshot;
+  globalTimerListeners.forEach((listener) => listener());
+};
+
+const stopGlobalTimerLoop = () => {
+  if (globalTimerFrameId != null) {
+    window.cancelAnimationFrame(globalTimerFrameId);
+    globalTimerFrameId = null;
+  }
+};
+
+const startGlobalTimerLoop = () => {
+  if (globalTimerFrameId != null) {
+    return;
+  }
+
+  const tick = () => {
+    emitGlobalTimerSnapshot();
+    if (getLiveRemoteStateSnapshot().timerStatus === 'running' && globalTimerSubscriberCount > 0) {
+      globalTimerFrameId = window.requestAnimationFrame(tick);
+      return;
+    }
+
+    globalTimerFrameId = null;
+  };
+
+  globalTimerFrameId = window.requestAnimationFrame(tick);
+};
+
+const syncGlobalTimerLoop = () => {
+  emitGlobalTimerSnapshot();
+
+  if (getLiveRemoteStateSnapshot().timerStatus === 'running' && globalTimerSubscriberCount > 0) {
+    startGlobalTimerLoop();
+    return;
+  }
+
+  stopGlobalTimerLoop();
+};
+
+const ensureGlobalTimerStore = () => {
+  if (globalTimerUnsubscribeRemote) {
+    syncGlobalTimerLoop();
+    return;
+  }
+
+  globalTimerUnsubscribeRemote = subscribeLiveRemoteStateStore(() => {
+    syncGlobalTimerLoop();
+  });
+
+  syncGlobalTimerLoop();
+};
+
+const cleanupGlobalTimerStore = () => {
+  if (globalTimerSubscriberCount > 0) {
+    return;
+  }
+
+  stopGlobalTimerLoop();
+  if (globalTimerUnsubscribeRemote) {
+    globalTimerUnsubscribeRemote();
+    globalTimerUnsubscribeRemote = null;
+  }
+  globalTimerSnapshotStore = getTimerSnapshot(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+};
+
+const subscribeGlobalTimerSnapshot = (listener: () => void) => {
+  globalTimerSubscriberCount += 1;
+  globalTimerListeners.add(listener);
+  ensureGlobalTimerStore();
+
+  return () => {
+    globalTimerListeners.delete(listener);
+    globalTimerSubscriberCount = Math.max(0, globalTimerSubscriberCount - 1);
+    cleanupGlobalTimerStore();
+  };
+};
+
+const useGlobalTimerSnapshot = () => React.useSyncExternalStore(
+  subscribeGlobalTimerSnapshot,
+  () => globalTimerSnapshotStore,
+  () => globalTimerSnapshotStore,
+);
+
+const isInvalidStructuralSnapshot = (state: RemoteCultoState) => {
+  const momentos = getActiveMomentos(state);
+  const hasCurrentSelection = state.currentIndex >= 0;
+  const missingMomentosWhileLive = (state.status === 'live' || state.timerStatus === 'running' || state.timerStatus === 'paused')
+    && hasCurrentSelection
+    && momentos.length === 0;
+  const invalidCurrentIndex = hasCurrentSelection && state.currentIndex >= momentos.length;
+
+  return missingMomentosWhileLive || invalidCurrentIndex;
+};
+
+const useStableLiveRemoteStateForView = () => {
+  const remoteState = useLiveRemoteState();
+  const stableStructureRef = React.useRef<Pick<RemoteCultoState, 'cultos' | 'activeCultoId' | 'allMomentos' | 'currentIndex'> | null>(null);
+
+  const shouldReuseStructure = isInvalidStructuralSnapshot(remoteState) && stableStructureRef.current;
+
+  const projectedState = React.useMemo(() => {
+    if (!shouldReuseStructure || !stableStructureRef.current) {
+      return remoteState;
+    }
+
+    return {
+      ...remoteState,
+      cultos: stableStructureRef.current.cultos,
+      activeCultoId: stableStructureRef.current.activeCultoId,
+      allMomentos: stableStructureRef.current.allMomentos,
+      currentIndex: stableStructureRef.current.currentIndex,
+    };
+  }, [remoteState, shouldReuseStructure]);
+
+  React.useEffect(() => {
+    if (isInvalidStructuralSnapshot(remoteState)) {
+      return;
+    }
+
+    stableStructureRef.current = {
+      cultos: remoteState.cultos,
+      activeCultoId: remoteState.activeCultoId,
+      allMomentos: remoteState.allMomentos,
+      currentIndex: remoteState.currentIndex,
+    };
+  }, [remoteState]);
+
+  return projectedState;
+};
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { uiState, runCommand } = useSyncCommands();
@@ -157,7 +303,7 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useCulto = () => {
   const ctx = React.useContext(CultoContext);
   if (!ctx) throw new Error('useCulto must be used within CultoProvider');
-  const remoteState = useLiveRemoteState();
+  const remoteState = useStableLiveRemoteStateForView();
   const culto = React.useMemo(() => getActiveCulto(remoteState), [remoteState]);
   const momentos = React.useMemo(() => getActiveMomentos(remoteState), [remoteState]);
 
@@ -181,7 +327,7 @@ export const useCulto = () => {
 
 export const useCultoTimer = () => {
   const liveRemoteState = useLiveRemoteState();
-  const liveTimer = useLiveTimerSnapshot();
+  const liveTimer = useGlobalTimerSnapshot();
 
   return React.useMemo(() => ({
     isPaused: liveRemoteState.timerStatus === 'paused',
@@ -193,7 +339,7 @@ export const useCultoTimer = () => {
 };
 
 export const useLiveCultoView = () => {
-  const remoteState = useLiveRemoteState();
+  const remoteState = useStableLiveRemoteStateForView();
 
   const culto = React.useMemo(() => getActiveCulto(remoteState), [remoteState]);
   const momentos = React.useMemo(() => getActiveMomentos(remoteState), [remoteState]);

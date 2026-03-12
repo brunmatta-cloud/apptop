@@ -47,6 +47,7 @@ const subscribeLiveRemoteState = (listener: () => void) => {
 };
 
 export const getLiveRemoteStateSnapshot = () => liveRemoteStateSnapshot;
+export const subscribeLiveRemoteStateStore = subscribeLiveRemoteState;
 export const getLiveServerNowMs = () => Date.now() - liveServerClockOffsetMs;
 
 const REFRESH_INTERVAL_MS = 5000;
