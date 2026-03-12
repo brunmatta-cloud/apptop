@@ -265,80 +265,74 @@ function PainelCerimonialista() {
       </div>
 
       {currentMoment && (
-        <div className={`glass-card border p-4 transition-colors sm:p-5 lg:p-6 ${
-          isCurrentMomentDanger
-            ? 'border-red-500/40 bg-[linear-gradient(180deg,rgba(239,68,68,0.18)_0%,rgba(239,68,68,0.08)_100%)]'
-            : isCurrentMomentWarning
-              ? 'border-amber-500/40 bg-[linear-gradient(180deg,rgba(245,158,11,0.18)_0%,rgba(245,158,11,0.08)_100%)]'
-              : 'border-status-executing/20'
-        }`}>
-          <div className="mb-4 flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full animate-pulse ${
-              isCurrentMomentDanger ? 'bg-red-400' : isCurrentMomentWarning ? 'bg-amber-400' : 'bg-status-executing'
-            }`} />
-            <span className={`text-xs font-semibold uppercase tracking-wider ${
-              isCurrentMomentDanger ? 'text-red-300' : isCurrentMomentWarning ? 'text-amber-300' : 'text-status-executing'
-            }`}>Momento em execucao</span>
-          </div>
-          <div className={`rounded-[1.7rem] border p-4 sm:p-5 lg:p-6 ${
+        <div className="sticky top-2 z-20 sm:top-3 lg:top-4">
+          <div className={`glass-card border p-3 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.85)] backdrop-blur-xl sm:p-4 ${
             isCurrentMomentDanger
-              ? 'border-red-400/35 bg-[rgba(127,29,29,0.26)]'
+              ? 'border-red-500/50 bg-[linear-gradient(180deg,rgba(239,68,68,0.24)_0%,rgba(239,68,68,0.1)_100%)]'
               : isCurrentMomentWarning
-                ? 'border-amber-400/35 bg-[rgba(120,53,15,0.26)]'
-                : 'border-border/70 bg-background/50'
+                ? 'border-amber-500/50 bg-[linear-gradient(180deg,rgba(245,158,11,0.24)_0%,rgba(245,158,11,0.1)_100%)]'
+                : 'border-status-executing/20 bg-[linear-gradient(180deg,rgba(15,23,42,0.92)_0%,rgba(15,23,42,0.82)_100%)]'
           }`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(230px,0.8fr)] lg:items-center">
               <div className="min-w-0">
-                <p className={`text-[11px] uppercase tracking-[0.22em] ${
-                  isCurrentMomentDanger ? 'text-red-200/80' : isCurrentMomentWarning ? 'text-amber-200/80' : 'text-muted-foreground'
-                }`}>Agora no palco</p>
-                <h2 className="mt-2 break-words text-xl font-black font-display leading-tight text-foreground sm:text-2xl lg:text-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full animate-pulse ${
+                    isCurrentMomentDanger ? 'bg-red-400' : isCurrentMomentWarning ? 'bg-amber-400' : 'bg-status-executing'
+                  }`} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-[0.24em] ${
+                    isCurrentMomentDanger ? 'text-red-200' : isCurrentMomentWarning ? 'text-amber-200' : 'text-status-executing'
+                  }`}>Momento em execucao</span>
+                  <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    {currentMoment.funcao}
+                  </span>
+                  <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    {currentMoment.ministerio}
+                  </span>
+                </div>
+                <h2 className="mt-2 truncate text-base font-black font-display text-foreground sm:text-lg lg:text-xl">
                   {currentMoment.atividade}
                 </h2>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-[280px]">
+                  <div className="rounded-2xl border border-border/60 bg-background/55 px-3 py-2.5">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{currentMoment.horarioInicio}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-background/55 px-3 py-2.5">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
+                  </div>
+                </div>
               </div>
-              <div className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {currentMoment.funcao}
+
+              <div className="rounded-[1.4rem] border border-border/60 bg-background/60 px-4 py-3 text-center lg:px-5">
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.24em] ${
+                  isCurrentMomentDanger ? 'text-red-200' : isCurrentMomentWarning ? 'text-amber-200' : 'text-muted-foreground'
+                }`}>Tempo restante</p>
+                <p className={`mt-2 font-mono text-4xl font-black leading-none sm:text-5xl lg:text-[3.5rem] ${
+                  isCurrentMomentDanger ? 'text-red-100' : isCurrentMomentWarning ? 'text-amber-100' : 'text-foreground'
+                }`}>
+                  {formatTimerMs(currentMomentRemainingMs)}
+                </p>
+                <p className={`mt-2 text-xs sm:text-sm ${
+                  isCurrentMomentDanger ? 'text-red-100/90' : isCurrentMomentWarning ? 'text-amber-100/90' : 'text-muted-foreground'
+                }`}>
+                  {isPaused
+                    ? 'Cronometro pausado'
+                    : isCurrentMomentDanger
+                      ? 'Menos de 20 segundos'
+                      : isCurrentMomentWarning
+                        ? 'Menos de 1 minuto'
+                        : 'Acompanhamento ao vivo'}
+                </p>
               </div>
             </div>
-            <div className="mt-6">
-              <p className={`font-mono text-5xl font-black leading-none sm:text-6xl lg:text-7xl ${
-                isCurrentMomentDanger ? 'text-red-100' : isCurrentMomentWarning ? 'text-amber-100' : 'text-foreground'
-              }`}>
-                {formatTimerMs(currentMomentRemainingMs)}
-              </p>
-            </div>
-            <p className={`mt-3 text-sm sm:text-base ${
-              isCurrentMomentDanger ? 'text-red-100/90' : isCurrentMomentWarning ? 'text-amber-100/90' : 'text-muted-foreground'
-            }`}>
-              {isPaused
-                ? 'Cronometro pausado no momento atual'
-                : isCurrentMomentDanger
-                  ? 'Atencao maxima: faltam menos de 20 segundos'
-                  : isCurrentMomentWarning
-                    ? 'Atencao: falta menos de 1 minuto'
-                    : 'Tempo restante do momento em execucao'}
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border/60 bg-background/65 p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
-                <p className="mt-2 font-mono text-2xl font-bold text-foreground sm:text-3xl">{currentMoment.horarioInicio}</p>
-              </div>
-              <div className="rounded-2xl border border-border/60 bg-background/65 p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
-                <p className="mt-2 font-mono text-2xl font-bold text-foreground sm:text-3xl">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
-              </div>
-            </div>
-            <div className="mt-5">
-              <div className="progress-bar h-2.5 rounded-full">
+
+            <div className="mt-3">
+              <div className="progress-bar h-2 rounded-full">
                 <div
                   className="progress-bar-fill rounded-full"
                   style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
                 />
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground sm:text-sm">
-                <span>{currentMoment.horarioInicio}</span>
-                <span className="font-semibold text-foreground">{formattedRemaining}</span>
-                <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
               </div>
             </div>
           </div>
