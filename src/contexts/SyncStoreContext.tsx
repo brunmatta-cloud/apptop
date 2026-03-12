@@ -336,6 +336,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         try {
           const optimisticNowMs = Date.now();
           const optimisticNowIso = new Date(optimisticNowMs).toISOString();
+          const isTimerCommand = TIMER_COMMANDS.has(command);
           if (TIMER_COMMANDS.has(command)) {
             const trace: TimerFlowTrace = {
               id: `${command}-${optimisticNowMs}`,
@@ -363,6 +364,13 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
           if (optimisticState) {
             applyRemoteState(optimisticState, `${command}:optimistic`);
+            if (isTimerCommand) {
+              setUiState((current) => ({
+                ...current,
+                isSubmitting: false,
+                pendingAction: null,
+              }));
+            }
           }
 
           const next = await sendSessionCommand({
@@ -404,11 +412,15 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             lastError: didCommandTakeEffect(command, remoteStateRef.current) ? null : message,
           }));
         } finally {
-          setUiState((current) => ({
-            ...current,
-            isSubmitting: false,
-            pendingAction: null,
-          }));
+          setUiState((current) => (
+            current.isSubmitting || current.pendingAction != null
+              ? {
+                  ...current,
+                  isSubmitting: false,
+                  pendingAction: null,
+                }
+              : current
+          ));
         }
       });
 
