@@ -74,6 +74,7 @@ function PainelCerimonialista() {
   const cronometroData = useCronometro();
   const [msgDraft, setMsgDraft] = useState('');
   const [optimisticResumeAt, setOptimisticResumeAt] = useState<number | null>(null);
+  const [optimisticNowMs, setOptimisticNowMs] = useState<number | null>(null);
   const clockData = useClock();
 
   const {
@@ -106,8 +107,26 @@ function PainelCerimonialista() {
   useEffect(() => {
     if (!isPaused) {
       setOptimisticResumeAt(null);
+      setOptimisticNowMs(null);
     }
   }, [isPaused]);
+
+  useEffect(() => {
+    if (!optimisticResumeAt || !isPaused) {
+      return;
+    }
+
+    let animationFrame = 0;
+    const tick = () => {
+      setOptimisticNowMs(Date.now());
+      animationFrame = window.requestAnimationFrame(tick);
+    };
+
+    setOptimisticNowMs(Date.now());
+    animationFrame = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isPaused, optimisticResumeAt]);
 
   const currentMoment = safeCurrentIndex < 0 || safeCurrentIndex >= safeMomentos.length
     ? null
@@ -138,8 +157,9 @@ function PainelCerimonialista() {
     if (!optimisticResumeAt || !isPaused) {
       return safeMomentElapsedMs;
     }
-    return safeMomentElapsedMs + Math.max(0, currentTime.getTime() - optimisticResumeAt);
-  }, [currentTime, isPaused, optimisticResumeAt, safeMomentElapsedMs]);
+    const baseNowMs = optimisticNowMs ?? Date.now();
+    return safeMomentElapsedMs + Math.max(0, baseNowMs - optimisticResumeAt);
+  }, [isPaused, optimisticNowMs, optimisticResumeAt, safeMomentElapsedMs]);
 
   const { percent: currentMomentPercent, formattedRemaining } = useMomentProgress(currentMoment, displayMomentElapsedMs);
   const currentAdjustment = getAdjustmentLabel(currentMoment);
@@ -194,12 +214,15 @@ function PainelCerimonialista() {
   }, [setExecutionMode]);
 
   const handleResume = useCallback(() => {
-    setOptimisticResumeAt(Date.now());
+    const nowMs = Date.now();
+    setOptimisticResumeAt(nowMs);
+    setOptimisticNowMs(nowMs);
     retomar();
   }, [retomar]);
 
   const handlePause = useCallback(() => {
     setOptimisticResumeAt(null);
+    setOptimisticNowMs(null);
     pausar();
   }, [pausar]);
 
