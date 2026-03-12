@@ -76,12 +76,11 @@ const Dashboard = () => {
   const safeElapsedMs = Number.isFinite(liveSnapshot.elapsedMs) ? liveSnapshot.elapsedMs : 0;
   const totalMinutes = momentos.reduce((sum, momento) => sum + momento.duracao, 0);
   const totalMs = totalMinutes * 60 * 1000;
-  const progressPercent = Number.isFinite(liveProgressPercent) ? liveProgressPercent : 0;
   const normalizedProgressPercent = totalMs > 0
     ? Math.min(100, Math.max(0, (safeElapsedMs / totalMs) * 100))
     : 0;
   const progressScale = normalizedProgressPercent / 100;
-  const displayProgressPercent = progressPercent >= 100 ? '100.0' : progressPercent.toFixed(1);
+  const displayProgressPercent = normalizedProgressPercent >= 100 ? '100.0' : normalizedProgressPercent.toFixed(1);
 
   const statusLabel = culto.status === 'planejado' ? 'Sem horario' : culto.status === 'em_andamento' ? 'Em andamento' : 'Finalizado';
   const connectionLabel = connectionStatus === 'online' ? 'Sincronizado' : connectionStatus === 'degraded' ? 'Sincronizacao parcial' : connectionStatus === 'offline' ? 'Offline' : 'Conectando';
@@ -144,24 +143,11 @@ const Dashboard = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="glass-card p-3 sm:p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Progresso</span>
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold font-display text-primary">{displayProgressPercent} %</p>
-                </div>
-                <div
-                  className="relative flex h-14 w-14 items-center justify-center rounded-full"
-                  style={{
-                    background: `conic-gradient(hsl(var(--primary)) 0% ${normalizedProgressPercent}%, rgba(148,163,184,0.16) ${normalizedProgressPercent}% 100%)`,
-                  }}
-                >
-                  <div className="absolute inset-[5px] rounded-full bg-card" />
-                  <span className="relative text-[11px] font-mono font-black text-foreground">{Math.round(normalizedProgressPercent)}%</span>
-                </div>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Progresso</span>
               </div>
+              <p className="text-xl sm:text-2xl font-bold font-display text-primary">{displayProgressPercent} %</p>
             </div>
             <div className="glass-card p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
