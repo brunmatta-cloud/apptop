@@ -131,6 +131,10 @@ function PainelCerimonialista() {
   const currentAdjustment = getAdjustmentLabel(currentMoment);
   const isCommandLocked = isSubmitting;
   const activeCommand = pendingAction ?? '';
+  const currentMomentTotalMs = currentMoment ? currentMoment.duracao * 60 * 1000 : 0;
+  const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - safeMomentElapsedMs) : 0;
+  const isCurrentMomentWarning = !!currentMoment && !isPaused && currentMomentRemainingMs <= 60000 && currentMomentRemainingMs > 20000;
+  const isCurrentMomentDanger = !!currentMoment && !isPaused && currentMomentRemainingMs <= 20000;
 
   const handleSendMessage = useCallback(() => {
     try {
@@ -261,12 +265,22 @@ function PainelCerimonialista() {
       </div>
 
       {currentMoment && (
-        <div className="glass-card border border-status-executing/20 p-4 sm:p-5 lg:p-6">
+        <div className={`glass-card border p-4 transition-colors sm:p-5 lg:p-6 ${
+          isCurrentMomentDanger
+            ? 'border-red-500/40 bg-[linear-gradient(180deg,rgba(239,68,68,0.18)_0%,rgba(239,68,68,0.08)_100%)]'
+            : isCurrentMomentWarning
+              ? 'border-amber-500/40 bg-[linear-gradient(180deg,rgba(245,158,11,0.18)_0%,rgba(245,158,11,0.08)_100%)]'
+              : 'border-status-executing/20'
+        }`}>
           <div className="mb-4 flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-status-executing animate-pulse" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-status-executing">Momento em execucao</span>
+            <span className={`h-2.5 w-2.5 rounded-full animate-pulse ${
+              isCurrentMomentDanger ? 'bg-red-400' : isCurrentMomentWarning ? 'bg-amber-400' : 'bg-status-executing'
+            }`} />
+            <span className={`text-xs font-semibold uppercase tracking-wider ${
+              isCurrentMomentDanger ? 'text-red-300' : isCurrentMomentWarning ? 'text-amber-300' : 'text-status-executing'
+            }`}>Momento em execucao</span>
           </div>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted sm:h-12 sm:w-12">
                 <Users className="h-5 w-5 text-muted-foreground sm:h-6 sm:w-6" />
@@ -294,18 +308,45 @@ function PainelCerimonialista() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 rounded-2xl border border-border/70 bg-background/50 p-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
-                <p className="mt-1 font-mono text-lg font-semibold text-foreground">{currentMoment.horarioInicio}</p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
-                <p className="mt-1 font-mono text-lg font-semibold text-foreground">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Responsavel</p>
-                <p className="mt-1 break-words text-sm font-medium text-foreground">{currentMoment.responsavel}</p>
+            <div className={`rounded-[1.6rem] border p-4 ${
+              isCurrentMomentDanger
+                ? 'border-red-400/35 bg-[rgba(127,29,29,0.26)]'
+                : isCurrentMomentWarning
+                  ? 'border-amber-400/35 bg-[rgba(120,53,15,0.26)]'
+                  : 'border-border/70 bg-background/50'
+            }`}>
+              <p className={`text-[11px] uppercase tracking-[0.22em] ${
+                isCurrentMomentDanger ? 'text-red-200/80' : isCurrentMomentWarning ? 'text-amber-200/80' : 'text-muted-foreground'
+              }`}>Tempo restante</p>
+              <p className={`mt-2 font-mono text-5xl font-black leading-none sm:text-6xl ${
+                isCurrentMomentDanger ? 'text-red-100' : isCurrentMomentWarning ? 'text-amber-100' : 'text-foreground'
+              }`}>
+                {formatTimerMs(currentMomentRemainingMs)}
+              </p>
+              <p className={`mt-2 text-sm ${
+                isCurrentMomentDanger ? 'text-red-100/90' : isCurrentMomentWarning ? 'text-amber-100/90' : 'text-muted-foreground'
+              }`}>
+                {isPaused
+                  ? 'Cronometro pausado'
+                  : isCurrentMomentDanger
+                    ? 'Atencao maxima: faltam menos de 20 segundos'
+                    : isCurrentMomentWarning
+                      ? 'Atencao: falta menos de 1 minuto'
+                      : `${formattedRemaining} restantes`}
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
+                  <p className="mt-1 font-mono text-lg font-semibold text-foreground">{currentMoment.horarioInicio}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
+                  <p className="mt-1 font-mono text-lg font-semibold text-foreground">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Responsavel</p>
+                  <p className="mt-1 break-words text-sm font-medium text-foreground">{currentMoment.responsavel}</p>
+                </div>
               </div>
             </div>
           </div>
