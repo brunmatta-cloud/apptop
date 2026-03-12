@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCulto } from '@/contexts/CultoContext';
 import { calcularHorarioTermino, type ModeradorCallStatus, type MomentoProgramacao } from '@/types/culto';
@@ -62,6 +62,240 @@ const queueBadgeClass = ({
   if (isPreparing) return 'border-amber-500/25 bg-amber-500/15 text-amber-300';
   return 'border-border bg-muted text-muted-foreground';
 };
+
+const CallListSection = memo(function CallListSection({
+  callItems,
+  isSubmitting,
+  onUpdateStatus,
+}: {
+  callItems: MomentoProgramacao[];
+  isSubmitting: boolean;
+  onUpdateStatus: (id: string, status: ModeradorCallStatus) => void;
+}) {
+  return (
+    <div className="glass-card min-w-0 p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <UserRoundCheck className="h-4 w-4 text-primary" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lista de Chamada</h3>
+        </div>
+        <Link
+          to="/confirmacao"
+          className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          Ver confirmacao
+        </Link>
+      </div>
+      <div className="space-y-3">
+        {callItems.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma chamada pendente agora.</p>
+        ) : callItems.map((momento) => {
+          const status = getModeradorStatus(momento);
+          return (
+            <div key={momento.id} className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
+                  <p className="truncate text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} | {momento.atividade}</p>
+                </div>
+                <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(status)}`}>
+                  {moderadorStatusLabel(status)}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3 sm:gap-4">
+                <span>Horario: {momento.horarioInicio}</span>
+                <span>Termino: {calcularHorarioTermino(momento.horarioInicio, momento.duracao)}</span>
+                <span>Momento: {momento.atividade}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(momento.id, 'chamado')}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-300 transition-colors hover:bg-sky-500/25 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  Marcar chamado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(momento.id, 'pronto')}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  Marcar pronto
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const QueueSection = memo(function QueueSection({
+  queueItems,
+  moderadorReleaseActive,
+}: {
+  queueItems: MomentoProgramacao[];
+  moderadorReleaseActive: boolean;
+}) {
+  return (
+    <div className="glass-card min-w-0 p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <ListTodo className="h-4 w-4 text-primary" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fila de Espera</h3>
+      </div>
+      <div className="space-y-3">
+        {queueItems.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Sem fila no momento.</p>
+        ) : queueItems.map((momento, index) => {
+          const status = getModeradorStatus(momento);
+          const isPreparing = index === 0 || status === 'chamado' || status === 'pronto';
+          return (
+            <div key={momento.id} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
+                <p className="truncate text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} | {momento.atividade}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{momento.horarioInicio}</p>
+              </div>
+              <span className={`rounded-full border px-2.5 py-1 text-xs ${queueBadgeClass({ releaseActive: moderadorReleaseActive, status, isPreparing })}`}>
+                {queueBadgeLabel({ releaseActive: moderadorReleaseActive, status, isPreparing })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const TimelineSection = memo(function TimelineSection({
+  momentos,
+  totalMinutes,
+  firstTime,
+  lastEnd,
+  blockColors,
+  getMomentStatusForIndex,
+  safeMomentElapsedMs,
+  isPaused,
+}: {
+  momentos: MomentoProgramacao[];
+  totalMinutes: number;
+  firstTime: string;
+  lastEnd: string;
+  blockColors: Record<string, string>;
+  getMomentStatusForIndex: (index: number) => ReturnType<typeof getMomentStatus>;
+  safeMomentElapsedMs: number;
+  isPaused: boolean;
+}) {
+  return (
+    <div className="glass-card min-w-0 overflow-hidden p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <Clock3 className="h-4 w-4 text-primary" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Linha do Tempo Completa</h3>
+      </div>
+
+      <div className="flex h-10 gap-0.5 overflow-hidden rounded-xl sm:h-12">
+        {momentos.map((momento, index) => {
+          const widthPercent = totalMinutes > 0 ? (momento.duracao / totalMinutes) * 100 : 0;
+          const status = getMomentStatusForIndex(index);
+          const color = status === 'concluido'
+            ? 'bg-status-completed'
+            : status === 'executando'
+              ? 'bg-status-executing'
+              : blockColors[momento.bloco] || 'bg-muted';
+
+          return (
+            <div
+              key={momento.id}
+              className={`${color} relative transition-all ${status === 'executando' ? 'animate-pulse' : ''}`}
+              style={{ width: `${widthPercent}%`, minWidth: '2px' }}
+              title={`${momento.atividade} (${momento.duracao}min)`}
+            />
+          );
+        })}
+      </div>
+      <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground">
+        <span>{firstTime}</span>
+        <span>{lastEnd}</span>
+      </div>
+
+      <div className="relative mt-5 space-y-4">
+        <div className="absolute bottom-0 left-5 top-0 w-px bg-border" />
+        {momentos.map((momento, index) => {
+          const status = getMomentStatusForIndex(index);
+          const isExecuting = status === 'executando';
+          const horarioFim = calcularHorarioTermino(momento.horarioInicio, momento.duracao);
+          const itemElapsedMs = isExecuting ? safeMomentElapsedMs : 0;
+          const itemTotalMs = momento.duracao * 60 * 1000;
+          const itemPercent = itemTotalMs > 0 ? Math.min(100, (itemElapsedMs / itemTotalMs) * 100) : 0;
+          const itemProgressScale = itemPercent / 100;
+          const itemRemainingMs = Math.max(0, itemTotalMs - itemElapsedMs);
+          const itemRemainingSeconds = Math.ceil(itemRemainingMs / 1000);
+          const itemRemaining = `${String(Math.floor(itemRemainingSeconds / 60)).padStart(2, '0')}:${String(itemRemainingSeconds % 60).padStart(2, '0')}`;
+          const moderadorStatus = getModeradorStatus(momento);
+
+          return (
+            <div key={momento.id} className="relative pl-12">
+              <div className={`absolute left-[14px] top-5 h-3 w-3 rounded-full border-2 ${
+                status === 'concluido' ? 'border-status-completed bg-status-completed' :
+                isExecuting ? 'animate-pulse border-status-executing bg-status-executing' :
+                'border-border bg-muted'
+              }`} />
+              <div className={`glass-card min-w-0 p-3 sm:p-4 ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
+                <div className="flex items-start justify-between gap-3 sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+                      <span className="font-mono font-bold text-primary">{momento.horarioInicio}</span>
+                      <span>-</span>
+                      <span className="font-mono">{horarioFim}</span>
+                      <span>({momento.duracao} min)</span>
+                    </div>
+                    <h3 className={`truncate font-display text-base font-semibold sm:text-lg ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>
+                      {momento.atividade}
+                    </h3>
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-muted-foreground">
+                      <User className="h-3.5 w-3.5 shrink-0" /> {momento.responsavel} | {momento.ministerio}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(moderadorStatus)}`}>
+                      {moderadorStatusLabel(moderadorStatus)}
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-white ${
+                      blockColors[momento.bloco] || 'bg-muted'
+                    }`}>
+                      {momento.bloco}
+                    </span>
+                  </div>
+                </div>
+                {isExecuting && (
+                  <div className="mt-3">
+                    <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                      <span>{Math.min(100, Math.max(0, Math.round(itemPercent)))}%</span>
+                      <span>{isPaused ? `${itemRemaining} pausado` : `${itemRemaining} restantes`}</span>
+                    </div>
+                    <div className="progress-bar h-2">
+                      <div
+                        className="progress-bar-fill"
+                        style={{
+                          transform: `scaleX(${itemProgressScale})`,
+                          transformOrigin: 'left',
+                          width: '100%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
 
 const Moderador = () => {
   const {
@@ -219,14 +453,18 @@ const Moderador = () => {
     previousReleaseActiveRef.current = moderadorReleaseActive;
   }, [currentIndex, currentMoment, moderadorReleaseActive, nextMoment, pendingReleaseMomentId, lockedNextMomentId, releasedHoldMomentId, displayedNextMoment]);
 
+  const handleUpdateModeradorStatus = (id: string, status: ModeradorCallStatus) => {
+    updateModeradorStatus(id, status);
+  };
+
   return (
-    <div className={`-m-4 min-h-screen px-4 py-4 transition-colors duration-300 md:-m-6 md:px-6 md:py-6 lg:-m-8 lg:px-8 lg:py-8 ${
+    <div className={`-m-4 min-h-screen overflow-x-clip px-4 py-4 transition-colors duration-300 md:-m-6 md:px-6 md:py-6 lg:-m-8 lg:px-8 lg:py-8 ${
       moderadorReleaseActive
         ? 'bg-[linear-gradient(180deg,rgba(16,185,129,0.22)_0%,rgba(16,185,129,0.14)_30%,rgba(16,185,129,0.08)_60%,rgba(16,185,129,0.12)_100%)]'
         : ''
     }`}>
       {notices.length > 0 && (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(92vw,380px)] flex-col gap-3">
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-h-[45vh] w-[min(92vw,380px)] flex-col gap-3 overflow-y-auto pr-1">
           {notices.map((notice) => (
             <div
               key={notice.id}
@@ -402,200 +640,27 @@ const Moderador = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="glass-card p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <UserRoundCheck className="h-4 w-4 text-primary" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lista de Chamada</h3>
-              </div>
-              <Link
-                to="/confirmacao"
-                className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                Ver confirmacao
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {callItems.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma chamada pendente agora.</p>
-              ) : callItems.map((momento) => {
-                const status = getModeradorStatus(momento);
-                return (
-                  <div key={momento.id} className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
-                        <p className="text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} | {momento.atividade}</p>
-                      </div>
-                      <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(status)}`}>
-                        {moderadorStatusLabel(status)}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3 sm:gap-4">
-                      <span>Horario: {momento.horarioInicio}</span>
-                      <span>Termino: {calcularHorarioTermino(momento.horarioInicio, momento.duracao)}</span>
-                      <span>Momento: {momento.atividade}</span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => updateModeradorStatus(momento.id, 'chamado')}
-                        disabled={isSubmitting}
-                        className="w-full rounded-xl bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-300 transition-colors hover:bg-sky-500/25 disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        Marcar chamado
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateModeradorStatus(momento.id, 'pronto')}
-                        disabled={isSubmitting}
-                        className="w-full rounded-xl bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        Marcar pronto
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="glass-card p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <ListTodo className="h-4 w-4 text-primary" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fila de Espera</h3>
-            </div>
-            <div className="space-y-3">
-              {queueItems.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">Sem fila no momento.</p>
-              ) : queueItems.map((momento, index) => {
-                const status = getModeradorStatus(momento);
-                const isPreparing = index === 0 || status === 'chamado' || status === 'pronto';
-                return (
-                  <div key={momento.id} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold">{momento.responsavel || 'Sem responsavel'}</p>
-                      <p className="text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'} | {momento.atividade}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{momento.horarioInicio}</p>
-                    </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${queueBadgeClass({ releaseActive: moderadorReleaseActive, status, isPreparing })}`}>
-                      {queueBadgeLabel({ releaseActive: moderadorReleaseActive, status, isPreparing })}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <CallListSection
+            callItems={callItems}
+            isSubmitting={isSubmitting}
+            onUpdateStatus={handleUpdateModeradorStatus}
+          />
+          <QueueSection
+            queueItems={queueItems}
+            moderadorReleaseActive={moderadorReleaseActive}
+          />
         </div>
 
-        <div className="glass-card p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <Clock3 className="h-4 w-4 text-primary" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Linha do Tempo Completa</h3>
-          </div>
-
-          <div className="flex h-10 gap-0.5 overflow-hidden rounded-xl sm:h-12">
-            {momentos.map((momento, index) => {
-              const widthPercent = totalMinutes > 0 ? (momento.duracao / totalMinutes) * 100 : 0;
-              const status = getMomentStatus(index);
-              const color = status === 'concluido'
-                ? 'bg-status-completed'
-                : status === 'executando'
-                  ? 'bg-status-executing'
-                  : blockColors[momento.bloco] || 'bg-muted';
-
-              return (
-                <div
-                  key={momento.id}
-                  className={`${color} relative group transition-all ${status === 'executando' ? 'animate-pulse' : ''}`}
-                  style={{ width: `${widthPercent}%`, minWidth: '2px' }}
-                  title={`${momento.atividade} (${momento.duracao}min)`}
-                >
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs whitespace-nowrap opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                    {momento.atividade}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground">
-            <span>{firstTime}</span>
-            <span>{lastEnd}</span>
-          </div>
-
-          <div className="relative mt-5 space-y-4">
-            <div className="absolute bottom-0 left-5 top-0 w-px bg-border" />
-            {momentos.map((momento, index) => {
-              const status = getMomentStatus(index);
-              const isExecuting = status === 'executando';
-              const horarioFim = calcularHorarioTermino(momento.horarioInicio, momento.duracao);
-              const itemElapsedMs = isExecuting ? safeMomentElapsedMs : 0;
-              const itemTotalMs = momento.duracao * 60 * 1000;
-              const itemPercent = itemTotalMs > 0 ? Math.min(100, (itemElapsedMs / itemTotalMs) * 100) : 0;
-              const itemProgressScale = itemPercent / 100;
-              const itemRemainingMs = Math.max(0, itemTotalMs - itemElapsedMs);
-              const itemRemainingSeconds = Math.ceil(itemRemainingMs / 1000);
-              const itemRemaining = `${String(Math.floor(itemRemainingSeconds / 60)).padStart(2, '0')}:${String(itemRemainingSeconds % 60).padStart(2, '0')}`;
-              const moderadorStatus = getModeradorStatus(momento);
-
-              return (
-                <div key={momento.id} className="relative pl-12">
-                  <div className={`absolute left-[14px] top-5 h-3 w-3 rounded-full border-2 ${
-                    status === 'concluido' ? 'border-status-completed bg-status-completed' :
-                    isExecuting ? 'animate-pulse border-status-executing bg-status-executing' :
-                    'border-border bg-muted'
-                  }`} />
-                  <div className={`glass-card p-3 sm:p-4 ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
-                    <div className="flex items-start justify-between gap-3 sm:gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-                          <span className="font-mono font-bold text-primary">{momento.horarioInicio}</span>
-                          <span>-</span>
-                          <span className="font-mono">{horarioFim}</span>
-                          <span>({momento.duracao} min)</span>
-                        </div>
-                        <h3 className={`truncate font-display text-base font-semibold sm:text-lg ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>
-                          {momento.atividade}
-                        </h3>
-                        <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-muted-foreground">
-                          <User className="h-3.5 w-3.5 shrink-0" /> {momento.responsavel} | {momento.ministerio}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <span className={`rounded-full border px-2.5 py-1 text-xs ${moderadorStatusClass(moderadorStatus)}`}>
-                          {moderadorStatusLabel(moderadorStatus)}
-                        </span>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-white ${
-                          blockColors[momento.bloco] || 'bg-muted'
-                        }`}>
-                          {momento.bloco}
-                        </span>
-                      </div>
-                    </div>
-                    {isExecuting && (
-                      <div className="mt-3">
-                        <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                          <span>{Math.min(100, Math.max(0, Math.round(itemPercent)))}%</span>
-                          <span>{isPaused ? `${itemRemaining} pausado` : `${itemRemaining} restantes`}</span>
-                        </div>
-                        <div className="progress-bar h-2">
-                          <div
-                            className="progress-bar-fill"
-                            style={{
-                              transform: `scaleX(${itemProgressScale})`,
-                              transformOrigin: 'left',
-                              width: '100%',
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <TimelineSection
+          momentos={momentos}
+          totalMinutes={totalMinutes}
+          firstTime={firstTime}
+          lastEnd={lastEnd}
+          blockColors={blockColors}
+          getMomentStatusForIndex={getMomentStatus}
+          safeMomentElapsedMs={safeMomentElapsedMs}
+          isPaused={isPaused}
+        />
       </div>
     </div>
   );

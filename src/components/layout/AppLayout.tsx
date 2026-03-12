@@ -64,7 +64,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div data-mobile={isMobile} className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-background">
-      <aside className={`hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col bg-sidebar border-r border-sidebar-border transition-all duration-200 ${desktopMenuHidden ? 'w-0 overflow-hidden border-r-0' : 'w-64'}`}>
+      <aside className={`hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col overflow-hidden bg-sidebar border-r border-sidebar-border transition-all duration-200 ${desktopMenuHidden ? 'w-0 border-r-0' : 'w-64'}`}>
         <div className="p-5 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -92,7 +92,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="h-px bg-sidebar-border" />
         </div>
 
-        <nav className="flex-1 space-y-0.5 px-3">
+        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+          <div className="space-y-0.5">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -109,6 +110,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               {item.label}
             </NavLink>
           ))}
+          </div>
         </nav>
 
         <div className="px-4 pb-4">
