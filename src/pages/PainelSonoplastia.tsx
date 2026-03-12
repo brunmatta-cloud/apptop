@@ -1,4 +1,4 @@
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { calcularHorarioTermino, tipoMomentoLabel } from '@/types/culto';
 import { Volume2, Mic, Video, PlayCircle, Bell, Maximize, Minimize } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -9,7 +9,8 @@ import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { formatTimerMs } from '@/utils/time';
 
 const PainelSonoplastia = memo(() => {
-  const { culto, momentos, currentIndex, momentElapsedMs, isPaused, getMomentStatus } = useCulto();
+  const { culto, momentos, currentIndex, getMomentStatus } = useCulto();
+  const { momentElapsedMs, isPaused } = useCultoTimer();
   const { currentTime, formatTime } = useClock();
   const [alerts, setAlerts] = useState<{ id: string; message: string; time: Date }[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);

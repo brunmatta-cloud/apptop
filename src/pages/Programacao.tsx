@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
 import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown } from 'lucide-react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
@@ -39,7 +39,8 @@ const emptyCulto = (): Culto => ({
 });
 
 const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) => {
-  const { currentIndex, momentos, momentElapsedMs, isPaused } = useCulto();
+  const { currentIndex, momentos } = useCulto();
+  const { momentElapsedMs, isPaused } = useCultoTimer();
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const effectiveElapsedMs = currentMoment?.id === momento.id ? safeMomentElapsedMs : 0;

@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { calcularHorarioTermino, type ModeradorCallStatus, type MomentStatus, type MomentoProgramacao } from '@/types/culto';
 import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo, User, Timer, X, ClipboardCheck, CheckCheck } from 'lucide-react';
 import { formatTimerMs } from '@/utils/time';
@@ -342,9 +342,6 @@ const Moderador = () => {
     culto,
     momentos,
     currentIndex,
-    momentElapsedSeconds,
-    momentElapsedMs,
-    isPaused,
     getMomentStatus,
     moderadorReleaseActive,
     moderadorReleaseUpdatedAt,
@@ -355,6 +352,7 @@ const Moderador = () => {
     isSubmitting,
     pendingAction,
   } = useCulto();
+  const { momentElapsedSeconds, momentElapsedMs, isPaused } = useCultoTimer();
   const alertedRef = useRef<Set<string>>(new Set());
   const releasePendingAlertedRef = useRef<Set<string>>(new Set());
   const noticeIdRef = useRef(0);

@@ -1,9 +1,10 @@
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 
 import { BarChart3, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 
 const Estatisticas = () => {
-  const { culto, momentos, currentIndex, elapsedSeconds } = useCulto();
+  const { culto, momentos, currentIndex } = useCulto();
+  const { elapsedSeconds } = useCultoTimer();
 
   const totalMinutes = momentos.reduce((sum, m) => sum + m.duracao, 0);
   const avgDuration = momentos.length > 0 ? Math.round(totalMinutes / momentos.length) : 0;

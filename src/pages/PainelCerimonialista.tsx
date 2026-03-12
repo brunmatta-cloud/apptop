@@ -1,4 +1,4 @@
-﻿import { useCulto } from '@/contexts/CultoContext';
+﻿import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { StatusBadge } from '@/components/culto/StatusBadge';
 import { calcularHorarioTermino, type ExecutionMode, type MomentoProgramacao } from '@/types/culto';
@@ -77,12 +77,13 @@ function PainelCerimonialista() {
 
   const {
     culto, momentos, currentIndex,
-    executionMode, setExecutionMode, isPaused, elapsedMs, momentElapsedSeconds, momentElapsedMs,
+    executionMode, setExecutionMode,
     avancar, voltar, pausar, retomar, pular, iniciarCulto, finalizarCulto,
     getMomentStatus, marcarChamado, adjustCurrentMomentDuration,
     pendingAction, isSubmitting, lastError, connectionStatus,
     moderadorReleaseActive, toggleModeradorRelease,
   } = cultoData;
+  const { isPaused, elapsedMs, momentElapsedSeconds, momentElapsedMs } = useCultoTimer();
 
   const {
     isBlinking, toggleBlink,

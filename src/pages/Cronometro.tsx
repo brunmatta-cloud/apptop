@@ -1,4 +1,4 @@
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { useRef, useCallback, memo } from 'react';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
@@ -20,7 +20,8 @@ const blend = (base: string, overlay: string, alpha: number) => {
 };
 
 const Cronometro = memo(() => {
-  const { momentos, currentIndex, culto, momentElapsedMs } = useCulto();
+  const { momentos, currentIndex, culto } = useCulto();
+  const { momentElapsedMs } = useCultoTimer();
   const {
     isBlinking,
     message,

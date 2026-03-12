@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MomentoProgramacao } from '@/types/culto';
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 
 interface ProgressBarProps {
@@ -9,7 +9,8 @@ interface ProgressBarProps {
 }
 
 export const ProgressBar = ({ momento, elapsedMs }: ProgressBarProps) => {
-  const { momentos, currentIndex, momentElapsedMs: liveMomentElapsedMs } = useCulto();
+  const { momentos, currentIndex } = useCulto();
+  const { momentElapsedMs: liveMomentElapsedMs } = useCultoTimer();
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const resolvedElapsedMs = currentMoment?.id === momento.id ? liveMomentElapsedMs : elapsedMs;
   const { percent, progressScale, formattedRemaining } = useMomentProgress(momento, resolvedElapsedMs);

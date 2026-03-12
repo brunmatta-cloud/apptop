@@ -1,4 +1,4 @@
-import { useCulto } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
 import { ProgressBar } from '@/components/culto/ProgressBar';
 import { Focus, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,7 +6,8 @@ import { calcularHorarioTermino } from '@/types/culto';
 import { useNavigate } from 'react-router-dom';
 
 const ModoFoco = () => {
-  const { culto, momentos, currentIndex, momentElapsedMs } = useCulto();
+  const { culto, momentos, currentIndex } = useCulto();
+  const { momentElapsedMs } = useCultoTimer();
   const navigate = useNavigate();
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const nextMoment = currentIndex >= 0 && currentIndex + 1 < momentos.length ? momentos[currentIndex + 1] : null;

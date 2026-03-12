@@ -20,11 +20,6 @@ interface CultoContextType {
   currentIndex: number;
   executionMode: ExecutionMode;
   setExecutionMode: (mode: ExecutionMode) => void;
-  isPaused: boolean;
-  elapsedSeconds: number;
-  momentElapsedSeconds: number;
-  elapsedMs: number;
-  momentElapsedMs: number;
   avancar: () => void;
   voltar: () => void;
   pausar: () => void;
@@ -51,7 +46,16 @@ interface CultoContextType {
   connectionStatus: ConnectionStatus;
 }
 
+interface CultoTimerContextType {
+  isPaused: boolean;
+  elapsedSeconds: number;
+  momentElapsedSeconds: number;
+  elapsedMs: number;
+  momentElapsedMs: number;
+}
+
 const CultoContext = React.createContext<CultoContextType | null>(null);
+const CultoTimerContext = React.createContext<CultoTimerContextType | null>(null);
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const model = useCeremonySession();
@@ -73,11 +77,6 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     currentIndex: model.currentIndex,
     executionMode: model.executionMode,
     setExecutionMode: model.setExecutionMode,
-    isPaused: model.isPaused,
-    elapsedSeconds: liveTimer.elapsedSeconds,
-    momentElapsedSeconds: liveTimer.momentElapsedSeconds,
-    elapsedMs: liveTimer.elapsedMs,
-    momentElapsedMs: liveTimer.momentElapsedMs,
     avancar: model.avancar,
     voltar: model.voltar,
     pausar: model.pausar,
@@ -102,13 +101,31 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     isSubmitting: model.uiState.isSubmitting,
     lastError: model.uiState.lastError,
     connectionStatus: model.uiState.connectionStatus,
-  }), [liveTimer, model]);
+  }), [model]);
 
-  return <CultoContext.Provider value={value}>{children}</CultoContext.Provider>;
+  const timerValue = React.useMemo<CultoTimerContextType>(() => ({
+    isPaused: model.isPaused,
+    elapsedSeconds: liveTimer.elapsedSeconds,
+    momentElapsedSeconds: liveTimer.momentElapsedSeconds,
+    elapsedMs: liveTimer.elapsedMs,
+    momentElapsedMs: liveTimer.momentElapsedMs,
+  }), [liveTimer, model.isPaused]);
+
+  return (
+    <CultoContext.Provider value={value}>
+      <CultoTimerContext.Provider value={timerValue}>{children}</CultoTimerContext.Provider>
+    </CultoContext.Provider>
+  );
 };
 
 export const useCulto = () => {
   const ctx = React.useContext(CultoContext);
   if (!ctx) throw new Error('useCulto must be used within CultoProvider');
+  return ctx;
+};
+
+export const useCultoTimer = () => {
+  const ctx = React.useContext(CultoTimerContext);
+  if (!ctx) throw new Error('useCultoTimer must be used within CultoProvider');
   return ctx;
 };
