@@ -1,4 +1,4 @@
-import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { Slider } from '@/components/ui/slider';
 import { useCallback, useState } from 'react';
@@ -109,7 +109,8 @@ const DialControl = ({
 };
 
 const CronometroControle = () => {
-  const { momentos, currentIndex, culto, adjustCurrentMomentDuration } = useCulto();
+  const { adjustCurrentMomentDuration } = useCulto();
+  const { momentos, currentIndex, culto } = useLiveCultoView();
   const { momentElapsedMs } = useCultoTimer();
   const {
     isBlinking,

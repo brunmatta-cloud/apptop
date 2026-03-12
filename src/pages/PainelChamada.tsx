@@ -1,4 +1,4 @@
-import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { Users, Play, Phone, Clock, Check, User, ArrowRight, BellRing } from 'lucide-react';
 import { useMemo, memo } from 'react';
 import { useClock } from '@/hooks/useClock';
@@ -78,7 +78,8 @@ const EmptyState = ({ message, accent = 'default' }: { message: string; accent?:
 };
 
 const PainelChamada = memo(() => {
-  const { culto, momentos, currentIndex, marcarChamado, isSubmitting } = useCulto();
+  const { marcarChamado, isSubmitting } = useCulto();
+  const { culto, momentos, currentIndex } = useLiveCultoView();
   const { momentElapsedSeconds } = useCultoTimer();
   const { currentTime, formatTime } = useClock();
 

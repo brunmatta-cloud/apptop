@@ -28,6 +28,21 @@ interface SyncStoreContextValue {
 }
 
 const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
+let liveRemoteStateSnapshot: RemoteCultoState = defaultRemoteState;
+const liveRemoteStateListeners = new Set<() => void>();
+
+const publishLiveRemoteState = (state: RemoteCultoState) => {
+  liveRemoteStateSnapshot = state;
+  liveRemoteStateListeners.forEach((listener) => listener());
+};
+
+const subscribeLiveRemoteState = (listener: () => void) => {
+  liveRemoteStateListeners.add(listener);
+  return () => {
+    liveRemoteStateListeners.delete(listener);
+  };
+};
+
 const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
@@ -260,6 +275,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     remoteStateRef.current = next;
     fingerprintRef.current = nextFingerprint;
+    publishLiveRemoteState(next);
     setRemoteState(next);
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
 
@@ -579,6 +595,14 @@ export const useSyncStore = () => {
     throw new Error('useSyncStore must be used within SyncStoreProvider');
   }
   return context;
+};
+
+export const useLiveRemoteState = () => {
+  return React.useSyncExternalStore(
+    subscribeLiveRemoteState,
+    () => liveRemoteStateSnapshot,
+    () => liveRemoteStateSnapshot,
+  );
 };
 
 export const useCeremonySession = () => {

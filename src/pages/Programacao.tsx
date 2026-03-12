@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
 import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown } from 'lucide-react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
@@ -40,7 +40,7 @@ const emptyCulto = (): Culto => ({
 });
 
 const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) => {
-  const { currentIndex, momentos } = useCulto();
+  const { currentIndex, momentos } = useLiveCultoView();
   const { momentElapsedMs, isPaused } = useCultoTimer();
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
@@ -73,9 +73,10 @@ const Programacao = () => {
   const {
     cultos, addCulto, updateCulto, removeCulto, duplicateCulto,
     activeCultoId, setActiveCultoId,
-    culto, momentos, addMomento, updateMomento, removeMomento,
-    getMomentStatus, isSubmitting, lastError,
+    addMomento, updateMomento, removeMomento,
+    isSubmitting, lastError,
   } = useCulto();
+  const { culto, momentos, getMomentStatus } = useLiveCultoView();
 
   const [showMomentoForm, setShowMomentoForm] = useState(false);
   const [editingMomento, setEditingMomento] = useState<MomentoProgramacao | null>(null);

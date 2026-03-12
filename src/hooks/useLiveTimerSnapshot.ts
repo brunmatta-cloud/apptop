@@ -1,75 +1,44 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
-import { useSyncStore } from '@/contexts/SyncStoreContext';
+import { useEffect, useMemo, useState } from 'react';
+import { useLiveRemoteState } from '@/contexts/SyncStoreContext';
 import { getTimerSnapshot } from '@/features/culto-sync/domain';
 
-const LIVE_TIMER_TICK_MS = 100;
-
-let activeSubscribers = 0;
-let activeInterval: number | null = null;
-const listeners = new Set<() => void>();
-
-const emit = () => {
-  listeners.forEach((listener) => listener());
-};
-
-const ensureInterval = () => {
-  if (activeInterval != null || typeof window === 'undefined') {
-    return;
-  }
-
-  activeInterval = window.setInterval(() => {
-    emit();
-  }, LIVE_TIMER_TICK_MS);
-};
-
-const clearActiveInterval = () => {
-  if (activeInterval == null || typeof window === 'undefined') {
-    return;
-  }
-
-  window.clearInterval(activeInterval);
-  activeInterval = null;
-};
-
-const subscribeClock = (listener: () => void) => {
-  listeners.add(listener);
-  activeSubscribers += 1;
-  ensureInterval();
-
-  return () => {
-    listeners.delete(listener);
-    activeSubscribers = Math.max(0, activeSubscribers - 1);
-
-    if (activeSubscribers === 0) {
-      clearActiveInterval();
-    }
-  };
-};
-
-const getClockSnapshot = () => Date.now();
-
-const useSharedNowMs = (enabled: boolean) => {
-  const nowMs = useSyncExternalStore(
-    enabled ? subscribeClock : () => () => undefined,
-    getClockSnapshot,
-    getClockSnapshot,
-  );
+export const useLiveTimerSnapshot = () => {
+  const remoteState = useLiveRemoteState();
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
-    if (enabled) {
-      emit();
+    setNowMs(Date.now());
+  }, [
+    remoteState.timerStatus,
+    remoteState.startedAt,
+    remoteState.momentStartedAt,
+    remoteState.accumulatedMs,
+    remoteState.momentAccumulatedMs,
+    remoteState.currentIndex,
+    remoteState.activeCultoId,
+  ]);
+
+  useEffect(() => {
+    if (remoteState.timerStatus !== 'running') {
+      return;
     }
-  }, [enabled]);
 
-  return enabled ? nowMs : Date.now();
-};
+    const tick = () => {
+      setNowMs(Date.now());
+    };
 
-export const useLiveTimerSnapshot = () => {
-  const { remoteState } = useSyncStore();
-  const isRunning = remoteState.timerStatus === 'running';
-  const nowMs = useSharedNowMs(isRunning);
+    tick();
 
-  return useMemo(() => {
-    return getTimerSnapshot(remoteState, nowMs);
-  }, [remoteState, nowMs]);
+    const interval = window.setInterval(tick, 100);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [
+    remoteState.timerStatus,
+    remoteState.startedAt,
+    remoteState.momentStartedAt,
+  ]);
+
+  return useMemo(() => getTimerSnapshot(remoteState, nowMs), [remoteState, nowMs]);
 };

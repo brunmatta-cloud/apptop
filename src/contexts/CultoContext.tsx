@@ -1,7 +1,8 @@
 import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
-import { useCeremonySession, useSyncStore } from '@/contexts/SyncStoreContext';
+import { getActiveCulto, getActiveMomentos, getMomentStatus } from '@/features/culto-sync/domain';
+import { useCeremonySession, useLiveRemoteState } from '@/contexts/SyncStoreContext';
 import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 
 interface CultoContextType {
@@ -103,14 +104,31 @@ export const useCulto = () => {
 };
 
 export const useCultoTimer = () => {
-  const { remoteState } = useSyncStore();
+  const liveRemoteState = useLiveRemoteState();
   const liveTimer = useLiveTimerSnapshot();
 
   return React.useMemo(() => ({
-    isPaused: remoteState.timerStatus === 'paused',
+    isPaused: liveRemoteState.timerStatus === 'paused',
     elapsedSeconds: liveTimer.elapsedSeconds,
     momentElapsedSeconds: liveTimer.momentElapsedSeconds,
     elapsedMs: liveTimer.elapsedMs,
     momentElapsedMs: liveTimer.momentElapsedMs,
-  }), [liveTimer, remoteState.timerStatus]);
+  }), [liveRemoteState.timerStatus, liveTimer]);
+};
+
+export const useLiveCultoView = () => {
+  const remoteState = useLiveRemoteState();
+
+  const culto = React.useMemo(() => getActiveCulto(remoteState), [remoteState]);
+  const momentos = React.useMemo(() => getActiveMomentos(remoteState), [remoteState]);
+
+  return React.useMemo(() => ({
+    remoteState,
+    culto,
+    momentos,
+    currentIndex: remoteState.currentIndex,
+    executionMode: remoteState.executionMode,
+    isPaused: remoteState.timerStatus === 'paused',
+    getMomentStatus: (index: number) => getMomentStatus(remoteState, index),
+  }), [culto, momentos, remoteState]);
 };

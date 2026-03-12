@@ -1,4 +1,4 @@
-import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
 import type { MomentoProgramacao } from '@/types/culto';
 import { Clock, User } from 'lucide-react';
@@ -38,7 +38,7 @@ const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefine
 });
 
 const LinhaDoTempo = () => {
-  const { culto, momentos, currentIndex, getMomentStatus } = useCulto();
+  const { culto, momentos, currentIndex, getMomentStatus } = useLiveCultoView();
   const { momentElapsedMs, isPaused } = useCultoTimer();
   const { currentTime, formatTime } = useClock();
   const safeMomentos = useMemo(

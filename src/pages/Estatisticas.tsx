@@ -1,9 +1,9 @@
-import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 
 import { BarChart3, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 
 const Estatisticas = () => {
-  const { culto, momentos, currentIndex } = useCulto();
+  const { culto, momentos, currentIndex } = useLiveCultoView();
   const { elapsedSeconds } = useCultoTimer();
 
   const totalMinutes = momentos.reduce((sum, m) => sum + m.duracao, 0);

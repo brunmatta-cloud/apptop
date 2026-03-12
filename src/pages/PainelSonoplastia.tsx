@@ -1,4 +1,4 @@
-import { useCulto, useCultoTimer } from '@/contexts/CultoContext';
+import { useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useSyncStore } from '@/contexts/SyncStoreContext';
 import { calcularHorarioTermino, tipoMomentoLabel } from '@/types/culto';
 import { Volume2, Mic, Video, PlayCircle, Bell, Maximize, Minimize } from 'lucide-react';
@@ -148,7 +148,7 @@ const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
 });
 
 const PainelSonoplastia = memo(() => {
-  const { culto, momentos, currentIndex, getMomentStatus } = useCulto();
+  const { culto, momentos, currentIndex, getMomentStatus } = useLiveCultoView();
   const { remoteState } = useSyncStore();
   const { momentElapsedMs } = useCultoTimer();
   const isPaused = remoteState.timerStatus === 'paused';
