@@ -1,44 +1,72 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLiveRemoteState } from '@/contexts/SyncStoreContext';
+import { useMemo, useSyncExternalStore } from 'react';
+import { subscribeLiveRemoteStateStore, getLiveRemoteStateSnapshot } from '@/contexts/SyncStoreContext';
 import { getTimerSnapshot } from '@/features/culto-sync/domain';
 
-export const useLiveTimerSnapshot = () => {
-  const remoteState = useLiveRemoteState();
-  const [nowMs, setNowMs] = useState(() => Date.now());
+const TIMER_TICK_MS = 100;
 
-  useEffect(() => {
-    setNowMs(Date.now());
-  }, [
-    remoteState.timerStatus,
-    remoteState.startedAt,
-    remoteState.momentStartedAt,
-    remoteState.accumulatedMs,
-    remoteState.momentAccumulatedMs,
-    remoteState.currentIndex,
-    remoteState.activeCultoId,
-  ]);
+let timerInterval: number | null = null;
+let timerSubscribers = 0;
+const timerListeners = new Set<() => void>();
 
-  useEffect(() => {
-    if (remoteState.timerStatus !== 'running') {
+const emitTimerTick = () => {
+  timerListeners.forEach((listener) => listener());
+};
+
+const startTimerLoop = () => {
+  if (timerInterval != null || typeof window === 'undefined') {
+    return;
+  }
+
+  timerInterval = window.setInterval(() => {
+    const state = getLiveRemoteStateSnapshot();
+    if (state.timerStatus !== 'running') {
       return;
     }
+    emitTimerTick();
+  }, TIMER_TICK_MS);
+};
 
-    const tick = () => {
-      setNowMs(Date.now());
-    };
+const stopTimerLoop = () => {
+  if (timerInterval == null || typeof window === 'undefined') {
+    return;
+  }
 
-    tick();
+  window.clearInterval(timerInterval);
+  timerInterval = null;
+};
 
-    const interval = window.setInterval(tick, 100);
+const subscribeTimerStore = (listener: () => void) => {
+  const handleRemoteChange = () => {
+    listener();
 
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [
-    remoteState.timerStatus,
-    remoteState.startedAt,
-    remoteState.momentStartedAt,
-  ]);
+    if (getLiveRemoteStateSnapshot().timerStatus === 'running') {
+      emitTimerTick();
+    }
+  };
 
-  return useMemo(() => getTimerSnapshot(remoteState, nowMs), [remoteState, nowMs]);
+  timerListeners.add(listener);
+  timerSubscribers += 1;
+  startTimerLoop();
+  const unsubscribeRemote = subscribeLiveRemoteStateStore(handleRemoteChange);
+
+  return () => {
+    unsubscribeRemote();
+    timerListeners.delete(listener);
+    timerSubscribers = Math.max(0, timerSubscribers - 1);
+
+    if (timerSubscribers === 0) {
+      stopTimerLoop();
+    }
+  };
+};
+
+const getSnapshot = () => {
+  const state = getLiveRemoteStateSnapshot();
+  return getTimerSnapshot(state, Date.now());
+};
+
+export const useLiveTimerSnapshot = () => {
+  const snapshot = useSyncExternalStore(subscribeTimerStore, getSnapshot, getSnapshot);
+
+  return useMemo(() => snapshot, [snapshot]);
 };
