@@ -31,6 +31,7 @@ const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
 const REFRESH_INTERVAL_MS = 500;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
+const TIMER_COMMANDS = new Set(['start', 'resume', 'pause', 'advance', 'skip', 'back', 'finish']);
 
 const createActorId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -41,6 +42,17 @@ const createActorId = () => {
 
 const logSync = (scope: string, detail: Record<string, unknown> = {}) => {
   console.info(`[sync:${scope}]`, detail);
+};
+
+type TimerFlowTrace = {
+  id: string;
+  command: string;
+  startedAtMs: number;
+  expectedRevision: number;
+  optimisticAppliedAtMs?: number;
+  rpcResolvedAtMs?: number;
+  realtimeAppliedAtMs?: number;
+  confirmRefreshAtMs?: number;
 };
 
 const getStateFingerprint = (state: RemoteCultoState) => JSON.stringify({
@@ -175,6 +187,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const lastSuccessfulSyncAtRef = useRef<number | null>(null);
   const consecutiveRefreshFailuresRef = useRef(0);
   const hasSuccessfulSyncRef = useRef(false);
+  const timerFlowTraceRef = useRef<TimerFlowTrace | null>(null);
   const [remoteState, setRemoteState] = useState<RemoteCultoState>(defaultRemoteState);
   const [uiState, setUiState] = useState<UiSyncState>({
     isHydrating: true,
@@ -225,6 +238,44 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fingerprintRef.current = nextFingerprint;
     setRemoteState(next);
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
+
+    const activeTrace = timerFlowTraceRef.current;
+    if (activeTrace) {
+      const nowMs = Date.now();
+      if (origin.endsWith(':optimistic') && activeTrace.optimisticAppliedAtMs == null) {
+        activeTrace.optimisticAppliedAtMs = nowMs;
+      }
+      if (origin.endsWith(':rpc') && activeTrace.rpcResolvedAtMs == null) {
+        activeTrace.rpcResolvedAtMs = nowMs;
+      }
+      if ((origin === 'realtime' || origin.endsWith(':confirm') || origin === 'realtime-subscribed') && activeTrace.realtimeAppliedAtMs == null) {
+        activeTrace.realtimeAppliedAtMs = nowMs;
+      }
+      if (origin.endsWith(':confirm')) {
+        activeTrace.confirmRefreshAtMs = nowMs;
+      }
+
+      logSync('timer-flow-state', {
+        id: activeTrace.id,
+        command: activeTrace.command,
+        origin,
+        currentRevision: next.revision,
+        timerStatus: next.timerStatus,
+        msFromCommand: nowMs - activeTrace.startedAtMs,
+        msToOptimistic: activeTrace.optimisticAppliedAtMs != null ? activeTrace.optimisticAppliedAtMs - activeTrace.startedAtMs : null,
+        msToRpc: activeTrace.rpcResolvedAtMs != null ? activeTrace.rpcResolvedAtMs - activeTrace.startedAtMs : null,
+        msToRealtime: activeTrace.realtimeAppliedAtMs != null ? activeTrace.realtimeAppliedAtMs - activeTrace.startedAtMs : null,
+        msToConfirm: activeTrace.confirmRefreshAtMs != null ? activeTrace.confirmRefreshAtMs - activeTrace.startedAtMs : null,
+      });
+
+      if (
+        (activeTrace.command === 'start' || activeTrace.command === 'resume') &&
+        next.timerStatus === 'running' &&
+        (origin.endsWith(':optimistic') || origin.endsWith(':rpc') || origin === 'realtime' || origin.endsWith(':confirm'))
+      ) {
+        (window as Window & { __timerFlowTrace?: TimerFlowTrace | null }).__timerFlowTrace = activeTrace;
+      }
+    }
   }, []);
 
   const refreshFromServer = useCallback(async (reason = 'manual-refresh') => {
@@ -273,6 +324,23 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         try {
           const optimisticNowMs = Date.now();
           const optimisticNowIso = new Date(optimisticNowMs).toISOString();
+          if (TIMER_COMMANDS.has(command)) {
+            const trace: TimerFlowTrace = {
+              id: `${command}-${optimisticNowMs}`,
+              command,
+              startedAtMs: optimisticNowMs,
+              expectedRevision,
+            };
+            timerFlowTraceRef.current = trace;
+            (window as Window & { __timerFlowTrace?: TimerFlowTrace | null }).__timerFlowTrace = trace;
+            logSync('timer-flow-command', {
+              id: trace.id,
+              command,
+              expectedRevision,
+              timerStatusBefore: baseState.timerStatus,
+              currentIndexBefore: baseState.currentIndex,
+            });
+          }
           const optimisticState = getOptimisticTransitionState(
             baseState,
             command,
@@ -312,6 +380,13 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             actor: actorIdRef.current,
           });
           await refreshFromServer(`${command}:rollback`);
+          if (TIMER_COMMANDS.has(command)) {
+            logSync('timer-flow-error', {
+              id: timerFlowTraceRef.current?.id,
+              command,
+              msFromCommand: timerFlowTraceRef.current ? Date.now() - timerFlowTraceRef.current.startedAtMs : null,
+            });
+          }
           setUiState((current) => ({
             ...current,
             lastError: didCommandTakeEffect(command, remoteStateRef.current) ? null : message,

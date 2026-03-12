@@ -6,6 +6,7 @@ import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/
 import { exportarProgramacao } from '@/utils/exportProgramacao';
 import { exportarProgramacaoImagem } from '@/utils/exportProgramacaoImagem';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 
@@ -68,6 +69,7 @@ const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) =
 };
 
 const Programacao = () => {
+  const isMobile = useIsMobile();
   const {
     cultos, addCulto, updateCulto, removeCulto, duplicateCulto,
     activeCultoId, setActiveCultoId,
@@ -202,20 +204,22 @@ const Programacao = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:hidden">
-        <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Data</p>
-          <p className="mt-1 text-sm font-semibold">{cultoDataCurta}</p>
+      {isMobile && (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Data</p>
+            <p className="mt-1 text-sm font-semibold">{cultoDataCurta}</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Inicio</p>
+            <p className="mt-1 text-sm font-semibold">{viewingCulto?.horarioInicial || '--:--'}</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Previsto</p>
+            <p className="mt-1 text-sm font-semibold">{totalPrevistoLabel}</p>
+          </div>
         </div>
-        <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Inicio</p>
-          <p className="mt-1 text-sm font-semibold">{viewingCulto?.horarioInicial || '--:--'}</p>
-        </div>
-        <div className="rounded-2xl border border-border/70 bg-card/60 px-3 py-3 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Previsto</p>
-          <p className="mt-1 text-sm font-semibold">{totalPrevistoLabel}</p>
-        </div>
-      </div>
+      )}
 
       {lastError && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -328,31 +332,33 @@ const Programacao = () => {
             <h3 className="text-lg font-display font-semibold">Momentos</h3>
             <p className="text-sm text-muted-foreground">A lista abaixo mostra apenas o culto escolhido.</p>
           </div>
-          <div className="hidden flex-wrap items-center gap-2 md:flex">
-            {momentos.length > 0 && (
-              <>
-                <button
-                  onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
-                  className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
-                >
-                  <ImageDown className="w-4 h-4" /> Imagem
-                </button>
-                <button
-                  onClick={() => exportarProgramacao(viewingCulto, momentos)}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
-                >
-                  <FileSpreadsheet className="w-4 h-4" /> Planilha
-                </button>
-              </>
-            )}
-            <button onClick={openAddMomento} disabled={isSubmitting} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
-              <Plus className="w-4 h-4" /> Momento
-            </button>
-          </div>
+          {!isMobile && (
+            <div className="flex flex-wrap items-center gap-2">
+              {momentos.length > 0 && (
+                <>
+                  <button
+                    onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
+                    className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
+                  >
+                    <ImageDown className="w-4 h-4" /> Imagem
+                  </button>
+                  <button
+                    onClick={() => exportarProgramacao(viewingCulto, momentos)}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" /> Planilha
+                  </button>
+                </>
+              )}
+              <button onClick={openAddMomento} disabled={isSubmitting} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
+                <Plus className="w-4 h-4" /> Momento
+              </button>
+            </div>
+          )}
         </div>
 
-        {momentos.length > 0 && (
-          <div className="mb-4 grid grid-cols-3 gap-2 md:hidden">
+        {isMobile && momentos.length > 0 && (
+          <div className="mb-4 grid grid-cols-3 gap-2">
             <button
               onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
               className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-3 py-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80"

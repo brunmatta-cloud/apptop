@@ -10,6 +10,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTimerMs } from '@/utils/time';
 
 const emptyCultoFallback = {
@@ -74,6 +75,7 @@ function PainelCerimonialista() {
   const cronometroData = useCronometro();
   const [msgDraft, setMsgDraft] = useState('');
   const clockData = useClock();
+  const isMobile = useIsMobile();
 
   const {
     culto, momentos, currentIndex,
@@ -442,7 +444,8 @@ function PainelCerimonialista() {
         <div className="glass-card border border-primary/15 p-4 sm:p-5">
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controles</h3>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2.5 xl:hidden sm:gap-3">
+            {isMobile ? (
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <SkipBack className="h-4 w-4" /> <span>Voltar</span>
               </button>
@@ -468,8 +471,8 @@ function PainelCerimonialista() {
                 <Check className="h-4 w-4" /> <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
               </button>
             </div>
-
-            <div className="hidden xl:grid xl:grid-cols-[repeat(6,minmax(0,1fr))] xl:gap-2">
+            ) : (
+            <div className="grid xl:grid-cols-[repeat(6,minmax(0,1fr))] xl:gap-2">
               <button type="button" onClick={voltar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
                 <SkipBack className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
                 <span>Voltar</span>
@@ -500,6 +503,7 @@ function PainelCerimonialista() {
                 <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
               </button>
             </div>
+            )}
           </div>
         </div>
       )}

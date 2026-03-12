@@ -6,12 +6,14 @@ import { useEffect, useState, useRef, useMemo, memo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useClock } from '@/hooks/useClock';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTimerMs } from '@/utils/time';
 
 const PainelSonoplastia = memo(() => {
   const { culto, momentos, currentIndex, getMomentStatus } = useCulto();
   const { momentElapsedMs, isPaused } = useCultoTimer();
   const { currentTime, formatTime } = useClock();
+  const isMobile = useIsMobile();
   const [alerts, setAlerts] = useState<{ id: string; message: string; time: Date }[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const alertedRef = useRef<Set<string>>(new Set());
@@ -103,14 +105,16 @@ const PainelSonoplastia = memo(() => {
           </div>
         </div>
         <div className="flex items-center gap-3 self-end sm:self-auto">
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="hidden lg:flex items-center gap-2 rounded-xl border border-border bg-card/80 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
-          >
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-            <span>{isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}</span>
-          </button>
+          {!isMobile && (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="flex items-center gap-2 rounded-xl border border-border bg-card/80 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+            >
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              <span>{isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}</span>
+            </button>
+          )}
           <span className="text-xl sm:text-2xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
         </div>
       </div>
