@@ -148,6 +148,29 @@ const useGlobalTimerSnapshot = () => React.useSyncExternalStore(
   () => globalTimerSnapshotStore,
 );
 
+let stableViewStateSnapshot: RemoteCultoState = getLiveRemoteStateSnapshot();
+const stableViewListeners = new Set<() => void>();
+let stableViewUnsubscribeRemote: (() => void) | null = null;
+let stableViewTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
+let stableViewSubscriberCount = 0;
+
+const getStructuralViewKey = (state: RemoteCultoState) => {
+  const momentos = getActiveMomentos(state);
+  const currentMoment = state.currentIndex >= 0 && state.currentIndex < momentos.length ? momentos[state.currentIndex] : null;
+
+  return [
+    state.activeCultoId,
+    state.status,
+    state.currentIndex,
+    momentos.length,
+    currentMoment?.id ?? '',
+  ].join('|');
+};
+
+const emitStableViewState = () => {
+  stableViewListeners.forEach((listener) => listener());
+};
+
 const isInvalidStructuralSnapshot = (state: RemoteCultoState) => {
   const momentos = getActiveMomentos(state);
   const hasCurrentSelection = state.currentIndex >= 0;
@@ -168,43 +191,103 @@ const isInvalidStructuralSnapshot = (state: RemoteCultoState) => {
     || inconsistentLiveStatus;
 };
 
-const useStableLiveRemoteStateForView = () => {
-  const remoteState = useLiveRemoteState();
-  const stableStructureRef = React.useRef<Pick<RemoteCultoState, 'cultos' | 'activeCultoId' | 'allMomentos' | 'currentIndex' | 'status'> | null>(null);
+const projectStableViewState = (nextState: RemoteCultoState, fallbackState: RemoteCultoState) => {
+  if (!isInvalidStructuralSnapshot(nextState)) {
+    return nextState;
+  }
 
-  const shouldReuseStructure = isInvalidStructuralSnapshot(remoteState) && stableStructureRef.current;
-
-  const projectedState = React.useMemo(() => {
-    if (!shouldReuseStructure || !stableStructureRef.current) {
-      return remoteState;
-    }
-
-    return {
-      ...remoteState,
-      cultos: stableStructureRef.current.cultos,
-      activeCultoId: stableStructureRef.current.activeCultoId,
-      allMomentos: stableStructureRef.current.allMomentos,
-      currentIndex: stableStructureRef.current.currentIndex,
-      status: stableStructureRef.current.status,
-    };
-  }, [remoteState, shouldReuseStructure]);
-
-  React.useEffect(() => {
-    if (isInvalidStructuralSnapshot(remoteState)) {
-      return;
-    }
-
-    stableStructureRef.current = {
-      cultos: remoteState.cultos,
-      activeCultoId: remoteState.activeCultoId,
-      allMomentos: remoteState.allMomentos,
-      currentIndex: remoteState.currentIndex,
-      status: remoteState.status,
-    };
-  }, [remoteState]);
-
-  return projectedState;
+  return {
+    ...nextState,
+    cultos: fallbackState.cultos,
+    activeCultoId: fallbackState.activeCultoId,
+    allMomentos: fallbackState.allMomentos,
+    currentIndex: fallbackState.currentIndex,
+    status: fallbackState.status,
+  };
 };
+
+const clearStableViewTimeout = () => {
+  if (stableViewTimeoutId != null) {
+    window.clearTimeout(stableViewTimeoutId);
+    stableViewTimeoutId = null;
+  }
+};
+
+const applyStableViewState = (nextState: RemoteCultoState) => {
+  stableViewStateSnapshot = nextState;
+  emitStableViewState();
+};
+
+const scheduleStableViewUpdate = (nextState: RemoteCultoState, delayMs = 120) => {
+  clearStableViewTimeout();
+  stableViewTimeoutId = window.setTimeout(() => {
+    stableViewTimeoutId = null;
+    applyStableViewState(nextState);
+  }, delayMs);
+};
+
+const syncStableViewState = () => {
+  const nextLiveState = getLiveRemoteStateSnapshot();
+  const nextProjectedState = projectStableViewState(nextLiveState, stableViewStateSnapshot);
+  const nextKey = getStructuralViewKey(nextProjectedState);
+  const currentKey = getStructuralViewKey(stableViewStateSnapshot);
+
+  if (nextKey === currentKey) {
+    clearStableViewTimeout();
+    applyStableViewState(nextProjectedState);
+    return;
+  }
+
+  if (isInvalidStructuralSnapshot(nextLiveState)) {
+    return;
+  }
+
+  scheduleStableViewUpdate(nextProjectedState);
+};
+
+const ensureStableViewStore = () => {
+  if (stableViewUnsubscribeRemote) {
+    syncStableViewState();
+    return;
+  }
+
+  stableViewStateSnapshot = projectStableViewState(getLiveRemoteStateSnapshot(), stableViewStateSnapshot);
+  stableViewUnsubscribeRemote = subscribeLiveRemoteStateStore(() => {
+    syncStableViewState();
+  });
+  syncStableViewState();
+};
+
+const cleanupStableViewStore = () => {
+  if (stableViewSubscriberCount > 0) {
+    return;
+  }
+
+  clearStableViewTimeout();
+  if (stableViewUnsubscribeRemote) {
+    stableViewUnsubscribeRemote();
+    stableViewUnsubscribeRemote = null;
+  }
+  stableViewStateSnapshot = projectStableViewState(getLiveRemoteStateSnapshot(), stableViewStateSnapshot);
+};
+
+const subscribeStableViewState = (listener: () => void) => {
+  stableViewSubscriberCount += 1;
+  stableViewListeners.add(listener);
+  ensureStableViewStore();
+
+  return () => {
+    stableViewListeners.delete(listener);
+    stableViewSubscriberCount = Math.max(0, stableViewSubscriberCount - 1);
+    cleanupStableViewStore();
+  };
+};
+
+const useStableLiveRemoteStateForView = () => React.useSyncExternalStore(
+  subscribeStableViewState,
+  () => stableViewStateSnapshot,
+  () => stableViewStateSnapshot,
+);
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { uiState, runCommand } = useSyncCommands();
