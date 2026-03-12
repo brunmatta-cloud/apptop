@@ -1,8 +1,7 @@
-import { useLiveCultoView } from '@/contexts/CultoContext';
+import { useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { useRef, useCallback, memo } from 'react';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
-import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 import { formatTimerMs } from '@/utils/time';
 
 const blend = (base: string, overlay: string, alpha: number) => {
@@ -22,7 +21,7 @@ const blend = (base: string, overlay: string, alpha: number) => {
 
 const Cronometro = memo(() => {
   const { currentMoment, nextMoment, culto } = useLiveCultoView();
-  const { momentElapsedMs } = useLiveTimerSnapshot();
+  const { momentElapsedMs } = useCultoTimer();
   const {
     isBlinking,
     message,
