@@ -48,6 +48,8 @@ export interface RemoteCultoState {
   moderadorReleaseActive: boolean;
   moderadorReleaseUpdatedAt: string | null;
   moderadorReleaseBy: string | null;
+  moderadorReleasePendingMomentId: string | null;
+  moderadorReleaseGrantedMomentId: string | null;
   revision: number;
   updatedAt: string;
   updatedBy: string;
@@ -162,6 +164,8 @@ export const defaultRemoteState: RemoteCultoState = {
   moderadorReleaseActive: false,
   moderadorReleaseUpdatedAt: null,
   moderadorReleaseBy: null,
+  moderadorReleasePendingMomentId: null,
+  moderadorReleaseGrantedMomentId: null,
   revision: 0,
   updatedAt: DEFAULT_TIMESTAMP,
   updatedBy: 'system',
@@ -326,6 +330,16 @@ export const normalizeRemoteState = (row?: Partial<SyncRow> | Partial<SessionSta
       : typeof rowState?.moderadorReleaseBy === 'string'
         ? rowState.moderadorReleaseBy
         : null,
+    moderadorReleasePendingMomentId: typeof (row as { moderador_release_pending_moment_id?: unknown } | undefined)?.moderador_release_pending_moment_id === 'string'
+      ? String((row as { moderador_release_pending_moment_id?: string }).moderador_release_pending_moment_id)
+      : typeof rowState?.moderadorReleasePendingMomentId === 'string'
+        ? rowState.moderadorReleasePendingMomentId
+        : null,
+    moderadorReleaseGrantedMomentId: typeof (row as { moderador_release_granted_moment_id?: unknown } | undefined)?.moderador_release_granted_moment_id === 'string'
+      ? String((row as { moderador_release_granted_moment_id?: string }).moderador_release_granted_moment_id)
+      : typeof rowState?.moderadorReleaseGrantedMomentId === 'string'
+        ? rowState.moderadorReleaseGrantedMomentId
+        : null,
     revision: Number.isFinite(row?.revision) ? Math.max(0, Number(row.revision)) : Number.isFinite(rowState?.revision) ? Math.max(0, Number(rowState.revision)) : 0,
     updatedAt: typeof row?.updated_at === 'string' ? row.updated_at : typeof rowState?.updatedAt === 'string' ? rowState.updatedAt : DEFAULT_TIMESTAMP,
     updatedBy: typeof row?.updated_by === 'string' && row.updated_by ? row.updated_by : typeof rowState?.updatedBy === 'string' && rowState.updatedBy ? rowState.updatedBy : 'system',
@@ -395,10 +409,15 @@ const setCultoStatus = (state: RemoteCultoState, status: CultoStatus) => ({
 const refreshCommands = (state: RemoteCultoState): RemoteCultoState => {
   const currentMoment = getCurrentMoment(state);
   const nextMoment = getNextMoment(state);
+  const currentMomentId = currentMoment?.id ?? null;
+  const grantedForCurrentMoment = currentMomentId != null && state.moderadorReleaseGrantedMomentId === currentMomentId;
   return {
     ...state,
     currentCommand: currentMoment?.atividade ?? '',
     nextCommand: nextMoment?.atividade ?? '',
+    moderadorReleasePendingMomentId: currentMomentId && !grantedForCurrentMoment ? currentMomentId : null,
+    moderadorReleaseGrantedMomentId: grantedForCurrentMoment ? currentMomentId : currentMomentId == null ? null : state.moderadorReleaseGrantedMomentId,
+    moderadorReleaseActive: currentMomentId == null ? false : state.moderadorReleaseActive,
   };
 };
 
@@ -457,7 +476,7 @@ export const startCultoTransition = (state: RemoteCultoState, nowIso: string): T
   }));
 
   const nextState = refreshCommands(resetMomentTimer({
-    ...setCultoStatus({
+      ...setCultoStatus({
       ...state,
       allMomentos: {
         ...state.allMomentos,
@@ -466,6 +485,9 @@ export const startCultoTransition = (state: RemoteCultoState, nowIso: string): T
       currentIndex: nextMomentos.length > 0 ? 0 : -1,
       accumulatedMs: 0,
       momentAccumulatedMs: 0,
+      moderadorReleaseActive: false,
+      moderadorReleasePendingMomentId: null,
+      moderadorReleaseGrantedMomentId: null,
     }, 'em_andamento'),
   }, nowIso, nextMomentos.length > 0 ? 'running' : 'idle'));
 
@@ -511,6 +533,9 @@ export const finishCultoTransition = (state: RemoteCultoState, nowIso: string, n
       pausedAt: nowIso,
       momentStartedAt: null,
       momentPausedAt: nowIso,
+      moderadorReleaseActive: false,
+      moderadorReleasePendingMomentId: null,
+      moderadorReleaseGrantedMomentId: null,
     }),
   };
 };
@@ -541,6 +566,9 @@ export const advanceCultoTransition = (state: RemoteCultoState, nowIso: string, 
       ...state,
       currentIndex: state.currentIndex + 1,
       accumulatedMs: snapshot.elapsedMs,
+      moderadorReleaseActive: false,
+      moderadorReleasePendingMomentId: null,
+      moderadorReleaseGrantedMomentId: null,
     }, nowIso, nextStatus)),
   };
 };
@@ -562,6 +590,9 @@ export const backCultoTransition = (state: RemoteCultoState, nowIso: string, now
       ...state,
       currentIndex: state.currentIndex - 1,
       accumulatedMs: snapshot.elapsedMs,
+      moderadorReleaseActive: false,
+      moderadorReleasePendingMomentId: null,
+      moderadorReleaseGrantedMomentId: null,
     }, nowIso, nextStatus)),
   };
 };
@@ -579,12 +610,14 @@ export const markCalledTransition = (state: RemoteCultoState, id: string): Trans
 
 export const toggleModeradorReleaseTransition = (state: RemoteCultoState, active: boolean, actorId: string, nowIso: string): TransitionResult => ({
   ok: true,
-  state: {
+  state: refreshCommands({
     ...state,
     moderadorReleaseActive: active,
     moderadorReleaseUpdatedAt: nowIso,
     moderadorReleaseBy: actorId,
-  },
+    moderadorReleasePendingMomentId: active ? null : state.moderadorReleasePendingMomentId,
+    moderadorReleaseGrantedMomentId: active ? getCurrentMoment(state)?.id ?? state.moderadorReleaseGrantedMomentId : state.moderadorReleaseGrantedMomentId,
+  }),
 });
 
 export const updateModeradorStatusTransition = (state: RemoteCultoState, id: string, status: ModeradorCallStatus): TransitionResult => ({
@@ -657,6 +690,9 @@ export const setActiveCultoTransition = (state: RemoteCultoState, id: string): T
       momentStartedAt: null,
       momentPausedAt: null,
       momentAccumulatedMs: 0,
+      moderadorReleaseActive: false,
+      moderadorReleasePendingMomentId: null,
+      moderadorReleaseGrantedMomentId: null,
     }),
   };
 };
@@ -708,6 +744,9 @@ export const addCultoTransition = (state: RemoteCultoState, culto: Culto): Trans
       momentStartedAt: null,
       momentPausedAt: null,
       momentAccumulatedMs: 0,
+      moderadorReleaseActive: false,
+      moderadorReleasePendingMomentId: null,
+      moderadorReleaseGrantedMomentId: null,
     },
   };
 };
@@ -743,6 +782,9 @@ export const removeCultoTransition = (state: RemoteCultoState, id: string): Tran
       momentStartedAt: state.activeCultoId === id ? null : state.momentStartedAt,
       momentPausedAt: state.activeCultoId === id ? null : state.momentPausedAt,
       momentAccumulatedMs: state.activeCultoId === id ? 0 : state.momentAccumulatedMs,
+      moderadorReleaseActive: state.activeCultoId === id ? false : state.moderadorReleaseActive,
+      moderadorReleasePendingMomentId: state.activeCultoId === id ? null : state.moderadorReleasePendingMomentId,
+      moderadorReleaseGrantedMomentId: state.activeCultoId === id ? null : state.moderadorReleaseGrantedMomentId,
     },
   };
 };
@@ -857,6 +899,8 @@ export const buildRowPayload = (state: RemoteCultoState) => {
     moderador_release_active: state.moderadorReleaseActive,
     moderador_release_updated_at: state.moderadorReleaseUpdatedAt,
     moderador_release_by: state.moderadorReleaseBy,
+    moderador_release_pending_moment_id: state.moderadorReleasePendingMomentId,
+    moderador_release_granted_moment_id: state.moderadorReleaseGrantedMomentId,
     revision: state.revision,
     updated_at: state.updatedAt,
     updated_by: state.updatedBy,

@@ -124,7 +124,7 @@ const getLegacyState = async (): Promise<RemoteCultoState> => {
   return normalizeRemoteState(data);
 };
 
-const runLegacyTransition = (command: string, state: RemoteCultoState, payload: Record<string, unknown>, nowIso: string, nowMs: number): TransitionResult => {
+const runLegacyTransition = (command: string, state: RemoteCultoState, payload: Record<string, unknown>, actor: string, nowIso: string, nowMs: number): TransitionResult => {
   switch (command) {
     case 'start':
       return startCultoTransition(state, nowIso);
@@ -213,7 +213,7 @@ const sendLegacyCommand = async ({
     }
 
     const now = new Date();
-    const transition = runLegacyTransition(command, base, (payload ?? {}) as Record<string, unknown>, now.toISOString(), now.getTime());
+    const transition = runLegacyTransition(command, base, (payload ?? {}) as Record<string, unknown>, actor, now.toISOString(), now.getTime());
     if (!transition.ok) {
       throw new Error(transition.reason);
     }

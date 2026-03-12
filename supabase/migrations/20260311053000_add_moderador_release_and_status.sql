@@ -1,12 +1,16 @@
 ALTER TABLE public.session_state
   ADD COLUMN IF NOT EXISTS moderador_release_active boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS moderador_release_updated_at timestamptz,
-  ADD COLUMN IF NOT EXISTS moderador_release_by text;
+  ADD COLUMN IF NOT EXISTS moderador_release_by text,
+  ADD COLUMN IF NOT EXISTS moderador_release_pending_moment_id text,
+  ADD COLUMN IF NOT EXISTS moderador_release_granted_moment_id text;
 
 ALTER TABLE public.culto_sync_state
   ADD COLUMN IF NOT EXISTS moderador_release_active boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS moderador_release_updated_at timestamptz,
-  ADD COLUMN IF NOT EXISTS moderador_release_by text;
+  ADD COLUMN IF NOT EXISTS moderador_release_by text,
+  ADD COLUMN IF NOT EXISTS moderador_release_pending_moment_id text,
+  ADD COLUMN IF NOT EXISTS moderador_release_granted_moment_id text;
 
 CREATE OR REPLACE FUNCTION public.apply_session_command(
   p_session_id text DEFAULT 'main',
@@ -79,6 +83,8 @@ BEGIN
   v_state.all_momentos := CASE WHEN jsonb_typeof(v_state.all_momentos) = 'object' THEN v_state.all_momentos ELSE '{}'::jsonb END;
   v_state.settings := COALESCE(v_state.settings, public.session_settings_defaults());
   v_state.moderador_release_active := COALESCE(v_state.moderador_release_active, false);
+  v_state.moderador_release_pending_moment_id := NULLIF(v_state.moderador_release_pending_moment_id, '');
+  v_state.moderador_release_granted_moment_id := NULLIF(v_state.moderador_release_granted_moment_id, '');
 
   v_culto_id := COALESCE(
     NULLIF(v_safe_payload->>'cultoId', ''),
@@ -110,6 +116,8 @@ BEGIN
       v_state.moment_paused_at := NULL;
       v_state.moment_accumulated_ms := 0;
       v_state.moderador_release_active := false;
+      v_state.moderador_release_pending_moment_id := NULL;
+      v_state.moderador_release_granted_moment_id := NULL;
     WHEN 'pause' THEN
       IF v_state.timer_status <> 'running' THEN
         RAISE EXCEPTION 'timer is not running';
@@ -146,6 +154,8 @@ BEGIN
         v_state.paused_at := v_now;
         v_state.moment_paused_at := v_now;
         v_state.moderador_release_active := false;
+        v_state.moderador_release_pending_moment_id := NULL;
+        v_state.moderador_release_granted_moment_id := NULL;
       ELSE
         v_state.current_index := v_state.current_index + 1;
         v_state.moment_accumulated_ms := 0;
@@ -159,6 +169,9 @@ BEGIN
           v_state.paused_at := NULL;
           v_state.moment_paused_at := NULL;
         END IF;
+        v_state.moderador_release_active := false;
+        v_state.moderador_release_pending_moment_id := NULL;
+        v_state.moderador_release_granted_moment_id := NULL;
       END IF;
     WHEN 'back' THEN
       IF v_state.status <> 'live' OR v_state.current_index <= 0 THEN
@@ -176,6 +189,9 @@ BEGIN
         v_state.started_at := v_now;
         v_state.moment_started_at := v_now;
       END IF;
+      v_state.moderador_release_active := false;
+      v_state.moderador_release_pending_moment_id := NULL;
+      v_state.moderador_release_granted_moment_id := NULL;
     WHEN 'finish' THEN
       IF v_state.timer_status = 'running' THEN
         v_state.accumulated_ms := v_state.accumulated_ms + greatest(0, floor(extract(epoch from (v_now - v_state.started_at)) * 1000))::bigint;
@@ -188,6 +204,8 @@ BEGIN
       v_state.paused_at := v_now;
       v_state.moment_paused_at := v_now;
       v_state.moderador_release_active := false;
+      v_state.moderador_release_pending_moment_id := NULL;
+      v_state.moderador_release_granted_moment_id := NULL;
     WHEN 'set_execution_mode' THEN
       v_state.execution_mode := COALESCE(NULLIF(v_safe_payload->>'mode', ''), v_state.execution_mode);
     WHEN 'adjust_duration' THEN
@@ -240,6 +258,15 @@ BEGIN
       v_state.moderador_release_active := COALESCE((v_safe_payload->>'active')::boolean, false);
       v_state.moderador_release_updated_at := v_now;
       v_state.moderador_release_by := v_actor;
+      IF v_state.moderador_release_active THEN
+        IF v_state.active_culto_id IS NOT NULL AND v_state.current_index >= 0 THEN
+          v_state.moderador_release_granted_moment_id := COALESCE(
+            v_state.all_momentos -> v_state.active_culto_id -> v_state.current_index ->> 'id',
+            v_state.moderador_release_granted_moment_id
+          );
+        END IF;
+        v_state.moderador_release_pending_moment_id := NULL;
+      END IF;
     WHEN 'update_moderador_status' THEN
       IF v_target_id IS NULL THEN
         RAISE EXCEPTION 'moment id is required';
@@ -293,6 +320,8 @@ BEGIN
       v_state.moment_paused_at := NULL;
       v_state.moment_accumulated_ms := 0;
       v_state.moderador_release_active := false;
+      v_state.moderador_release_pending_moment_id := NULL;
+      v_state.moderador_release_granted_moment_id := NULL;
     WHEN 'set_culto', 'update_culto' THEN
       v_target_id := COALESCE(NULLIF(v_culto_payload->>'id', ''), v_target_id, v_state.active_culto_id);
       IF v_target_id IS NULL THEN
@@ -371,6 +400,8 @@ BEGIN
       v_state.moment_paused_at := NULL;
       v_state.moment_accumulated_ms := 0;
       v_state.moderador_release_active := false;
+      v_state.moderador_release_pending_moment_id := NULL;
+      v_state.moderador_release_granted_moment_id := NULL;
     WHEN 'remove_culto', 'delete_culto' THEN
       IF v_target_id IS NULL THEN
         RAISE EXCEPTION 'culto id is required';
@@ -400,6 +431,8 @@ BEGIN
         v_state.timer_status := 'idle';
       END IF;
       v_state.moderador_release_active := false;
+      v_state.moderador_release_pending_moment_id := NULL;
+      v_state.moderador_release_granted_moment_id := NULL;
     WHEN 'duplicate_culto' THEN
       v_target_id := NULLIF(v_culto_payload->>'id', '');
       IF v_target_id IS NULL THEN
@@ -548,6 +581,15 @@ BEGIN
   v_state.current_command := COALESCE(v_current_moment->>'atividade', '');
   v_state.next_command := COALESCE(v_next_moment->>'atividade', '');
   v_state.current_stage := COALESCE(v_current_moment->>'bloco', '');
+  IF v_current_moment IS NULL THEN
+    v_state.moderador_release_pending_moment_id := NULL;
+    v_state.moderador_release_granted_moment_id := NULL;
+    v_state.moderador_release_active := false;
+  ELSIF v_state.moderador_release_granted_moment_id IS DISTINCT FROM (v_current_moment->>'id') THEN
+    v_state.moderador_release_pending_moment_id := v_current_moment->>'id';
+  ELSE
+    v_state.moderador_release_pending_moment_id := NULL;
+  END IF;
   v_state.revision := v_state.revision + 1;
   v_state.updated_at := v_now;
   v_state.updated_by := v_actor;
@@ -575,6 +617,8 @@ BEGIN
     moderador_release_active = v_state.moderador_release_active,
     moderador_release_updated_at = v_state.moderador_release_updated_at,
     moderador_release_by = v_state.moderador_release_by,
+    moderador_release_pending_moment_id = v_state.moderador_release_pending_moment_id,
+    moderador_release_granted_moment_id = v_state.moderador_release_granted_moment_id,
     updated_at = v_state.updated_at,
     updated_by = v_state.updated_by
   WHERE session_id = p_session_id

@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCulto } from '@/contexts/CultoContext';
-import { calcularHorarioTermino, type ModeradorCallStatus, type MomentoProgramacao } from '@/types/culto';
+import { calcularHorarioTermino, type ModeradorCallStatus, type MomentStatus, type MomentoProgramacao } from '@/types/culto';
 import { ShieldCheck, BellRing, UserRoundCheck, Clock3, ListTodo, User, Timer, X, ClipboardCheck } from 'lucide-react';
 import { formatTimerMs } from '@/utils/time';
 
@@ -185,7 +185,7 @@ const TimelineSection = memo(function TimelineSection({
   firstTime: string;
   lastEnd: string;
   blockColors: Record<string, string>;
-  getMomentStatusForIndex: (index: number) => ReturnType<typeof getMomentStatus>;
+  getMomentStatusForIndex: (index: number) => MomentStatus;
   safeMomentElapsedMs: number;
   isPaused: boolean;
 }) {
@@ -309,6 +309,7 @@ const Moderador = () => {
     moderadorReleaseActive,
     moderadorReleaseUpdatedAt,
     moderadorReleaseBy,
+    moderadorReleasePendingMomentId,
     toggleModeradorRelease,
     updateModeradorStatus,
     isSubmitting,
@@ -316,28 +317,20 @@ const Moderador = () => {
   } = useCulto();
   const alertedRef = useRef<Set<string>>(new Set());
   const releasePendingAlertedRef = useRef<Set<string>>(new Set());
-  const previousCurrentIndexRef = useRef(currentIndex);
-  const previousReleaseActiveRef = useRef(moderadorReleaseActive);
   const noticeIdRef = useRef(0);
 
   const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const nextMoment = currentIndex >= 0 ? momentos[currentIndex + 1] : momentos[0] ?? null;
-  const [lockedNextMomentId, setLockedNextMomentId] = useState<string | null>(nextMoment?.id ?? null);
-  const [pendingReleaseMomentId, setPendingReleaseMomentId] = useState<string | null>(null);
-  const [releasedHoldMomentId, setReleasedHoldMomentId] = useState<string | null>(null);
   const [notices, setNotices] = useState<ModeradorNotice[]>([]);
   const currentMomentEnd = currentMoment ? calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao) : '--:--';
   const currentRemainingMs = currentMoment ? Math.max(0, currentMoment.duracao * 60 * 1000 - safeMomentElapsedMs) : 0;
   const isCurrentAlertWindow = !!currentMoment && !isPaused && currentRemainingMs <= 10000 && currentRemainingMs > 0;
-  const pendingReleaseMoment = pendingReleaseMomentId ? momentos.find((momento) => momento.id === pendingReleaseMomentId) ?? null : null;
-  const lockedNextMoment = lockedNextMomentId ? momentos.find((momento) => momento.id === lockedNextMomentId) ?? null : null;
-  const releasedHoldMoment = releasedHoldMomentId ? momentos.find((momento) => momento.id === releasedHoldMomentId) ?? null : null;
-  const displayedNextMoment = pendingReleaseMoment ?? releasedHoldMoment ?? lockedNextMoment ?? nextMoment;
+  const isReleasePending = !!currentMoment && moderadorReleasePendingMomentId === currentMoment.id;
+  const displayedNextMoment = isReleasePending ? currentMoment : nextMoment;
   const displayedNextMomentEnd = displayedNextMoment ? calcularHorarioTermino(displayedNextMoment.horarioInicio, displayedNextMoment.duracao) : '--:--';
-  const isReleasePending = !!pendingReleaseMoment;
-  const pendingReleaseElapsedMs = isReleasePending && currentMoment?.id === pendingReleaseMoment.id ? safeMomentElapsedMs : 0;
+  const pendingReleaseElapsedMs = isReleasePending ? safeMomentElapsedMs : 0;
 
   const callItems = useMemo(() => (
     momentos.filter((momento, index) => {
@@ -412,46 +405,18 @@ const Moderador = () => {
   }, [currentIndex]);
 
   useEffect(() => {
-    const currentChanged = currentIndex !== previousCurrentIndexRef.current;
-    const releaseActivated = moderadorReleaseActive && !previousReleaseActiveRef.current;
-    const releaseDeactivated = !moderadorReleaseActive && previousReleaseActiveRef.current;
+    if (!currentMoment || !isReleasePending) return;
 
-    if (releaseActivated) {
-      setPendingReleaseMomentId(null);
-      setReleasedHoldMomentId(
-        pendingReleaseMomentId && currentMoment
-          ? currentMoment.id
-          : displayedNextMoment?.id ?? currentMoment?.id ?? null
+    const pendingKey = `pending-release-${currentMoment.id}`;
+    if (!releasePendingAlertedRef.current.has(pendingKey)) {
+      releasePendingAlertedRef.current.add(pendingKey);
+      pushNotice(
+        'Liberacao pendente',
+        `${currentMoment.responsavel || currentMoment.atividade} iniciou sem receber liberacao.`,
+        'warning'
       );
-    } else if (releaseDeactivated) {
-      setReleasedHoldMomentId(null);
-      setLockedNextMomentId(nextMoment?.id ?? null);
-    } else if (currentChanged && currentMoment) {
-      if (moderadorReleaseActive) {
-        if (!releasedHoldMomentId) {
-          setPendingReleaseMomentId(null);
-          setLockedNextMomentId(nextMoment?.id ?? null);
-        }
-      } else {
-        setPendingReleaseMomentId(currentMoment.id);
-        setReleasedHoldMomentId(null);
-        const pendingKey = `pending-release-${currentMoment.id}`;
-        if (!releasePendingAlertedRef.current.has(pendingKey)) {
-          releasePendingAlertedRef.current.add(pendingKey);
-          pushNotice(
-            'Liberacao pendente',
-            `${currentMoment.responsavel || currentMoment.atividade} iniciou sem receber liberacao.`,
-            'warning'
-          );
-        }
-      }
-    } else if (!pendingReleaseMomentId && lockedNextMomentId == null && nextMoment) {
-      setLockedNextMomentId(nextMoment.id);
     }
-
-    previousCurrentIndexRef.current = currentIndex;
-    previousReleaseActiveRef.current = moderadorReleaseActive;
-  }, [currentIndex, currentMoment, moderadorReleaseActive, nextMoment, pendingReleaseMomentId, lockedNextMomentId, releasedHoldMomentId, displayedNextMoment]);
+  }, [currentMoment, isReleasePending]);
 
   const handleUpdateModeradorStatus = (id: string, status: ModeradorCallStatus) => {
     updateModeradorStatus(id, status);

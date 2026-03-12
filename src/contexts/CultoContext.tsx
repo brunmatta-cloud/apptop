@@ -35,6 +35,8 @@ interface CultoContextType {
   moderadorReleaseActive: boolean;
   moderadorReleaseUpdatedAt: string | null;
   moderadorReleaseBy: string | null;
+  moderadorReleasePendingMomentId: string | null;
+  moderadorReleaseGrantedMomentId: string | null;
   toggleModeradorRelease: (active: boolean) => void;
   updateModeradorStatus: (id: string, status: ModeradorCallStatus) => void;
   getMomentStatus: (index: number) => MomentStatus;
@@ -86,6 +88,8 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     moderadorReleaseActive: model.remoteState.moderadorReleaseActive,
     moderadorReleaseUpdatedAt: model.remoteState.moderadorReleaseUpdatedAt,
     moderadorReleaseBy: model.remoteState.moderadorReleaseBy,
+    moderadorReleasePendingMomentId: model.remoteState.moderadorReleasePendingMomentId,
+    moderadorReleaseGrantedMomentId: model.remoteState.moderadorReleaseGrantedMomentId,
     toggleModeradorRelease: model.toggleModeradorRelease,
     updateModeradorStatus: model.updateModeradorStatus,
     getMomentStatus: model.getMomentStatus,
