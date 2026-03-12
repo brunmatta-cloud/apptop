@@ -1,78 +1,17 @@
 import { useCulto } from '@/contexts/CultoContext';
 import { Clock, Play, TrendingUp, Timer, Zap, Radio, Volume2, List, Users, Focus } from 'lucide-react';
 import { StatusBadge } from '@/components/culto/StatusBadge';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
-import { useSyncStore } from '@/contexts/SyncStoreContext';
-import { getTimerSnapshot } from '@/features/culto-sync/domain';
 import { formatElapsedLabel } from '@/utils/time';
+import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 
 const Dashboard = () => {
   const { culto, momentos, getMomentStatus, iniciarCulto, pendingAction, isSubmitting, connectionStatus } = useCulto();
-  const { remoteState } = useSyncStore();
+  const liveSnapshot = useLiveTimerSnapshot();
   const navigate = useNavigate();
   const { currentTime, formatTime } = useClock();
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const [liveProgressPercent, setLiveProgressPercent] = useState(0);
-
-  useEffect(() => {
-    if (remoteState.timerStatus !== 'running') {
-      setNowMs(Date.now());
-      return;
-    }
-
-    let animationFrame = 0;
-    const tick = () => {
-      setNowMs(Date.now());
-      animationFrame = window.requestAnimationFrame(tick);
-    };
-
-    animationFrame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [
-    remoteState.timerStatus,
-    remoteState.startedAt,
-    remoteState.accumulatedMs,
-    remoteState.activeCultoId,
-    remoteState.currentIndex,
-  ]);
-
-  useEffect(() => {
-    const totalMs = momentos.reduce((sum, momento) => sum + momento.duracao, 0) * 60 * 1000;
-
-    const updateProgress = (timestampMs: number) => {
-      const snapshot = remoteState.timerStatus === 'running'
-        ? getTimerSnapshot(remoteState, timestampMs)
-        : getTimerSnapshot(remoteState);
-      const nextPercent = totalMs > 0
-        ? Math.min(100, (snapshot.elapsedMs / totalMs) * 100)
-        : 0;
-      setLiveProgressPercent(nextPercent);
-    };
-
-    updateProgress(Date.now());
-
-    if (remoteState.timerStatus !== 'running') {
-      return;
-    }
-
-    let animationFrame = 0;
-    const tick = (timestampMs: number) => {
-      updateProgress(timestampMs);
-      animationFrame = window.requestAnimationFrame(tick);
-    };
-
-    animationFrame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [
-    momentos,
-    remoteState,
-  ]);
-
-  const liveSnapshot = remoteState.timerStatus === 'running'
-    ? getTimerSnapshot(remoteState, nowMs)
-    : getTimerSnapshot(remoteState);
   const safeElapsedMs = Number.isFinite(liveSnapshot.elapsedMs) ? liveSnapshot.elapsedMs : 0;
   const totalMinutes = momentos.reduce((sum, momento) => sum + momento.duracao, 0);
   const totalMs = totalMinutes * 60 * 1000;
