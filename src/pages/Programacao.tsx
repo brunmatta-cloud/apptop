@@ -178,16 +178,16 @@ const Programacao = () => {
 
   return (
     <div className="space-y-5 pb-24 sm:space-y-6 sm:pb-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-display font-bold italic sm:text-3xl">Programacao</h1>
           <p className="max-w-xl text-sm text-muted-foreground">Selecione um culto e gerencie a ordem completa dele.</p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <div className="grid w-full min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_auto] xl:max-w-[720px]">
           <button
             type="button"
             onClick={() => setShowCultoSelector(true)}
-            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-card/70 px-4 py-3 text-left transition-colors hover:bg-muted/30 sm:min-w-[300px]"
+            className="flex min-w-0 w-full items-center justify-between gap-3 rounded-2xl border border-border bg-card/70 px-4 py-3 text-left transition-colors hover:bg-muted/30"
           >
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto selecionado</p>
@@ -195,7 +195,7 @@ const Programacao = () => {
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </button>
-          <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:rounded-lg sm:py-2.5">
+          <button onClick={openAddCulto} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:w-auto md:min-w-[150px] md:rounded-xl md:py-3">
             <Plus className="w-4 h-4" /> Novo Culto
           </button>
         </div>
@@ -222,9 +222,9 @@ const Programacao = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
         <div className="glass-card p-4 sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4">
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Culto</p>
               <h2 className="mt-1 break-words text-xl font-display font-bold sm:text-2xl">{selectedCultoLabel}</h2>
@@ -243,7 +243,7 @@ const Programacao = () => {
                 <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{statusLabel(viewingCulto?.status || 'planejado')}</span>
               </div>
             </div>
-            <div className="grid w-full grid-cols-1 gap-2 min-[480px]:grid-cols-3 sm:w-auto sm:min-w-[320px]">
+            <div className="grid w-full grid-cols-1 gap-2 min-[480px]:grid-cols-3 md:grid-cols-3">
               <button
                 onClick={() => viewingCulto && openEditCulto(viewingCulto)}
                 disabled={!viewingCulto}
@@ -322,36 +322,36 @@ const Programacao = () => {
       </div>
 
       <div>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h3 className="text-lg font-display font-semibold">Momentos</h3>
             <p className="text-sm text-muted-foreground">A lista abaixo mostra apenas o culto escolhido.</p>
           </div>
-          <div className="hidden flex-wrap items-center gap-2 sm:flex">
+          <div className="hidden flex-wrap items-center gap-2 md:flex">
             {momentos.length > 0 && (
               <>
                 <button
                   onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
-                  className="flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
+                  className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
                 >
                   <ImageDown className="w-4 h-4" /> Imagem
                 </button>
                 <button
                   onClick={() => exportarProgramacao(viewingCulto, momentos)}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
                 >
                   <FileSpreadsheet className="w-4 h-4" /> Planilha
                 </button>
               </>
             )}
-            <button onClick={openAddMomento} disabled={isSubmitting} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
+            <button onClick={openAddMomento} disabled={isSubmitting} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
               <Plus className="w-4 h-4" /> Momento
             </button>
           </div>
         </div>
 
         {momentos.length > 0 && (
-          <div className="mb-4 grid grid-cols-3 gap-2 sm:hidden">
+          <div className="mb-4 grid grid-cols-3 gap-2 md:hidden">
             <button
               onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
               className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-3 py-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80"
