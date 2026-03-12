@@ -105,6 +105,12 @@ const PainelChamada = memo(() => {
     return [];
   }), [momentos, currentIndex, momentElapsedSeconds]);
 
+  const chamadosMarcados = useMemo(() => momentos.filter((momento, index) => {
+    const status = getModeradorStatus(momento);
+    if (status === 'pendente') return false;
+    return index !== currentIndex;
+  }), [momentos, currentIndex]);
+
   const primaryCall = chamadaItems[0] ?? null;
   const remainingCalls = primaryCall ? chamadaItems.slice(1) : [];
 
@@ -279,6 +285,37 @@ const PainelChamada = memo(() => {
             <EmptyState message="Nenhum proximo na fila de chamada." />
           )}
         </div>
+      </div>
+
+      <div className="glass-card p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Check className="h-4 w-4 text-status-completed" />
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-status-completed">Ja Chamados</h2>
+          </div>
+          <span className="rounded-full border border-status-completed/30 bg-status-completed/10 px-2.5 py-1 text-[11px] font-semibold text-status-completed">
+            {chamadosMarcados.length}
+          </span>
+        </div>
+
+        {chamadosMarcados.length > 0 ? (
+          <div className="space-y-3">
+            {chamadosMarcados.map((momento) => (
+              <QueueRow
+                key={momento.id}
+                momento={momento}
+                action={
+                  <div className="inline-flex items-center gap-1 rounded-full border border-status-completed/30 bg-status-completed/10 px-3 py-1.5 text-[11px] font-semibold text-status-completed">
+                    <Check className="h-3.5 w-3.5" />
+                    {getModeradorStatus(momento) === 'pronto' ? 'Pronto' : 'Chamado'}
+                  </div>
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState message="Nenhum chamado registrado ainda." />
+        )}
       </div>
     </div>
   );
