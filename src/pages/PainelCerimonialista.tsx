@@ -1,4 +1,4 @@
-import { useCulto } from '@/contexts/CultoContext';
+﻿import { useCulto } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { StatusBadge } from '@/components/culto/StatusBadge';
 import { calcularHorarioTermino, type ExecutionMode, type MomentoProgramacao } from '@/types/culto';
@@ -280,60 +280,63 @@ function PainelCerimonialista() {
               isCurrentMomentDanger ? 'text-red-300' : isCurrentMomentWarning ? 'text-amber-300' : 'text-status-executing'
             }`}>Momento em execucao</span>
           </div>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted sm:h-12 sm:w-12">
-                <Users className="h-5 w-5 text-muted-foreground sm:h-6 sm:w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="break-words text-lg font-bold font-display sm:text-xl">{currentMoment.atividade}</h2>
-                <p className="break-words text-sm text-muted-foreground">
-                  {currentMoment.responsavel} • {currentMoment.ministerio} • {currentMoment.funcao}
-                </p>
-                <div className="mt-3">
-                  <div className="progress-bar h-2 rounded-full">
-                    <div
-                      className="progress-bar-fill rounded-full"
-                      style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
-                    />
-                  </div>
-                  <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                    <span>{currentMoment.horarioInicio}</span>
-                    <span className="text-center font-mono font-semibold text-foreground">
-                      {isPaused ? `${formattedRemaining} pausado` : `${formattedRemaining} restantes`}
-                    </span>
-                    <span className="text-right">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className={`rounded-[1.6rem] border p-4 ${
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-stretch">
+            <div className={`rounded-[1.7rem] border p-4 sm:p-5 lg:p-6 ${
               isCurrentMomentDanger
                 ? 'border-red-400/35 bg-[rgba(127,29,29,0.26)]'
                 : isCurrentMomentWarning
                   ? 'border-amber-400/35 bg-[rgba(120,53,15,0.26)]'
                   : 'border-border/70 bg-background/50'
             }`}>
-              <p className={`text-[11px] uppercase tracking-[0.22em] ${
-                isCurrentMomentDanger ? 'text-red-200/80' : isCurrentMomentWarning ? 'text-amber-200/80' : 'text-muted-foreground'
-              }`}>Tempo restante</p>
-              <p className={`mt-2 font-mono text-5xl font-black leading-none sm:text-6xl ${
-                isCurrentMomentDanger ? 'text-red-100' : isCurrentMomentWarning ? 'text-amber-100' : 'text-foreground'
-              }`}>
-                {formatTimerMs(currentMomentRemainingMs)}
-              </p>
-              <p className={`mt-2 text-sm ${
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className={`text-[11px] uppercase tracking-[0.22em] ${
+                    isCurrentMomentDanger ? 'text-red-200/80' : isCurrentMomentWarning ? 'text-amber-200/80' : 'text-muted-foreground'
+                  }`}>Agora no palco</p>
+                  <h2 className="mt-2 break-words text-xl font-black font-display leading-tight text-foreground sm:text-2xl lg:text-3xl">
+                    {currentMoment.atividade}
+                  </h2>
+                  <p className="mt-2 break-words text-sm text-muted-foreground sm:text-base">{currentMoment.responsavel}</p>
+                </div>
+                <div className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  {currentMoment.funcao}
+                </div>
+              </div>
+              <div className="mt-5">
+                <p className={`font-mono text-5xl font-black leading-none sm:text-6xl lg:text-7xl ${
+                  isCurrentMomentDanger ? 'text-red-100' : isCurrentMomentWarning ? 'text-amber-100' : 'text-foreground'
+                }`}>
+                  {formatTimerMs(currentMomentRemainingMs)}
+                </p>
+              </div>
+              <p className={`mt-3 text-sm sm:text-base ${
                 isCurrentMomentDanger ? 'text-red-100/90' : isCurrentMomentWarning ? 'text-amber-100/90' : 'text-muted-foreground'
               }`}>
                 {isPaused
-                  ? 'Cronometro pausado'
+                  ? 'Cronometro pausado no momento atual'
                   : isCurrentMomentDanger
                     ? 'Atencao maxima: faltam menos de 20 segundos'
                     : isCurrentMomentWarning
                       ? 'Atencao: falta menos de 1 minuto'
-                      : `${formattedRemaining} restantes`}
+                      : 'Tempo restante do momento em execucao'}
               </p>
+              <div className="mt-4">
+                <div className="progress-bar h-2.5 rounded-full">
+                  <div
+                    className="progress-bar-fill rounded-full"
+                    style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground sm:text-sm">
+                  <span>{currentMoment.horarioInicio}</span>
+                  <span className="font-semibold text-foreground">{formattedRemaining}</span>
+                  <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-border/60 bg-background/55 p-4 sm:p-5">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Resumo do momento</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
@@ -342,6 +345,10 @@ function PainelCerimonialista() {
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
                   <p className="mt-1 font-mono text-lg font-semibold text-foreground">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Ministerio</p>
+                  <p className="mt-1 break-words text-sm font-medium text-foreground">{currentMoment.ministerio}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Responsavel</p>
@@ -385,72 +392,6 @@ function PainelCerimonialista() {
                     : 'Liberar Agora'}
               </span>
             </button>
-          </div>
-        </div>
-      )}
-
-      {safeCulto.status === 'em_andamento' && (
-        <div className="glass-card border border-primary/15 p-4 sm:p-5">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controles</h3>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2.5 xl:hidden sm:gap-3">
-              <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <SkipBack className="h-4 w-4" /> <span>Voltar</span>
-              </button>
-              <button type="button" onClick={pular} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <FastForward className="h-4 w-4" /> <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
-              </button>
-              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
-                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
-                  <Play className="h-4 w-4 transition-transform duration-200 ease-out" />
-                  <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
-                </span>
-              </button>
-              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
-                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
-                  <Pause className="h-4 w-4 transition-transform duration-200 ease-out" />
-                  <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
-                </span>
-              </button>
-              <button type="button" onClick={avancar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
-                <Check className="h-4 w-4" /> <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
-              </button>
-            </div>
-
-            <div className="hidden xl:grid xl:grid-cols-[repeat(6,minmax(0,1fr))] xl:gap-2">
-              <button type="button" onClick={voltar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
-                <SkipBack className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
-                <span>Voltar</span>
-              </button>
-
-              <button type="button" onClick={pular} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
-                <FastForward className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
-                <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
-              </button>
-
-              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.22)] bg-[hsl(var(--status-alert)/0.12)] px-3 py-3 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all hover:bg-[hsl(var(--status-alert)/0.2)] disabled:pointer-events-none disabled:opacity-50">
-                <Play className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
-                <span>{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
-              </button>
-
-              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/90 px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary disabled:pointer-events-none disabled:opacity-50">
-                <Pause className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
-                <span>{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
-              </button>
-
-              <button type="button" onClick={avancar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50">
-                <SkipForward className="h-4.5 w-4.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-                <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span>
-              </button>
-
-              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-destructive/20 bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50">
-                <Check className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
-                <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -516,7 +457,74 @@ function PainelCerimonialista() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+
+{safeCulto.status === 'em_andamento' && (
+        <div className="glass-card border border-primary/15 p-4 sm:p-5">
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controles</h3>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2.5 xl:hidden sm:gap-3">
+              <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <SkipBack className="h-4 w-4" /> <span>Voltar</span>
+              </button>
+              <button type="button" onClick={pular} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <FastForward className="h-4 w-4" /> <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
+              </button>
+              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
+                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
+                  <Play className="h-4 w-4 transition-transform duration-200 ease-out" />
+                  <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
+                </span>
+              </button>
+              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
+                <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
+                  <Pause className="h-4 w-4 transition-transform duration-200 ease-out" />
+                  <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
+                </span>
+              </button>
+              <button type="button" onClick={avancar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+                <Check className="h-4 w-4" /> <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
+              </button>
+            </div>
+
+            <div className="hidden xl:grid xl:grid-cols-[repeat(6,minmax(0,1fr))] xl:gap-2">
+              <button type="button" onClick={voltar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
+                <SkipBack className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
+                <span>Voltar</span>
+              </button>
+
+              <button type="button" onClick={pular} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
+                <FastForward className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
+                <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
+              </button>
+
+              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.22)] bg-[hsl(var(--status-alert)/0.12)] px-3 py-3 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all hover:bg-[hsl(var(--status-alert)/0.2)] disabled:pointer-events-none disabled:opacity-50">
+                <Play className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
+                <span>{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
+              </button>
+
+              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/90 px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary disabled:pointer-events-none disabled:opacity-50">
+                <Pause className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
+                <span>{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
+              </button>
+
+              <button type="button" onClick={avancar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50">
+                <SkipForward className="h-4.5 w-4.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span>
+              </button>
+
+              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-destructive/20 bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50">
+                <Check className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
+                <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="order-2 min-w-0 space-y-4 xl:order-1">
           <div className="glass-card p-4 sm:p-5">
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Programacao completa</h3>
@@ -569,7 +577,7 @@ function PainelCerimonialista() {
                   {chamadaItems.map((momento) => (
                     <div key={momento.id} className="rounded-xl border border-status-alert/20 bg-status-alert/10 p-3">
                       <p className="text-sm font-semibold">{momento.responsavel}</p>
-                      <p className="text-xs text-muted-foreground">{momento.ministerio} • {momento.funcao}</p>
+                      <p className="text-xs text-muted-foreground">{momento.ministerio} â€¢ {momento.funcao}</p>
                       <p className="text-xs text-muted-foreground">{momento.atividade} as {momento.horarioInicio}</p>
                       <button
                         type="button"
@@ -624,3 +632,5 @@ function PainelCerimonialista() {
 }
 
 export default PainelCerimonialista;
+
+
