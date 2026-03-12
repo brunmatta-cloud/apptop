@@ -200,9 +200,19 @@ const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefine
   antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento.antecedenciaChamada)) : 0,
   chamado: Boolean(momento?.chamado),
   duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento.duracaoOriginal) : undefined,
-  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'pronto'
     ? momento.moderadorStatus
-    : 'pendente',
+    : momento?.moderadorStatus === 'confirmado'
+      ? 'pronto'
+      : momento?.chamado
+        ? 'chamado'
+        : 'pendente',
+  confirmacaoStatus: momento?.confirmacaoStatus === 'confirmado' || momento?.confirmacaoStatus === 'ausente'
+    ? momento.confirmacaoStatus
+    : momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+      ? momento.moderadorStatus
+      : 'pendente',
+  responsavelOriginal: typeof momento?.responsavelOriginal === 'string' ? momento.responsavelOriginal : undefined,
 });
 
 const normalizeMomentosRecord = (value: unknown, cultos: Culto[]) => {
@@ -587,7 +597,7 @@ export const updateModeradorStatusTransition = (state: RemoteCultoState, id: str
         momento.id === id
           ? {
               ...momento,
-              chamado: status === 'pendente' ? momento.chamado : true,
+              chamado: status === 'pendente' ? false : true,
               moderadorStatus: status,
             }
           : momento

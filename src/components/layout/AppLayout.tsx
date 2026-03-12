@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen,
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/cerimonialista', label: 'Cerimonialista', icon: Radio },
   { to: '/sonoplastia', label: 'Sonoplastia', icon: Volume2 },
   { to: '/chamada', label: 'Chamada', icon: Users },
+  { to: '/confirmacao', label: 'Confirmacao', icon: ClipboardCheck },
   { to: '/moderador', label: 'Moderador', icon: ShieldCheck },
   { to: '/linha-do-tempo', label: 'Linha do Tempo', icon: Clock },
   { to: '/cronometro', label: 'Cronometro', icon: Timer },
@@ -144,7 +145,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              className="h-full w-[88vw] max-w-[320px] border-r border-border bg-card shadow-2xl"
+            className="h-full w-[88vw] max-w-[360px] border-r border-border bg-card shadow-2xl"
             >
               <nav className="h-full space-y-1 overflow-y-auto p-3 pb-8">
                 {navItems.map((item) => (
@@ -188,7 +189,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <div
           key={`${location.pathname}-${isMobile ? 'mobile' : 'desktop'}`}
           data-mobile={isMobile}
-          className="mx-auto w-full max-w-[1400px] min-w-0 px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 lg:px-8 lg:py-8"
+          className="mx-auto w-full max-w-[1600px] min-w-0 px-3 py-3 sm:px-4 sm:py-4 md:px-5 md:py-5 lg:px-6 lg:py-6 xl:px-8 xl:py-8"
         >
           {children}
         </div>

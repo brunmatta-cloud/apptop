@@ -23,9 +23,17 @@ const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefine
   observacao: momento?.observacao || '',
   antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento.antecedenciaChamada)) : 0,
   chamado: Boolean(momento?.chamado),
-  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'pronto'
     ? momento.moderadorStatus
+    : momento?.moderadorStatus === 'confirmado'
+      ? 'pronto'
     : 'pendente',
+  confirmacaoStatus: momento?.confirmacaoStatus === 'confirmado' || momento?.confirmacaoStatus === 'ausente'
+    ? momento.confirmacaoStatus
+    : momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
+      ? momento.moderadorStatus
+      : 'pendente',
+  responsavelOriginal: typeof momento?.responsavelOriginal === 'string' ? momento.responsavelOriginal : undefined,
   duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento.duracaoOriginal) : undefined,
 });
 

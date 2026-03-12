@@ -2,6 +2,14 @@ import { useCulto } from '@/contexts/CultoContext';
 import { Users, Play, Phone, Clock, Check, User } from 'lucide-react';
 import { useMemo, memo } from 'react';
 import { useClock } from '@/hooks/useClock';
+import type { MomentoProgramacao } from '@/types/culto';
+
+const getModeradorStatus = (momento: MomentoProgramacao) => {
+  if (momento.moderadorStatus === 'chamado' || momento.moderadorStatus === 'pronto') {
+    return momento.moderadorStatus;
+  }
+  return momento.chamado ? 'chamado' : 'pendente';
+};
 
 const PainelChamada = memo(() => {
   const { culto, momentos, currentIndex, momentElapsedSeconds, getMomentStatus, marcarChamado, isSubmitting } = useCulto();
@@ -14,7 +22,7 @@ const PainelChamada = memo(() => {
     const minutesUntil = momentos.slice(currentIndex >= 0 ? currentIndex : 0, i).reduce((s, x) => s + x.duracao, 0);
     const adjustedMinutes = minutesUntil - Math.floor(momentElapsedSeconds / 60);
     const threshold = Math.max(m.antecedenciaChamada, 10);
-    return adjustedMinutes <= threshold && !m.chamado;
+    return adjustedMinutes <= threshold && getModeradorStatus(m) === 'pendente';
   }), [momentos, currentIndex, momentElapsedSeconds]);
 
   const proximosChamar = useMemo(() => momentos.filter((m, i) => {

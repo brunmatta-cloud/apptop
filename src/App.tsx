@@ -15,6 +15,7 @@ const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const PainelCerimonialista = React.lazy(() => import("./pages/PainelCerimonialista"));
 const PainelSonoplastia = React.lazy(() => import("./pages/PainelSonoplastia"));
 const PainelChamada = React.lazy(() => import("./pages/PainelChamada"));
+const ListaConfirmacao = React.lazy(() => import("./pages/ListaConfirmacao"));
 const Programacao = React.lazy(() => import("./pages/Programacao"));
 const LinhaDoTempo = React.lazy(() => import("./pages/LinhaDoTempo"));
 const Moderador = React.lazy(() => import("./pages/Moderador"));
@@ -63,6 +64,7 @@ const App = () => (
                     <Route path="/cerimonialista" element={withPageGuard(<PainelCerimonialista />, "O painel do cerimonialista encontrou um erro, mas a navegacao foi preservada.")} />
                     <Route path="/sonoplastia" element={withPageGuard(<PainelSonoplastia />)} />
                     <Route path="/chamada" element={withPageGuard(<PainelChamada />)} />
+                    <Route path="/confirmacao" element={withPageGuard(<ListaConfirmacao />)} />
                     <Route path="/programacao" element={withPageGuard(<Programacao />)} />
                     <Route path="/editor" element={withPageGuard(<Programacao />)} />
                     <Route path="/linha-do-tempo" element={withPageGuard(<LinhaDoTempo />)} />

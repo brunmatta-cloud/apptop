@@ -16,7 +16,8 @@ export type TipoMomento =
 export type TipoMidia = 'audio' | 'video' | 'nenhum';
 
 export type ExecutionMode = 'automatico' | 'manual';
-export type ModeradorCallStatus = 'pendente' | 'chamado' | 'confirmado' | 'ausente';
+export type ModeradorCallStatus = 'pendente' | 'chamado' | 'pronto';
+export type ConfirmacaoPresencaStatus = 'pendente' | 'confirmado' | 'ausente';
 
 export type UserRole = 'admin' | 'cerimonialista' | 'sonoplastia' | 'participante';
 
@@ -49,6 +50,8 @@ export interface MomentoProgramacao {
   chamado: boolean;
   duracaoOriginal?: number; // minutes - original duration before adjustments
   moderadorStatus?: ModeradorCallStatus;
+  confirmacaoStatus?: ConfirmacaoPresencaStatus;
+  responsavelOriginal?: string;
 }
 
 export interface ArteModelo {

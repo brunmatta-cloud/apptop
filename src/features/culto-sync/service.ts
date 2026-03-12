@@ -147,7 +147,7 @@ const runLegacyTransition = (command: string, state: RemoteCultoState, payload: 
       return updateModeradorStatusTransition(
         state,
         String(payload.id ?? ''),
-        String(payload.status ?? 'pendente') as 'pendente' | 'chamado' | 'confirmado' | 'ausente',
+        String(payload.status ?? 'pendente') as 'pendente' | 'chamado' | 'pronto',
       );
     case 'adjust_duration':
       return adjustCurrentMomentDurationTransition(state, Number(payload.deltaSeconds ?? 0));
