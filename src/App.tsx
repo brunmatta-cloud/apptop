@@ -8,6 +8,7 @@ import { CronometroProvider } from "@/contexts/CronometroContext";
 import { SyncStoreProvider } from "@/contexts/SyncStoreContext";
 import AppErrorBoundary from "@/components/app/AppErrorBoundary";
 import AppLayout from "@/components/layout/AppLayout";
+import { AppThemeProvider } from "@/components/theme/AppThemeProvider";
 import React, { Suspense } from "react";
 
 // Lazy load all pages for better initial load
@@ -50,40 +51,42 @@ const withPageGuard = (element: React.ReactNode, description?: string) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SyncStoreProvider>
-          <CultoProvider>
-            <CronometroProvider>
-              <AppLayout>
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/" element={withPageGuard(<Dashboard />)} />
-                    <Route path="/cerimonialista" element={withPageGuard(<PainelCerimonialista />, "O painel do cerimonialista encontrou um erro, mas a navegacao foi preservada.")} />
-                    <Route path="/sonoplastia" element={withPageGuard(<PainelSonoplastia />)} />
-                    <Route path="/chamada" element={withPageGuard(<PainelChamada />)} />
-                    <Route path="/confirmacao" element={withPageGuard(<ListaConfirmacao />)} />
-                    <Route path="/programacao" element={withPageGuard(<Programacao />)} />
-                    <Route path="/editor" element={withPageGuard(<Programacao />)} />
-                    <Route path="/linha-do-tempo" element={withPageGuard(<LinhaDoTempo />)} />
-                    <Route path="/moderador" element={withPageGuard(<Moderador />)} />
-                    <Route path="/artes" element={withPageGuard(<GeradorArtes />)} />
-                    <Route path="/foco" element={withPageGuard(<ModoFoco />)} />
-                    <Route path="/configuracoes" element={withPageGuard(<Configuracoes />)} />
-                    <Route path="/estatisticas" element={withPageGuard(<Estatisticas />)} />
-                    <Route path="/cronometro" element={withPageGuard(<Cronometro />, "O cronometro falhou ao renderizar. A tela foi contida para evitar pagina preta.")} />
-                    <Route path="/cronometro-controle" element={withPageGuard(<CronometroControle />, "O controle do cronometro falhou ao renderizar. A aplicacao foi mantida ativa.")} />
-                    <Route path="*" element={withPageGuard(<NotFound />)} />
-                  </Routes>
-                </Suspense>
-              </AppLayout>
-            </CronometroProvider>
-          </CultoProvider>
-        </SyncStoreProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AppThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="culto-ui-theme" disableTransitionOnChange>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SyncStoreProvider>
+            <CultoProvider>
+              <CronometroProvider>
+                <AppLayout>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={withPageGuard(<Dashboard />)} />
+                      <Route path="/cerimonialista" element={withPageGuard(<PainelCerimonialista />, "O painel do cerimonialista encontrou um erro, mas a navegacao foi preservada.")} />
+                      <Route path="/sonoplastia" element={withPageGuard(<PainelSonoplastia />)} />
+                      <Route path="/chamada" element={withPageGuard(<PainelChamada />)} />
+                      <Route path="/confirmacao" element={withPageGuard(<ListaConfirmacao />)} />
+                      <Route path="/programacao" element={withPageGuard(<Programacao />)} />
+                      <Route path="/editor" element={withPageGuard(<Programacao />)} />
+                      <Route path="/linha-do-tempo" element={withPageGuard(<LinhaDoTempo />)} />
+                      <Route path="/moderador" element={withPageGuard(<Moderador />)} />
+                      <Route path="/artes" element={withPageGuard(<GeradorArtes />)} />
+                      <Route path="/foco" element={withPageGuard(<ModoFoco />)} />
+                      <Route path="/configuracoes" element={withPageGuard(<Configuracoes />)} />
+                      <Route path="/estatisticas" element={withPageGuard(<Estatisticas />)} />
+                      <Route path="/cronometro" element={withPageGuard(<Cronometro />, "O cronometro falhou ao renderizar. A tela foi contida para evitar pagina preta.")} />
+                      <Route path="/cronometro-controle" element={withPageGuard(<CronometroControle />, "O controle do cronometro falhou ao renderizar. A aplicacao foi mantida ativa.")} />
+                      <Route path="*" element={withPageGuard(<NotFound />)} />
+                    </Routes>
+                  </Suspense>
+                </AppLayout>
+              </CronometroProvider>
+            </CultoProvider>
+          </SyncStoreProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AppThemeProvider>
   </QueryClientProvider>
 );
 

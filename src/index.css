@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    color-scheme: dark;
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'Inter', sans-serif;
 
@@ -66,6 +67,63 @@
     --sidebar-border: 220 15% 16%;
     --sidebar-ring: 217 91% 60%;
   }
+
+  .light {
+    color-scheme: light;
+
+    --background: 214 45% 97%;
+    --foreground: 222 47% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 12%;
+
+    --primary: 217 91% 56%;
+    --primary-foreground: 220 30% 98%;
+
+    --secondary: 210 38% 94%;
+    --secondary-foreground: 222 47% 18%;
+
+    --muted: 214 30% 92%;
+    --muted-foreground: 215 16% 39%;
+
+    --accent: 212 40% 92%;
+    --accent-foreground: 222 47% 18%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 24% 86%;
+    --input: 214 24% 86%;
+    --ring: 217 91% 56%;
+
+    --status-completed: 145 63% 42%;
+    --status-completed-foreground: 145 63% 97%;
+    --status-executing: 217 91% 56%;
+    --status-executing-foreground: 217 91% 98%;
+    --status-alert: 35 92% 50%;
+    --status-alert-foreground: 35 92% 12%;
+    --status-delay: 0 72% 51%;
+    --status-delay-foreground: 0 0% 100%;
+    --status-next: 270 58% 52%;
+    --status-next-foreground: 270 58% 97%;
+    --status-future: 215 16% 55%;
+    --status-future-foreground: 214 32% 96%;
+
+    --glass-bg: 0 0% 100% / 0.84;
+    --glass-border: 214 26% 82% / 0.95;
+
+    --sidebar-background: 210 50% 99%;
+    --sidebar-foreground: 222 47% 18%;
+    --sidebar-primary: 217 91% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 212 38% 95%;
+    --sidebar-accent-foreground: 222 47% 18%;
+    --sidebar-border: 214 24% 88%;
+    --sidebar-ring: 217 91% 56%;
+  }
 }
 
 @layer base {
@@ -81,6 +139,10 @@
     /* Prevent layout shifts from scrollbar */
     overflow-y: scroll;
     overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at top, hsl(var(--primary) / 0.12), transparent 34%),
+      radial-gradient(circle at bottom right, hsl(var(--status-next) / 0.10), transparent 26%);
+    background-attachment: fixed;
   }
 
   html, body, #root {
@@ -107,6 +169,7 @@
     @apply bg-card/60 backdrop-blur-xl border border-border/30 rounded-xl;
     /* GPU layer for smooth animations */
     transform: translateZ(0);
+    box-shadow: 0 24px 60px -36px rgba(15, 23, 42, 0.42);
   }
 
   .status-completed {
@@ -137,6 +200,12 @@
     transition: transform 1s linear;
     will-change: transform;
   }
+}
+
+html.light .glass-card {
+  background-color: hsl(var(--card) / 0.82);
+  border-color: hsl(var(--border) / 0.95);
+  box-shadow: 0 26px 70px -40px rgba(15, 23, 42, 0.22);
 }
 
 @layer utilities {
