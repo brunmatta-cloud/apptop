@@ -475,11 +475,22 @@ export const startCultoTransition = (state: RemoteCultoState, nowIso: string): T
     return { ok: false, reason: 'O culto ja esta em andamento.' };
   }
 
-  const nextMomentos = momentos.map((momento) => ({
-    ...momento,
-    duracaoOriginal: momento.duracaoOriginal ?? momento.duracao,
-    chamado: false,
-  }));
+  let didResetAnyMoment = false;
+  const nextMomentos = momentos.map((momento) => {
+    const nextDuracaoOriginal = momento.duracaoOriginal ?? momento.duracao;
+    const nextChamado = false;
+
+    if (momento.duracaoOriginal === nextDuracaoOriginal && momento.chamado === nextChamado) {
+      return momento;
+    }
+
+    didResetAnyMoment = true;
+    return {
+      ...momento,
+      duracaoOriginal: nextDuracaoOriginal,
+      chamado: nextChamado,
+    };
+  });
 
   const nextState = refreshCommands(resetMomentTimer({
       ...setCultoStatus({
@@ -487,7 +498,7 @@ export const startCultoTransition = (state: RemoteCultoState, nowIso: string): T
       status: 'live',
       allMomentos: {
         ...state.allMomentos,
-        [state.activeCultoId]: nextMomentos,
+        [state.activeCultoId]: didResetAnyMoment ? nextMomentos : momentos,
       },
       currentIndex: nextMomentos.length > 0 ? 0 : -1,
       accumulatedMs: 0,

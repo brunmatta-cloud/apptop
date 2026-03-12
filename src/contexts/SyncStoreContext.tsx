@@ -33,6 +33,8 @@ const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
 const TIMER_COMMANDS = new Set(['start', 'resume', 'pause', 'advance', 'skip', 'back', 'finish']);
 const ENABLE_TIMER_FLOW_DEBUG = false;
+const START_TRACE_WINDOW_MS = 5000;
+const START_TRACE_SAMPLE_MS = 500;
 
 const createActorId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -61,6 +63,11 @@ type TimerFlowTrace = {
   confirmRefreshAtMs?: number;
 };
 
+type StartTrace = {
+  id: string;
+  startedAtMs: number;
+};
+
 const getStateFingerprint = (state: RemoteCultoState) => JSON.stringify({
   revision: state.revision,
   updatedAt: state.updatedAt,
@@ -70,9 +77,13 @@ const getStateFingerprint = (state: RemoteCultoState) => JSON.stringify({
   currentIndex: state.currentIndex,
   executionMode: state.executionMode,
   timerStatus: state.timerStatus,
-  cultos: state.cultos,
-  allMomentos: state.allMomentos,
-  settings: state.settings,
+  currentCommand: state.currentCommand,
+  nextCommand: state.nextCommand,
+  currentStage: state.currentStage,
+  startedAt: state.startedAt,
+  momentStartedAt: state.momentStartedAt,
+  accumulatedMs: state.accumulatedMs,
+  momentAccumulatedMs: state.momentAccumulatedMs,
 });
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -194,6 +205,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const consecutiveRefreshFailuresRef = useRef(0);
   const hasSuccessfulSyncRef = useRef(false);
   const timerFlowTraceRef = useRef<TimerFlowTrace | null>(null);
+  const startTraceRef = useRef<StartTrace | null>(null);
   const [remoteState, setRemoteState] = useState<RemoteCultoState>(defaultRemoteState);
   const [uiState, setUiState] = useState<UiSyncState>({
     isHydrating: true,
@@ -337,6 +349,12 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const optimisticNowMs = Date.now();
           const optimisticNowIso = new Date(optimisticNowMs).toISOString();
           const isTimerCommand = TIMER_COMMANDS.has(command);
+          if (command === 'start') {
+            startTraceRef.current = {
+              id: `start-trace-${optimisticNowMs}`,
+              startedAtMs: optimisticNowMs,
+            };
+          }
           if (TIMER_COMMANDS.has(command)) {
             const trace: TimerFlowTrace = {
               id: `${command}-${optimisticNowMs}`,
@@ -488,6 +506,61 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     autoAdvanceRevisionRef.current = current.revision;
     void runCommand('auto-advance', 'advance');
   }, [remoteState, runCommand]);
+
+  useEffect(() => {
+    const trace = startTraceRef.current;
+    if (!trace) {
+      return;
+    }
+
+    const logSample = () => {
+      const activeTrace = startTraceRef.current;
+      if (!activeTrace) {
+        return;
+      }
+
+      const nowMs = Date.now();
+      if (nowMs - activeTrace.startedAtMs > START_TRACE_WINDOW_MS) {
+        startTraceRef.current = null;
+        return;
+      }
+
+      const state = remoteStateRef.current;
+      const currentMoment = getCurrentMoment(state);
+      const snapshot = getTimerSnapshot(state, nowMs);
+      const currentRemainingMs = currentMoment
+        ? Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs)
+        : 0;
+
+      console.info('[sync:start-trace]', {
+        id: activeTrace.id,
+        msFromStart: nowMs - activeTrace.startedAtMs,
+        timerStatus: state.timerStatus,
+        startedAt: state.startedAt,
+        momentStartedAt: state.momentStartedAt,
+        accumulatedMs: state.accumulatedMs,
+        momentAccumulatedMs: state.momentAccumulatedMs,
+        currentIndex: state.currentIndex,
+        currentMoment: currentMoment
+          ? {
+              id: currentMoment.id,
+              atividade: currentMoment.atividade,
+              horarioInicio: currentMoment.horarioInicio,
+              duracao: currentMoment.duracao,
+            }
+          : null,
+        momentElapsedMs: snapshot.momentElapsedMs,
+        currentRemainingMs,
+      });
+    };
+
+    logSample();
+    const interval = window.setInterval(logSample, START_TRACE_SAMPLE_MS);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [remoteState]);
 
   const value = useMemo<SyncStoreContextValue>(() => ({
     remoteState,
