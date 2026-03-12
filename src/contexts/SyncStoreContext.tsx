@@ -28,10 +28,11 @@ interface SyncStoreContextValue {
 }
 
 const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
-const REFRESH_INTERVAL_MS = 500;
+const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
 const TIMER_COMMANDS = new Set(['start', 'resume', 'pause', 'advance', 'skip', 'back', 'finish']);
+const ENABLE_TIMER_FLOW_DEBUG = false;
 
 const createActorId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -41,6 +42,11 @@ const createActorId = () => {
 };
 
 const logSync = (scope: string, detail: Record<string, unknown> = {}) => {
+  console.info(`[sync:${scope}]`, detail);
+};
+
+const logTimerFlow = (scope: string, detail: Record<string, unknown> = {}) => {
+  if (!ENABLE_TIMER_FLOW_DEBUG) return;
   console.info(`[sync:${scope}]`, detail);
 };
 
@@ -218,7 +224,9 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const currentFingerprint = fingerprintRef.current;
 
     if (next.revision < remoteStateRef.current.revision) {
-      logSync('stale-state-ignored', { origin, currentRevision: remoteStateRef.current.revision, nextRevision: next.revision });
+      if (origin !== 'safety-poll') {
+        logSync('stale-state-ignored', { origin, currentRevision: remoteStateRef.current.revision, nextRevision: next.revision });
+      }
       return;
     }
     if (
@@ -226,11 +234,15 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       next.updatedAt === remoteStateRef.current.updatedAt &&
       nextFingerprint === currentFingerprint
     ) {
-      logSync('duplicate-state-ignored', { origin, revision: next.revision, updatedAt: next.updatedAt });
+      if (origin !== 'safety-poll') {
+        logSync('duplicate-state-ignored', { origin, revision: next.revision, updatedAt: next.updatedAt });
+      }
       return;
     }
     if (next.revision === remoteStateRef.current.revision && next.updatedAt < remoteStateRef.current.updatedAt) {
-      logSync('outdated-state-ignored', { origin, revision: next.revision, currentUpdatedAt: remoteStateRef.current.updatedAt, nextUpdatedAt: next.updatedAt });
+      if (origin !== 'safety-poll') {
+        logSync('outdated-state-ignored', { origin, revision: next.revision, currentUpdatedAt: remoteStateRef.current.updatedAt, nextUpdatedAt: next.updatedAt });
+      }
       return;
     }
 
@@ -255,7 +267,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         activeTrace.confirmRefreshAtMs = nowMs;
       }
 
-      logSync('timer-flow-state', {
+      logTimerFlow('timer-flow-state', {
         id: activeTrace.id,
         command: activeTrace.command,
         origin,
@@ -333,7 +345,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             };
             timerFlowTraceRef.current = trace;
             (window as Window & { __timerFlowTrace?: TimerFlowTrace | null }).__timerFlowTrace = trace;
-            logSync('timer-flow-command', {
+            logTimerFlow('timer-flow-command', {
               id: trace.id,
               command,
               expectedRevision,
@@ -381,7 +393,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           });
           await refreshFromServer(`${command}:rollback`);
           if (TIMER_COMMANDS.has(command)) {
-            logSync('timer-flow-error', {
+            logTimerFlow('timer-flow-error', {
               id: timerFlowTraceRef.current?.id,
               command,
               msFromCommand: timerFlowTraceRef.current ? Date.now() - timerFlowTraceRef.current.startedAtMs : null,
