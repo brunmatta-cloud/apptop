@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
-import { useCeremonySession } from '@/contexts/SyncStoreContext';
+import { useCeremonySession, useSyncStore } from '@/contexts/SyncStoreContext';
 import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 
 interface CultoContextType {
@@ -46,20 +46,10 @@ interface CultoContextType {
   connectionStatus: ConnectionStatus;
 }
 
-interface CultoTimerContextType {
-  isPaused: boolean;
-  elapsedSeconds: number;
-  momentElapsedSeconds: number;
-  elapsedMs: number;
-  momentElapsedMs: number;
-}
-
 const CultoContext = React.createContext<CultoContextType | null>(null);
-const CultoTimerContext = React.createContext<CultoTimerContextType | null>(null);
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const model = useCeremonySession();
-  const liveTimer = useLiveTimerSnapshot();
 
   const value = React.useMemo<CultoContextType>(() => ({
     cultos: model.cultos,
@@ -103,19 +93,7 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     connectionStatus: model.uiState.connectionStatus,
   }), [model]);
 
-  const timerValue = React.useMemo<CultoTimerContextType>(() => ({
-    isPaused: model.isPaused,
-    elapsedSeconds: liveTimer.elapsedSeconds,
-    momentElapsedSeconds: liveTimer.momentElapsedSeconds,
-    elapsedMs: liveTimer.elapsedMs,
-    momentElapsedMs: liveTimer.momentElapsedMs,
-  }), [liveTimer, model.isPaused]);
-
-  return (
-    <CultoContext.Provider value={value}>
-      <CultoTimerContext.Provider value={timerValue}>{children}</CultoTimerContext.Provider>
-    </CultoContext.Provider>
-  );
+  return <CultoContext.Provider value={value}>{children}</CultoContext.Provider>;
 };
 
 export const useCulto = () => {
@@ -125,7 +103,14 @@ export const useCulto = () => {
 };
 
 export const useCultoTimer = () => {
-  const ctx = React.useContext(CultoTimerContext);
-  if (!ctx) throw new Error('useCultoTimer must be used within CultoProvider');
-  return ctx;
+  const { remoteState } = useSyncStore();
+  const liveTimer = useLiveTimerSnapshot();
+
+  return React.useMemo(() => ({
+    isPaused: remoteState.timerStatus === 'paused',
+    elapsedSeconds: liveTimer.elapsedSeconds,
+    momentElapsedSeconds: liveTimer.momentElapsedSeconds,
+    elapsedMs: liveTimer.elapsedMs,
+    momentElapsedMs: liveTimer.momentElapsedMs,
+  }), [liveTimer, remoteState.timerStatus]);
 };
