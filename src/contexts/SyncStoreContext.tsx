@@ -28,6 +28,7 @@ interface SyncStoreContextValue {
 }
 
 const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
+const SyncCommandContext = createContext<Omit<SyncStoreContextValue, 'remoteState'> | null>(null);
 let liveRemoteStateSnapshot: RemoteCultoState = defaultRemoteState;
 const liveRemoteStateListeners = new Set<() => void>();
 
@@ -586,13 +587,32 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     runCommand,
   }), [refreshFromServer, remoteState, runCommand, uiState]);
 
-  return <SyncStoreContext.Provider value={value}>{children}</SyncStoreContext.Provider>;
+  const commandValue = useMemo<Omit<SyncStoreContextValue, 'remoteState'>>(() => ({
+    uiState,
+    actorId: actorIdRef.current,
+    refreshFromServer,
+    runCommand,
+  }), [refreshFromServer, runCommand, uiState]);
+
+  return (
+    <SyncCommandContext.Provider value={commandValue}>
+      <SyncStoreContext.Provider value={value}>{children}</SyncStoreContext.Provider>
+    </SyncCommandContext.Provider>
+  );
 };
 
 export const useSyncStore = () => {
   const context = useContext(SyncStoreContext);
   if (!context) {
     throw new Error('useSyncStore must be used within SyncStoreProvider');
+  }
+  return context;
+};
+
+export const useSyncCommands = () => {
+  const context = useContext(SyncCommandContext);
+  if (!context) {
+    throw new Error('useSyncCommands must be used within SyncStoreProvider');
   }
   return context;
 };

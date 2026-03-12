@@ -1,4 +1,4 @@
-import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
+import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { Slider } from '@/components/ui/slider';
 import { useCallback, useState } from 'react';
@@ -109,7 +109,7 @@ const DialControl = ({
 };
 
 const CronometroControle = () => {
-  const { adjustCurrentMomentDuration } = useCulto();
+  const { adjustCurrentMomentDuration, pendingAction, isSubmitting, lastError, connectionStatus } = useCultoControls();
   const { momentos, currentIndex, culto } = useLiveCultoView();
   const { momentElapsedMs } = useCultoTimer();
   const {
@@ -145,10 +145,6 @@ const CronometroControle = () => {
     setMessageTextColor,
     setWarningColor,
     setDangerColor,
-    pendingAction,
-    isSubmitting,
-    lastError,
-    connectionStatus,
   } = useCronometro();
 
   const [msgDraft, setMsgDraft] = useState('');

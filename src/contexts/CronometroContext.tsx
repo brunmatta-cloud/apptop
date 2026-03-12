@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
-import { useCeremonySession } from '@/contexts/SyncStoreContext';
+import { useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 
 interface CronometroContextType {
   timeAdjustment: number;
@@ -48,12 +48,13 @@ interface CronometroContextType {
 const CronometroContext = React.createContext<CronometroContextType | null>(null);
 
 export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const model = useCeremonySession();
+  const remoteState = useLiveRemoteState();
+  const { uiState, runCommand } = useSyncCommands();
   const [timeAdjustment, setTimeAdjustment] = React.useState(0);
-  const settings = model.remoteState.settings;
+  const settings = remoteState.settings;
   const patch = React.useCallback((next: Partial<typeof settings>) => {
-    model.updateSettings(next);
-  }, [model]);
+    void runCommand('patch-settings', 'patch_settings', { patch: next });
+  }, [runCommand]);
 
   const value = React.useMemo<CronometroContextType>(() => ({
     timeAdjustment,
@@ -92,11 +93,11 @@ export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setMessageTextColor: (color: string) => patch({ messageTextColor: color }),
     setWarningColor: (color: string) => patch({ warningColor: color }),
     setDangerColor: (color: string) => patch({ dangerColor: color }),
-    pendingAction: model.uiState.pendingAction,
-    isSubmitting: model.uiState.isSubmitting,
-    lastError: model.uiState.lastError,
-    connectionStatus: model.uiState.connectionStatus,
-  }), [model, patch, settings, timeAdjustment]);
+    pendingAction: uiState.pendingAction,
+    isSubmitting: uiState.isSubmitting,
+    lastError: uiState.lastError,
+    connectionStatus: uiState.connectionStatus,
+  }), [patch, settings, timeAdjustment, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
 
   return <CronometroContext.Provider value={value}>{children}</CronometroContext.Provider>;
 };

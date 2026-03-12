@@ -1,4 +1,4 @@
-﻿import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
+﻿import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { StatusBadge } from '@/components/culto/StatusBadge';
 import { calcularHorarioTermino, type ExecutionMode, type MomentoProgramacao } from '@/types/culto';
@@ -71,7 +71,7 @@ const connectionLabel = (status: string) => {
 };
 
 function PainelCerimonialista() {
-  const cultoData = useCulto();
+  const cultoData = useCultoControls();
   const liveCultoData = useLiveCultoView();
   const cronometroData = useCronometro();
   const [msgDraft, setMsgDraft] = useState('');
@@ -83,9 +83,9 @@ function PainelCerimonialista() {
     avancar, voltar, pausar, retomar, pular, iniciarCulto, finalizarCulto,
     marcarChamado, adjustCurrentMomentDuration,
     pendingAction, isSubmitting, lastError, connectionStatus,
-    moderadorReleaseActive, toggleModeradorRelease,
+    toggleModeradorRelease,
   } = cultoData;
-  const { culto, momentos, currentIndex, getMomentStatus } = liveCultoData;
+  const { culto, momentos, currentIndex, getMomentStatus, moderadorReleaseActive } = liveCultoData;
   const { isPaused, elapsedMs, momentElapsedSeconds, momentElapsedMs } = useCultoTimer();
 
   const {
@@ -627,6 +627,7 @@ function PainelCerimonialista() {
 }
 
 export default PainelCerimonialista;
+
 
 
 

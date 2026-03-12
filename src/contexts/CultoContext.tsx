@@ -2,7 +2,7 @@ import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
 import { getActiveCulto, getActiveMomentos, getMomentStatus } from '@/features/culto-sync/domain';
-import { useCeremonySession, useLiveRemoteState } from '@/contexts/SyncStoreContext';
+import { useCeremonySession, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 
 interface CultoContextType {
@@ -129,6 +129,38 @@ export const useLiveCultoView = () => {
     currentIndex: remoteState.currentIndex,
     executionMode: remoteState.executionMode,
     isPaused: remoteState.timerStatus === 'paused',
+    moderadorReleaseActive: remoteState.moderadorReleaseActive,
+    moderadorReleaseUpdatedAt: remoteState.moderadorReleaseUpdatedAt,
+    moderadorReleaseBy: remoteState.moderadorReleaseBy,
+    moderadorReleasePendingMomentId: remoteState.moderadorReleasePendingMomentId,
+    moderadorReleaseGrantedMomentId: remoteState.moderadorReleaseGrantedMomentId,
     getMomentStatus: (index: number) => getMomentStatus(remoteState, index),
   }), [culto, momentos, remoteState]);
+};
+
+export const useCultoControls = () => {
+  const { uiState, runCommand } = useSyncCommands();
+
+  const run = React.useCallback((actionKey: string, command: string, payload?: Record<string, unknown>) => {
+    void runCommand(actionKey, command, payload);
+  }, [runCommand]);
+
+  return React.useMemo(() => ({
+    pendingAction: uiState.pendingAction,
+    isSubmitting: uiState.isSubmitting,
+    lastError: uiState.lastError,
+    connectionStatus: uiState.connectionStatus,
+    iniciarCulto: () => run('start', 'start'),
+    pausar: () => run('pause', 'pause'),
+    retomar: () => run('resume', 'resume'),
+    avancar: () => run('advance', 'advance'),
+    voltar: () => run('back', 'back'),
+    pular: () => run('skip', 'skip'),
+    finalizarCulto: () => run('finish', 'finish'),
+    marcarChamado: (id: string) => run('mark-called', 'mark_called', { id }),
+    adjustCurrentMomentDuration: (deltaSeconds: number) => run('adjust-duration', 'adjust_duration', { deltaSeconds }),
+    setExecutionMode: (mode: ExecutionMode) => run('set-execution-mode', 'set_execution_mode', { mode }),
+    toggleModeradorRelease: (active: boolean) => run('toggle-moderador-release', 'toggle_moderador_release', { active }),
+    updateModeradorStatus: (id: string, status: ModeradorCallStatus) => run('update-moderador-status', 'update_moderador_status', { id, status }),
+  }), [run, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
 };

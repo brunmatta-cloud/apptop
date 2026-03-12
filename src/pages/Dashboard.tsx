@@ -1,4 +1,4 @@
-import { useCulto, useLiveCultoView } from '@/contexts/CultoContext';
+import { useCultoControls, useLiveCultoView } from '@/contexts/CultoContext';
 import { Clock, Play, TrendingUp, Timer, Zap, Radio, Volume2, List, Users, Focus } from 'lucide-react';
 import { StatusBadge } from '@/components/culto/StatusBadge';
 import { useMemo } from 'react';
@@ -8,7 +8,7 @@ import { formatElapsedLabel } from '@/utils/time';
 import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 
 const Dashboard = () => {
-  const { iniciarCulto, pendingAction, isSubmitting, connectionStatus } = useCulto();
+  const { iniciarCulto, pendingAction, isSubmitting, connectionStatus } = useCultoControls();
   const { culto, momentos, getMomentStatus } = useLiveCultoView();
   const liveSnapshot = useLiveTimerSnapshot();
   const navigate = useNavigate();
