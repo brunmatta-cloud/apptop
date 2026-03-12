@@ -1,10 +1,10 @@
 import { useCulto } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { Slider } from '@/components/ui/slider';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import {
-  Plus, Minus, Zap, ZapOff, MessageSquare, Timer, Settings2, Send, EyeOff, Type, Palette
+  Plus, Minus, Zap, ZapOff, MessageSquare, Timer, Settings2, Send, EyeOff, Type, Palette, Copy
 } from 'lucide-react';
 
 const colorInputClass = 'h-11 w-full rounded-lg border border-border bg-muted px-2 py-1 cursor-pointer';
@@ -69,6 +69,7 @@ const CronometroControle = () => {
   } = useCronometro();
 
   const [msgDraft, setMsgDraft] = useState('');
+  const [copiedCronometroLink, setCopiedCronometroLink] = useState(false);
 
   if (!culto || typeof currentIndex !== 'number' || typeof momentElapsedMs !== 'number') {
     return (
@@ -105,6 +106,31 @@ const CronometroControle = () => {
     setMessage('');
   };
 
+  const handleCopyCronometroLink = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    const cronometroUrl = `${window.location.origin}/cronometro`;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(cronometroUrl);
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = cronometroUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+
+      setCopiedCronometroLink(true);
+      window.setTimeout(() => setCopiedCronometroLink(false), 2000);
+    } catch (error) {
+      console.error('Erro ao copiar link do cronometro:', error);
+      setCopiedCronometroLink(false);
+    }
+  }, []);
+
   return (
     <div className="space-y-6 min-h-[calc(100vh-8rem)]">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -121,6 +147,18 @@ const CronometroControle = () => {
           <span className={`text-xs px-2.5 py-1 rounded-full border ${connectionClass}`}>
             {connectionLabel}
           </span>
+          <button
+            type="button"
+            onClick={handleCopyCronometroLink}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+              copiedCronometroLink
+                ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {copiedCronometroLink ? 'Link copiado' : 'Copiar link'}
+          </button>
           {pendingAction && (
             <span className="text-xs px-2.5 py-1 rounded-full border border-primary/20 bg-primary/10 text-primary">
               Processando: {pendingAction}
