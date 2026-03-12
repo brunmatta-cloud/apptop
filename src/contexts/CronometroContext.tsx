@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
-import { useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
+import { getLiveRemoteStateSnapshot, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 
 interface CronometroContextType {
   timeAdjustment: number;
@@ -48,11 +48,9 @@ interface CronometroContextType {
 const CronometroContext = React.createContext<CronometroContextType | null>(null);
 
 export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const remoteState = useLiveRemoteState();
   const { uiState, runCommand } = useSyncCommands();
   const [timeAdjustment, setTimeAdjustment] = React.useState(0);
-  const settings = remoteState.settings;
-  const patch = React.useCallback((next: Partial<typeof settings>) => {
+  const patch = React.useCallback((next: Record<string, unknown>) => {
     void runCommand('patch-settings', 'patch_settings', { patch: next });
   }, [runCommand]);
 
@@ -60,28 +58,31 @@ export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     timeAdjustment,
     addTime: (seconds: number) => setTimeAdjustment((current) => current + seconds),
     resetAdjustment: () => setTimeAdjustment(0),
-    isBlinking: settings.isBlinking,
-    toggleBlink: () => patch({ isBlinking: !settings.isBlinking }),
+    isBlinking: false,
+    toggleBlink: () => {
+      const settings = getLiveRemoteStateSnapshot().settings;
+      patch({ isBlinking: !settings.isBlinking });
+    },
     setBlinking: (value: boolean) => patch({ isBlinking: value }),
-    message: settings.message,
+    message: '',
     setMessage: (msg: string) => patch({ message: msg }),
-    showMessage: settings.showMessage,
+    showMessage: false,
     setShowMessage: (value: boolean) => patch({ showMessage: value }),
-    orangeThreshold: settings.orangeThreshold,
-    redThreshold: settings.redThreshold,
+    orangeThreshold: 60,
+    redThreshold: 20,
     setOrangeThreshold: (seconds: number) => patch({ orangeThreshold: seconds }),
     setRedThreshold: (seconds: number) => patch({ redThreshold: seconds }),
-    topFontSize: settings.topFontSize,
-    bottomFontSize: settings.bottomFontSize,
-    timerFontSize: settings.timerFontSize,
-    messageFontSize: settings.messageFontSize,
-    backgroundColor: settings.backgroundColor,
-    timerTextColor: settings.timerTextColor,
-    topTextColor: settings.topTextColor,
-    bottomTextColor: settings.bottomTextColor,
-    messageTextColor: settings.messageTextColor,
-    warningColor: settings.warningColor,
-    dangerColor: settings.dangerColor,
+    topFontSize: 64,
+    bottomFontSize: 24,
+    timerFontSize: 160,
+    messageFontSize: 32,
+    backgroundColor: '#000000',
+    timerTextColor: '#ffffff',
+    topTextColor: '#ffffff',
+    bottomTextColor: '#ffffff',
+    messageTextColor: '#ffffff',
+    warningColor: '#f59e0b',
+    dangerColor: '#ef4444',
     setTopFontSize: (size: number) => patch({ topFontSize: size }),
     setBottomFontSize: (size: number) => patch({ bottomFontSize: size }),
     setTimerFontSize: (size: number) => patch({ timerFontSize: size }),
@@ -97,7 +98,7 @@ export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isSubmitting: uiState.isSubmitting,
     lastError: uiState.lastError,
     connectionStatus: uiState.connectionStatus,
-  }), [patch, settings, timeAdjustment, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
+  }), [patch, timeAdjustment, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
 
   return <CronometroContext.Provider value={value}>{children}</CronometroContext.Provider>;
 };
@@ -105,5 +106,26 @@ export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 export const useCronometro = () => {
   const ctx = React.useContext(CronometroContext);
   if (!ctx) throw new Error('useCronometro must be used within CronometroProvider');
-  return ctx;
+  const remoteState = useLiveRemoteState();
+  const settings = remoteState.settings;
+
+  return React.useMemo(() => ({
+    ...ctx,
+    isBlinking: settings.isBlinking,
+    message: settings.message,
+    showMessage: settings.showMessage,
+    orangeThreshold: settings.orangeThreshold,
+    redThreshold: settings.redThreshold,
+    topFontSize: settings.topFontSize,
+    bottomFontSize: settings.bottomFontSize,
+    timerFontSize: settings.timerFontSize,
+    messageFontSize: settings.messageFontSize,
+    backgroundColor: settings.backgroundColor,
+    timerTextColor: settings.timerTextColor,
+    topTextColor: settings.topTextColor,
+    bottomTextColor: settings.bottomTextColor,
+    messageTextColor: settings.messageTextColor,
+    warningColor: settings.warningColor,
+    dangerColor: settings.dangerColor,
+  }), [ctx, settings]);
 };

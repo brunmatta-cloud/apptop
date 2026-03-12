@@ -2,7 +2,7 @@ import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus } from '@/features/culto-sync/domain';
 import { getActiveCulto, getActiveMomentos, getMomentStatus } from '@/features/culto-sync/domain';
-import { useCeremonySession, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
+import { getLiveRemoteStateSnapshot, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 import { useLiveTimerSnapshot } from '@/hooks/useLiveTimerSnapshot';
 
 interface CultoContextType {
@@ -50,49 +50,106 @@ interface CultoContextType {
 const CultoContext = React.createContext<CultoContextType | null>(null);
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const model = useCeremonySession();
+  const { uiState, runCommand } = useSyncCommands();
+
+  const run = React.useCallback((actionKey: string, command: string, payload?: Record<string, unknown>) => {
+    void runCommand(actionKey, command, payload);
+  }, [runCommand]);
 
   const value = React.useMemo<CultoContextType>(() => ({
-    cultos: model.cultos,
-    addCulto: model.addCulto,
-    updateCulto: model.updateCulto,
-    removeCulto: model.removeCulto,
-    duplicateCulto: model.duplicateCulto,
-    activeCultoId: model.remoteState.activeCultoId,
-    setActiveCultoId: model.setActiveCultoId,
-    culto: model.culto,
-    setCulto: model.setCulto,
-    momentos: model.momentos,
-    allMomentos: model.allMomentos,
-    setMomentos: model.setMomentos,
-    currentIndex: model.currentIndex,
-    executionMode: model.executionMode,
-    setExecutionMode: model.setExecutionMode,
-    avancar: model.avancar,
-    voltar: model.voltar,
-    pausar: model.pausar,
-    retomar: model.retomar,
-    pular: model.pular,
-    iniciarCulto: model.iniciarCulto,
-    finalizarCulto: model.finalizarCulto,
-    moderadorReleaseActive: model.remoteState.moderadorReleaseActive,
-    moderadorReleaseUpdatedAt: model.remoteState.moderadorReleaseUpdatedAt,
-    moderadorReleaseBy: model.remoteState.moderadorReleaseBy,
-    moderadorReleasePendingMomentId: model.remoteState.moderadorReleasePendingMomentId,
-    moderadorReleaseGrantedMomentId: model.remoteState.moderadorReleaseGrantedMomentId,
-    toggleModeradorRelease: model.toggleModeradorRelease,
-    updateModeradorStatus: model.updateModeradorStatus,
-    getMomentStatus: model.getMomentStatus,
-    marcarChamado: model.marcarChamado,
-    addMomento: model.addMomento,
-    updateMomento: model.updateMomento,
-    removeMomento: model.removeMomento,
-    adjustCurrentMomentDuration: model.adjustCurrentMomentDuration,
-    pendingAction: model.uiState.pendingAction,
-    isSubmitting: model.uiState.isSubmitting,
-    lastError: model.uiState.lastError,
-    connectionStatus: model.uiState.connectionStatus,
-  }), [model]);
+    cultos: [],
+    addCulto: (cultoInput: Culto) => run('add-culto', 'add_culto', { culto: cultoInput }),
+    updateCulto: (cultoInput: Culto) => run('update-culto', 'update_culto', { culto: cultoInput }),
+    removeCulto: (id: string) => run('remove-culto', 'remove_culto', { id }),
+    duplicateCulto: (id: string) => {
+      const remoteState = getLiveRemoteStateSnapshot();
+      const original = remoteState.cultos.find((item) => item.id === id);
+      if (!original) return;
+      const newId = crypto.randomUUID();
+      const momentosOriginais = remoteState.allMomentos[id] ?? [];
+      run('duplicate-culto', 'duplicate_culto', {
+        culto: { ...original, id: newId, nome: `${original.nome} (Copia)`, status: 'planejado' },
+        momentos: momentosOriginais.map((momento) => ({
+          ...momento,
+          id: crypto.randomUUID(),
+          cultoId: newId,
+          chamado: false,
+          duracaoOriginal: undefined,
+        })),
+      });
+    },
+    activeCultoId: '',
+    setActiveCultoId: (id: string) => run('set-active-culto', 'set_active_culto', { id }),
+    culto: {
+      id: '',
+      nome: '',
+      data: '',
+      horarioInicial: '',
+      duracaoPrevista: 0,
+      status: 'planejado',
+    },
+    setCulto: (value: React.SetStateAction<Culto>) => {
+      const remoteState = getLiveRemoteStateSnapshot();
+      const currentCulto = getActiveCulto(remoteState);
+      const nextCulto = typeof value === 'function' ? value(currentCulto) : value;
+      run('set-culto', 'set_culto', { id: nextCulto.id, culto: nextCulto });
+    },
+    momentos: [],
+    allMomentos: {},
+    setMomentos: (value: React.SetStateAction<MomentoProgramacao[]>) => {
+      const remoteState = getLiveRemoteStateSnapshot();
+      const currentMomentos = getActiveMomentos(remoteState);
+      const nextMomentos = typeof value === 'function' ? value(currentMomentos) : value;
+      run('set-momentos', 'set_momentos', { momentos: nextMomentos });
+    },
+    currentIndex: -1,
+    executionMode: 'manual',
+    setExecutionMode: (mode: ExecutionMode) => run('set-execution-mode', 'set_execution_mode', { mode }),
+    avancar: () => run('advance', 'advance'),
+    voltar: () => run('back', 'back'),
+    pausar: () => run('pause', 'pause'),
+    retomar: () => run('resume', 'resume'),
+    pular: () => run('skip', 'skip'),
+    iniciarCulto: () => run('start', 'start'),
+    finalizarCulto: () => run('finish', 'finish'),
+    moderadorReleaseActive: false,
+    moderadorReleaseUpdatedAt: null,
+    moderadorReleaseBy: null,
+    moderadorReleasePendingMomentId: null,
+    moderadorReleaseGrantedMomentId: null,
+    toggleModeradorRelease: (active: boolean) => run('toggle-moderador-release', 'toggle_moderador_release', { active }),
+    updateModeradorStatus: (id: string, status: ModeradorCallStatus) => run('update-moderador-status', 'update_moderador_status', { id, status }),
+    getMomentStatus: () => 'futuro',
+    marcarChamado: (id: string) => run('mark-called', 'mark_called', { id }),
+    addMomento: (momento: MomentoProgramacao) => {
+      const remoteState = getLiveRemoteStateSnapshot();
+      const currentMomentos = getActiveMomentos(remoteState);
+      run('set-momentos', 'set_momentos', {
+        momentos: [...currentMomentos, momento].sort((a, b) => a.ordem - b.ordem),
+      });
+    },
+    updateMomento: (momento: MomentoProgramacao) => {
+      const remoteState = getLiveRemoteStateSnapshot();
+      const currentMomentos = getActiveMomentos(remoteState);
+      run('set-momentos', 'set_momentos', {
+        momentos: currentMomentos
+          .map((existing) => existing.id === momento.id ? momento : existing)
+          .sort((a, b) => a.ordem - b.ordem),
+      });
+    },
+    removeMomento: (id: string) => {
+      const remoteState = getLiveRemoteStateSnapshot();
+      const currentMomentos = getActiveMomentos(remoteState);
+      run('set-momentos', 'set_momentos', {
+        momentos: currentMomentos.filter((momento) => momento.id !== id),
+      });
+    },
+    adjustCurrentMomentDuration: (deltaSeconds: number) => run('adjust-duration', 'adjust_duration', { deltaSeconds }),
+    pendingAction: uiState.pendingAction,
+    isSubmitting: uiState.isSubmitting,
+    lastError: uiState.lastError,
+    connectionStatus: uiState.connectionStatus,
+  }), [run, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
 
   return <CultoContext.Provider value={value}>{children}</CultoContext.Provider>;
 };
@@ -100,7 +157,26 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useCulto = () => {
   const ctx = React.useContext(CultoContext);
   if (!ctx) throw new Error('useCulto must be used within CultoProvider');
-  return ctx;
+  const remoteState = useLiveRemoteState();
+  const culto = React.useMemo(() => getActiveCulto(remoteState), [remoteState]);
+  const momentos = React.useMemo(() => getActiveMomentos(remoteState), [remoteState]);
+
+  return React.useMemo(() => ({
+    ...ctx,
+    cultos: remoteState.cultos,
+    activeCultoId: remoteState.activeCultoId,
+    culto,
+    momentos,
+    allMomentos: remoteState.allMomentos,
+    currentIndex: remoteState.currentIndex,
+    executionMode: remoteState.executionMode,
+    moderadorReleaseActive: remoteState.moderadorReleaseActive,
+    moderadorReleaseUpdatedAt: remoteState.moderadorReleaseUpdatedAt,
+    moderadorReleaseBy: remoteState.moderadorReleaseBy,
+    moderadorReleasePendingMomentId: remoteState.moderadorReleasePendingMomentId,
+    moderadorReleaseGrantedMomentId: remoteState.moderadorReleaseGrantedMomentId,
+    getMomentStatus: (index: number) => getMomentStatus(remoteState, index),
+  }), [ctx, culto, momentos, remoteState]);
 };
 
 export const useCultoTimer = () => {
