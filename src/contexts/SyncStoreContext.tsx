@@ -28,7 +28,7 @@ interface SyncStoreContextValue {
 }
 
 const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
-const REFRESH_INTERVAL_MS = 5000;
+const REFRESH_INTERVAL_MS = 500;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
 
