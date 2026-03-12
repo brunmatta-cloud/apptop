@@ -199,11 +199,6 @@ const ListaConfirmacao = () => {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold md:text-[13px]">Confirmar</p>
-                              {status === 'confirmado' && (
-                                <span className="rounded-full border border-emerald-300/30 bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                                  ativo
-                                </span>
-                              )}
                             </div>
                             <p className="mt-1 line-clamp-2 text-[11px] opacity-80 md:text-[10px]">
                               {status === 'confirmado'
@@ -234,11 +229,6 @@ const ListaConfirmacao = () => {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold md:text-[13px]">Ausente</p>
-                              {status === 'ausente' && (
-                                <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                                  ativo
-                                </span>
-                              )}
                             </div>
                             <p className="mt-1 line-clamp-2 text-[11px] opacity-80 md:text-[10px]">
                               {status === 'ausente'
