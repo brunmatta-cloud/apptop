@@ -45,7 +45,6 @@ const subscribeLiveRemoteState = (listener: () => void) => {
 };
 
 export const getLiveRemoteStateSnapshot = () => liveRemoteStateSnapshot;
-export const subscribeLiveRemoteStateStore = subscribeLiveRemoteState;
 
 const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;

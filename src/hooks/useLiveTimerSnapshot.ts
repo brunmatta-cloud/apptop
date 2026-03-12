@@ -1,72 +1,47 @@
-import { useMemo, useSyncExternalStore } from 'react';
-import { subscribeLiveRemoteStateStore, getLiveRemoteStateSnapshot } from '@/contexts/SyncStoreContext';
+import { useEffect, useMemo, useState } from 'react';
+import { useLiveRemoteState } from '@/contexts/SyncStoreContext';
 import { getTimerSnapshot } from '@/features/culto-sync/domain';
 
-const TIMER_TICK_MS = 100;
+export const useLiveTimerSnapshot = () => {
+  const remoteState = useLiveRemoteState();
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-let timerInterval: number | null = null;
-let timerSubscribers = 0;
-const timerListeners = new Set<() => void>();
+  useEffect(() => {
+    setNowMs(Date.now());
+  }, [
+    remoteState.timerStatus,
+    remoteState.startedAt,
+    remoteState.momentStartedAt,
+    remoteState.accumulatedMs,
+    remoteState.momentAccumulatedMs,
+    remoteState.currentIndex,
+    remoteState.activeCultoId,
+  ]);
 
-const emitTimerTick = () => {
-  timerListeners.forEach((listener) => listener());
-};
-
-const startTimerLoop = () => {
-  if (timerInterval != null || typeof window === 'undefined') {
-    return;
-  }
-
-  timerInterval = window.setInterval(() => {
-    const state = getLiveRemoteStateSnapshot();
-    if (state.timerStatus !== 'running') {
+  useEffect(() => {
+    if (remoteState.timerStatus !== 'running') {
       return;
     }
-    emitTimerTick();
-  }, TIMER_TICK_MS);
-};
 
-const stopTimerLoop = () => {
-  if (timerInterval == null || typeof window === 'undefined') {
-    return;
-  }
+    let frameId = 0;
 
-  window.clearInterval(timerInterval);
-  timerInterval = null;
-};
+    const tick = () => {
+      setNowMs(Date.now());
+      frameId = window.requestAnimationFrame(tick);
+    };
 
-const subscribeTimerStore = (listener: () => void) => {
-  const handleRemoteChange = () => {
-    listener();
+    tick();
 
-    if (getLiveRemoteStateSnapshot().timerStatus === 'running') {
-      emitTimerTick();
-    }
-  };
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [
+    remoteState.timerStatus,
+    remoteState.startedAt,
+    remoteState.momentStartedAt,
+  ]);
 
-  timerListeners.add(listener);
-  timerSubscribers += 1;
-  startTimerLoop();
-  const unsubscribeRemote = subscribeLiveRemoteStateStore(handleRemoteChange);
-
-  return () => {
-    unsubscribeRemote();
-    timerListeners.delete(listener);
-    timerSubscribers = Math.max(0, timerSubscribers - 1);
-
-    if (timerSubscribers === 0) {
-      stopTimerLoop();
-    }
-  };
-};
-
-const getSnapshot = () => {
-  const state = getLiveRemoteStateSnapshot();
-  return getTimerSnapshot(state, Date.now());
-};
-
-export const useLiveTimerSnapshot = () => {
-  const snapshot = useSyncExternalStore(subscribeTimerStore, getSnapshot, getSnapshot);
-
-  return useMemo(() => snapshot, [snapshot]);
+  return useMemo(() => getTimerSnapshot(remoteState, nowMs), [remoteState, nowMs]);
 };
