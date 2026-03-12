@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentoProgramacao } from '@/types/culto';
-import type { ConnectionStatus, CronometroSettings, RemoteCultoState, TimerSnapshot, UiSyncState } from '@/features/culto-sync/domain';
+import type { ConnectionStatus, CronometroSettings, RemoteCultoState, UiSyncState } from '@/features/culto-sync/domain';
 import {
   advanceCultoTransition,
   backCultoTransition,
@@ -28,7 +28,6 @@ interface SyncStoreContextValue {
 }
 
 const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
-const SyncTimerContext = createContext<TimerSnapshot | null>(null);
 const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
@@ -196,7 +195,6 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const hasSuccessfulSyncRef = useRef(false);
   const timerFlowTraceRef = useRef<TimerFlowTrace | null>(null);
   const [remoteState, setRemoteState] = useState<RemoteCultoState>(defaultRemoteState);
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const [uiState, setUiState] = useState<UiSyncState>({
     isHydrating: true,
     isSubmitting: false,
@@ -205,40 +203,6 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     connectionStatus: 'connecting',
   });
   const queueRef = useRef(Promise.resolve());
-
-  useEffect(() => {
-    setNowMs(Date.now());
-  }, [
-    remoteState.timerStatus,
-    remoteState.startedAt,
-    remoteState.momentStartedAt,
-    remoteState.accumulatedMs,
-    remoteState.momentAccumulatedMs,
-    remoteState.currentIndex,
-    remoteState.activeCultoId,
-  ]);
-
-  useEffect(() => {
-    if (remoteState.timerStatus !== 'running') {
-      return;
-    }
-
-    const tick = () => {
-      setNowMs(Date.now());
-    };
-
-    tick();
-
-    const interval = window.setInterval(tick, 100);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [
-    remoteState.timerStatus,
-    remoteState.startedAt,
-    remoteState.momentStartedAt,
-  ]);
 
   const updateConnectionStatus = useCallback((nextStatus?: string) => {
     if (nextStatus) {
@@ -521,32 +485,13 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     runCommand,
   }), [refreshFromServer, remoteState, runCommand, uiState]);
 
-  const timerSnapshot = useMemo(
-    () => getTimerSnapshot(remoteState, nowMs),
-    [nowMs, remoteState],
-  );
-
-  return (
-    <SyncStoreContext.Provider value={value}>
-      <SyncTimerContext.Provider value={timerSnapshot}>
-        {children}
-      </SyncTimerContext.Provider>
-    </SyncStoreContext.Provider>
-  );
+  return <SyncStoreContext.Provider value={value}>{children}</SyncStoreContext.Provider>;
 };
 
 export const useSyncStore = () => {
   const context = useContext(SyncStoreContext);
   if (!context) {
     throw new Error('useSyncStore must be used within SyncStoreProvider');
-  }
-  return context;
-};
-
-export const useSyncTimerSnapshot = () => {
-  const context = useContext(SyncTimerContext);
-  if (!context) {
-    throw new Error('useSyncTimerSnapshot must be used within SyncStoreProvider');
   }
   return context;
 };
