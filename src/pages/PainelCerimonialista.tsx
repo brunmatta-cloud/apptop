@@ -134,6 +134,7 @@ function PainelCerimonialista() {
   const currentAdjustment = getAdjustmentLabel(currentMoment);
   const isCommandLocked = isSubmitting;
   const activeCommand = pendingAction ?? '';
+  const isLive = safeCulto.status === 'em_andamento';
   const currentMomentTotalMs = currentMoment ? currentMoment.duracao * 60 * 1000 : 0;
   const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - safeMomentElapsedMs) : 0;
   const isCurrentMomentWarning = !!currentMoment && !isPaused && currentMomentRemainingMs <= 60000 && currentMomentRemainingMs > 20000;
@@ -342,7 +343,10 @@ function PainelCerimonialista() {
         </div>
       )}
 
-      {safeCulto.status === 'em_andamento' && (
+      <div
+        aria-hidden={!isLive}
+        className={`${isLive ? 'block' : 'pointer-events-none max-h-0 overflow-hidden opacity-0'} transition-opacity duration-200`}
+      >
         <div className="glass-card border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.14)_0%,rgba(16,185,129,0.06)_100%)] p-4 sm:p-5 lg:p-6">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
             <div className="min-w-0">
@@ -376,9 +380,12 @@ function PainelCerimonialista() {
             </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {safeCulto.status === 'em_andamento' && (
+      <div
+        aria-hidden={!isLive}
+        className={`${isLive ? 'block' : 'pointer-events-none max-h-0 overflow-hidden opacity-0'} transition-opacity duration-200`}
+      >
         <div className="glass-card border border-border/60 p-4 sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -437,10 +444,13 @@ function PainelCerimonialista() {
             )}
           </div>
         </div>
-      )}
+      </div>
 
 
-{safeCulto.status === 'em_andamento' && (
+      <div
+        aria-hidden={!isLive}
+        className={`${isLive ? 'block' : 'pointer-events-none max-h-0 overflow-hidden opacity-0'} transition-opacity duration-200`}
+      >
         <div className="glass-card border border-primary/15 p-4 sm:p-5">
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controles</h3>
           <div className="space-y-3">
@@ -506,7 +516,7 @@ function PainelCerimonialista() {
             )}
           </div>
         </div>
-      )}
+      </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="order-2 min-w-0 space-y-4 xl:order-1">
