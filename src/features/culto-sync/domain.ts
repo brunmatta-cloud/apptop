@@ -484,6 +484,7 @@ export const startCultoTransition = (state: RemoteCultoState, nowIso: string): T
   const nextState = refreshCommands(resetMomentTimer({
       ...setCultoStatus({
       ...state,
+      status: 'live',
       allMomentos: {
         ...state.allMomentos,
         [state.activeCultoId]: nextMomentos,
@@ -534,6 +535,7 @@ export const finishCultoTransition = (state: RemoteCultoState, nowIso: string, n
     ok: true,
     state: refreshCommands({
       ...setCultoStatus(pausedState, 'finalizado'),
+      status: 'finished',
       timerStatus: 'finished',
       startedAt: null,
       pausedAt: nowIso,
