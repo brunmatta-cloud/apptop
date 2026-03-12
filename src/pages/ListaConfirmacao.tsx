@@ -49,6 +49,16 @@ const ListaConfirmacao = () => {
     });
   };
 
+  const limparConfirmacao = (momento: MomentoProgramacao) => {
+    const confirmarLimpeza = window.confirm('Deseja remover essa marcacao de presenca?');
+    if (!confirmarLimpeza) return;
+
+    updateMomento({
+      ...momento,
+      confirmacaoStatus: 'pendente',
+    });
+  };
+
   const marcarAusente = (momento: MomentoProgramacao) => {
     updateMomento({
       ...momento,
@@ -146,24 +156,24 @@ const ListaConfirmacao = () => {
                       </span>
                     </div>
 
-                    <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-2xl border border-border/70 bg-background/60 px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-[0.2em]">Ministerio</p>
-                        <p className="mt-1 font-medium text-foreground">{momento.ministerio || 'Nao informado'}</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
+                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Ministerio</p>
+                        <p className="mt-1 truncate text-sm font-semibold text-foreground">{momento.ministerio || 'Nao informado'}</p>
                       </div>
-                      <div className="rounded-2xl border border-border/70 bg-background/60 px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-[0.2em]">Entrada</p>
-                        <p className="mt-1 font-mono font-medium text-foreground">{momento.horarioInicio}</p>
+                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Entrada</p>
+                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">{momento.horarioInicio}</p>
                       </div>
-                      <div className="rounded-2xl border border-border/70 bg-background/60 px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-[0.2em]">Saida</p>
-                        <p className="mt-1 font-mono font-medium text-foreground">
+                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Saida</p>
+                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">
                           {calcularHorarioTermino(momento.horarioInicio, momento.duracao)}
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-border/70 bg-background/60 px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-[0.2em]">Momento</p>
-                        <p className="mt-1 font-medium text-foreground">{momento.atividade}</p>
+                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Momento</p>
+                        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-foreground">{momento.atividade}</p>
                       </div>
                     </div>
                   </div>
@@ -172,7 +182,7 @@ const ListaConfirmacao = () => {
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                       <button
                         type="button"
-                        onClick={() => confirmarPresenca(momento)}
+                        onClick={() => (status === 'confirmado' ? limparConfirmacao(momento) : confirmarPresenca(momento))}
                         disabled={isSubmitting}
                         className={`group rounded-[1.35rem] border px-4 py-4 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${presenceOptionClass({
                           active: status === 'confirmado',
@@ -197,7 +207,9 @@ const ListaConfirmacao = () => {
                               )}
                             </div>
                             <p className="mt-1 text-xs opacity-80">
-                              Marca a pessoa como presente e deixa o card visualmente validado.
+                              {status === 'confirmado'
+                                ? 'Clique novamente para desmarcar, com confirmacao.'
+                                : 'Marca a pessoa como presente e deixa o card visualmente validado.'}
                             </p>
                           </div>
                         </div>
@@ -205,7 +217,7 @@ const ListaConfirmacao = () => {
 
                       <button
                         type="button"
-                        onClick={() => marcarAusente(momento)}
+                        onClick={() => (status === 'ausente' ? limparConfirmacao(momento) : marcarAusente(momento))}
                         disabled={isSubmitting}
                         className={`group rounded-[1.35rem] border px-4 py-4 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${presenceOptionClass({
                           active: status === 'ausente',
@@ -230,7 +242,9 @@ const ListaConfirmacao = () => {
                               )}
                             </div>
                             <p className="mt-1 text-xs opacity-80">
-                              Envia o momento para a area de atencao e libera a troca por substituto.
+                              {status === 'ausente'
+                                ? 'Clique novamente para desmarcar, com confirmacao.'
+                                : 'Envia o momento para a area de atencao e libera a troca por substituto.'}
                             </p>
                           </div>
                         </div>
