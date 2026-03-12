@@ -138,78 +138,77 @@ const ListaConfirmacao = () => {
           <p className="text-sm text-muted-foreground">Toque em um status para atualizar a presenca rapidamente.</p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5 lg:space-y-2">
           {momentosOrdenados.map((momento) => {
             const status = momento.confirmacaoStatus ?? 'pendente';
+            const horarioSaida = calcularHorarioTermino(momento.horarioInicio, momento.duracao);
 
             return (
-              <div key={momento.id} className="rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)] p-4 sm:p-5">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-                  <div className="min-w-0 space-y-3">
-                    <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
+              <div key={momento.id} className="rounded-[1.2rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.008)_100%)] px-3 py-3 sm:px-4 lg:px-4 lg:py-2.5">
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_260px] md:items-center xl:grid-cols-[minmax(0,1.35fr)_320px]">
+                  <div className="min-w-0 space-y-2.5 lg:space-y-2">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <h3 className="truncate text-lg font-semibold sm:text-xl">{momento.responsavel || 'Sem responsavel'}</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">{momento.funcao || 'Sem funcao'}</p>
-                      </div>
-                      <span className={`rounded-full border px-2.5 py-1 text-xs ${confirmacaoClass(status)}`}>
-                        {confirmacaoLabel(status)}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
-                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Ministerio</p>
-                        <p className="mt-1 truncate text-sm font-semibold text-foreground">{momento.ministerio || 'Nao informado'}</p>
-                      </div>
-                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Entrada</p>
-                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">{momento.horarioInicio}</p>
-                      </div>
-                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Saida</p>
-                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                          {calcularHorarioTermino(momento.horarioInicio, momento.duracao)}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="truncate text-base font-semibold sm:text-lg">{momento.responsavel || 'Sem responsavel'}</h3>
+                          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${confirmacaoClass(status)}`}>
+                            {confirmacaoLabel(status)}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                          {momento.funcao || 'Sem funcao'} {momento.ministerio ? `| ${momento.ministerio}` : ''}
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Momento</p>
-                        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-foreground">{momento.atividade}</p>
+                    </div>
+
+                    <div className="grid grid-cols-[minmax(0,1.25fr)_repeat(2,minmax(78px,auto))] gap-2 lg:grid-cols-[minmax(0,1.5fr)_90px_90px]">
+                      <div className="rounded-2xl border border-border/55 bg-background/45 px-3 py-2 lg:px-3 lg:py-1.5">
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Momento</p>
+                        <p className="mt-1 truncate text-sm font-semibold text-foreground">{momento.atividade}</p>
+                      </div>
+                      <div className="rounded-2xl border border-border/55 bg-background/45 px-3 py-2 text-center lg:px-2.5 lg:py-1.5">
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Entrada</p>
+                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">{momento.horarioInicio}</p>
+                      </div>
+                      <div className="rounded-2xl border border-border/55 bg-background/45 px-3 py-2 text-center lg:px-2.5 lg:py-1.5">
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Saida</p>
+                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">{horarioSaida}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="space-y-2 md:space-y-1.5">
+                    <div className="grid grid-cols-2 gap-2 md:gap-1.5">
                       <button
                         type="button"
                         onClick={() => (status === 'confirmado' ? limparConfirmacao(momento) : confirmarPresenca(momento))}
                         disabled={isSubmitting}
-                        className={`group rounded-[1.35rem] border px-4 py-4 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${presenceOptionClass({
+                        className={`group rounded-[1.05rem] border px-3 py-3 text-left transition-all disabled:pointer-events-none disabled:opacity-50 md:px-2.5 md:py-2.5 ${presenceOptionClass({
                           active: status === 'confirmado',
                           tone: 'confirmado',
                         })}`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
                             status === 'confirmado'
                               ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-200'
                               : 'border-emerald-500/20 bg-black/10 text-emerald-300'
                           }`}>
-                            <CheckCircle2 className="h-5 w-5" />
+                            <CheckCircle2 className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold">Confirmar presenca</p>
+                              <p className="text-sm font-semibold md:text-[13px]">Confirmar</p>
                               {status === 'confirmado' && (
                                 <span className="rounded-full border border-emerald-300/30 bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
                                   ativo
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-xs opacity-80">
+                            <p className="mt-1 line-clamp-2 text-[11px] opacity-80 md:text-[10px]">
                               {status === 'confirmado'
                                 ? 'Clique novamente para desmarcar, com confirmacao.'
-                                : 'Marca a pessoa como presente e deixa o card visualmente validado.'}
+                                : 'Marca como presente.'}
                             </p>
                           </div>
                         </div>
@@ -219,58 +218,58 @@ const ListaConfirmacao = () => {
                         type="button"
                         onClick={() => (status === 'ausente' ? limparConfirmacao(momento) : marcarAusente(momento))}
                         disabled={isSubmitting}
-                        className={`group rounded-[1.35rem] border px-4 py-4 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${presenceOptionClass({
+                        className={`group rounded-[1.05rem] border px-3 py-3 text-left transition-all disabled:pointer-events-none disabled:opacity-50 md:px-2.5 md:py-2.5 ${presenceOptionClass({
                           active: status === 'ausente',
                           tone: 'ausente',
                         })}`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
                             status === 'ausente'
                               ? 'border-amber-200/40 bg-amber-300/15 text-amber-100'
                               : 'border-amber-500/20 bg-black/10 text-amber-300'
                           }`}>
-                            <CircleAlert className="h-5 w-5" />
+                            <CircleAlert className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold">Marcar ausente</p>
+                              <p className="text-sm font-semibold md:text-[13px]">Ausente</p>
                               {status === 'ausente' && (
                                 <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
                                   ativo
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-xs opacity-80">
+                            <p className="mt-1 line-clamp-2 text-[11px] opacity-80 md:text-[10px]">
                               {status === 'ausente'
                                 ? 'Clique novamente para desmarcar, com confirmacao.'
-                                : 'Envia o momento para a area de atencao e libera a troca por substituto.'}
+                                : 'Envia para atencao.'}
                             </p>
                           </div>
                         </div>
                       </button>
                     </div>
 
-                    <div className={`rounded-2xl border px-4 py-3 transition-colors ${confirmacaoClass(status)}`}>
+                    <div className={`rounded-2xl border px-3 py-2 transition-colors md:px-2.5 md:py-1.5 ${confirmacaoClass(status)}`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[11px] uppercase tracking-[0.22em] opacity-80">Status atual</p>
-                          <p className="mt-1 text-sm font-semibold">{confirmacaoLabel(status)}</p>
+                          <p className="mt-1 text-sm font-semibold md:text-[13px]">{confirmacaoLabel(status)}</p>
                         </div>
                         {status === 'confirmado' ? (
                           <div className="flex items-center gap-2 text-right">
-                            <CheckCircle2 className="h-5 w-5 shrink-0" />
-                            <span className="text-xs font-medium opacity-90">Presenca validada</span>
+                            <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
+                            <span className="text-[11px] font-medium opacity-90 md:text-[10px]">Validado</span>
                           </div>
                         ) : status === 'ausente' ? (
                           <div className="flex items-center gap-2 text-right">
-                            <AlertTriangle className="h-5 w-5 shrink-0" />
-                            <span className="text-xs font-medium opacity-90">Substituicao necessaria</span>
+                            <AlertTriangle className="h-4.5 w-4.5 shrink-0" />
+                            <span className="text-[11px] font-medium opacity-90 md:text-[10px]">Substituicao</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-right">
-                            <BadgeCheck className="h-5 w-5 shrink-0" />
-                            <span className="text-xs font-medium opacity-90">Aguardando definicao</span>
+                            <BadgeCheck className="h-4.5 w-4.5 shrink-0" />
+                            <span className="text-[11px] font-medium opacity-90 md:text-[10px]">Aguardando</span>
                           </div>
                         )}
                       </div>
