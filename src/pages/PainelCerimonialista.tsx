@@ -85,7 +85,7 @@ function PainelCerimonialista() {
     pendingAction, isSubmitting, lastError, connectionStatus,
     toggleModeradorRelease,
   } = cultoData;
-  const { culto, momentos, currentIndex, getMomentStatus, moderadorReleaseActive } = liveCultoData;
+  const { culto, momentos, currentIndex, currentMoment: liveCurrentMoment, getMomentStatus, isLive, moderadorReleaseActive } = liveCultoData;
   const { isPaused, elapsedMs, momentElapsedSeconds, momentElapsedMs } = useCultoTimer();
 
   const {
@@ -106,9 +106,7 @@ function PainelCerimonialista() {
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const isDataReady = Boolean(culto) && Array.isArray(momentos);
 
-  const currentMoment = safeCurrentIndex < 0 || safeCurrentIndex >= safeMomentos.length
-    ? null
-    : safeMomentos[safeCurrentIndex] ?? null;
+  const currentMoment = liveCurrentMoment ? normalizeMomento(liveCurrentMoment, safeCurrentIndex) : null;
 
   const totalMinutes = safeMomentos.reduce((sum, momento) => sum + (Number.isFinite(momento.duracao) ? momento.duracao : 0), 0);
   const totalMs = totalMinutes * 60 * 1000;
@@ -135,7 +133,6 @@ function PainelCerimonialista() {
   const currentAdjustment = getAdjustmentLabel(currentMoment);
   const isCommandLocked = isSubmitting;
   const activeCommand = pendingAction ?? '';
-  const isLive = safeCulto.status === 'em_andamento';
   const currentMomentTotalMs = currentMoment ? currentMoment.duracao * 60 * 1000 : 0;
   const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - safeMomentElapsedMs) : 0;
   const isCurrentMomentWarning = !!currentMoment && !isPaused && currentMomentRemainingMs <= 60000 && currentMomentRemainingMs > 20000;

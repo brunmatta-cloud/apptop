@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus, RemoteCultoState, TimerSnapshot } from '@/features/culto-sync/domain';
-import { getActiveCulto, getActiveMomentos, getMomentStatus, getTimerSnapshot } from '@/features/culto-sync/domain';
+import { getActiveCulto, getActiveMomentos, getCurrentMoment, getMomentStatus, getNextMoment, getTimerSnapshot } from '@/features/culto-sync/domain';
 import { getLiveRemoteStateSnapshot, getLiveServerNowMs, subscribeLiveRemoteStateStore, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 
 interface CultoContextType {
@@ -148,6 +148,8 @@ const useGlobalTimerSnapshot = () => React.useSyncExternalStore(
   () => globalTimerSnapshotStore,
 );
 
+const MOMENT_CLEAR_DELAY_MS = 320;
+
 let stableViewStateSnapshot: RemoteCultoState = getLiveRemoteStateSnapshot();
 const stableViewListeners = new Set<() => void>();
 let stableViewUnsubscribeRemote: (() => void) | null = null;
@@ -289,6 +291,90 @@ const useStableLiveRemoteStateForView = () => React.useSyncExternalStore(
   () => stableViewStateSnapshot,
 );
 
+const useStickyMomentValue = <T,>(value: T | null, delayMs = MOMENT_CLEAR_DELAY_MS) => {
+  const [displayValue, setDisplayValue] = React.useState<T | null>(value);
+
+  React.useEffect(() => {
+    if (value) {
+      setDisplayValue(value);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setDisplayValue(null);
+    }, delayMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [delayMs, value]);
+
+  return displayValue;
+};
+
+const hasRenderableCurrentMoment = (state: RemoteCultoState) => {
+  const momentos = getActiveMomentos(state);
+  return state.currentIndex >= 0 && state.currentIndex < momentos.length;
+};
+
+const isRuntimeActive = (state: RemoteCultoState) =>
+  state.status === 'live' || state.timerStatus === 'running' || state.timerStatus === 'paused';
+
+const shouldDeferVisualRegression = (previousState: RemoteCultoState, nextState: RemoteCultoState) => {
+  if (nextState.status === 'finished') {
+    return false;
+  }
+
+  const previousHadMoment = hasRenderableCurrentMoment(previousState);
+  const nextHasMoment = hasRenderableCurrentMoment(nextState);
+  const previousWasActive = isRuntimeActive(previousState);
+  const nextIsActive = isRuntimeActive(nextState);
+
+  if (previousHadMoment && !nextHasMoment) {
+    return true;
+  }
+
+  if (previousWasActive && !nextIsActive) {
+    return true;
+  }
+
+  return false;
+};
+
+const shouldPinVisualState = (previousState: RemoteCultoState, nextState: RemoteCultoState) => {
+  if (nextState.status === 'finished') {
+    return false;
+  }
+
+  if (previousState.activeCultoId !== nextState.activeCultoId) {
+    return false;
+  }
+
+  if (!isRuntimeActive(previousState)) {
+    return false;
+  }
+
+  if (hasRenderableCurrentMoment(nextState)) {
+    return false;
+  }
+
+  return shouldDeferVisualRegression(previousState, nextState);
+};
+
+const usePinnedRemoteStateForView = (remoteState: RemoteCultoState) => {
+  const [displayState, setDisplayState] = React.useState(remoteState);
+
+  React.useEffect(() => {
+    setDisplayState((currentState) => (
+      shouldPinVisualState(currentState, remoteState)
+        ? currentState
+        : remoteState
+    ));
+  }, [remoteState]);
+
+  return displayState;
+};
+
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { uiState, runCommand } = useSyncCommands();
 
@@ -397,7 +483,8 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useCulto = () => {
   const ctx = React.useContext(CultoContext);
   if (!ctx) throw new Error('useCulto must be used within CultoProvider');
-  const remoteState = useStableLiveRemoteStateForView();
+  const stableRemoteState = useStableLiveRemoteStateForView();
+  const remoteState = usePinnedRemoteStateForView(stableRemoteState);
   const culto = React.useMemo(() => getActiveCulto(remoteState), [remoteState]);
   const momentos = React.useMemo(() => getActiveMomentos(remoteState), [remoteState]);
 
@@ -433,15 +520,24 @@ export const useCultoTimer = () => {
 };
 
 export const useLiveCultoView = () => {
-  const remoteState = useStableLiveRemoteStateForView();
+  const stableRemoteState = useStableLiveRemoteStateForView();
+  const remoteState = usePinnedRemoteStateForView(stableRemoteState);
 
   const culto = React.useMemo(() => getActiveCulto(remoteState), [remoteState]);
   const momentos = React.useMemo(() => getActiveMomentos(remoteState), [remoteState]);
+  const rawCurrentMoment = React.useMemo(() => getCurrentMoment(remoteState), [remoteState]);
+  const rawNextMoment = React.useMemo(() => getNextMoment(remoteState), [remoteState]);
+  const currentMoment = useStickyMomentValue(rawCurrentMoment);
+  const nextMoment = useStickyMomentValue(rawNextMoment);
+  const isLive = culto.status === 'em_andamento' || remoteState.status === 'live';
 
   return React.useMemo(() => ({
     remoteState,
     culto,
     momentos,
+    currentMoment,
+    nextMoment,
+    isLive,
     currentIndex: remoteState.currentIndex,
     executionMode: remoteState.executionMode,
     isPaused: remoteState.timerStatus === 'paused',
@@ -451,7 +547,7 @@ export const useLiveCultoView = () => {
     moderadorReleasePendingMomentId: remoteState.moderadorReleasePendingMomentId,
     moderadorReleaseGrantedMomentId: remoteState.moderadorReleaseGrantedMomentId,
     getMomentStatus: (index: number) => getMomentStatus(remoteState, index),
-  }), [culto, momentos, remoteState]);
+  }), [culto, currentMoment, isLive, momentos, nextMoment, remoteState]);
 };
 
 export const useCultoControls = () => {

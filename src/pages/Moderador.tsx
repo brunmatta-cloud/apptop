@@ -348,6 +348,8 @@ const Moderador = () => {
     culto,
     momentos,
     currentIndex,
+    currentMoment,
+    nextMoment,
     getMomentStatus,
     moderadorReleaseActive,
     moderadorReleaseUpdatedAt,
@@ -361,8 +363,6 @@ const Moderador = () => {
 
   const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
-  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
-  const nextMoment = currentIndex >= 0 ? momentos[currentIndex + 1] : momentos[0] ?? null;
   const [notices, setNotices] = useState<ModeradorNotice[]>([]);
   const currentMomentEnd = currentMoment ? calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao) : '--:--';
   const currentRemainingMs = currentMoment ? Math.max(0, currentMoment.duracao * 60 * 1000 - safeMomentElapsedMs) : 0;

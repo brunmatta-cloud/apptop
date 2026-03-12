@@ -40,9 +40,8 @@ const emptyCulto = (): Culto => ({
 });
 
 const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) => {
-  const { currentIndex, momentos } = useLiveCultoView();
+  const { currentMoment } = useLiveCultoView();
   const { momentElapsedMs, isPaused } = useCultoTimer();
-  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const effectiveElapsedMs = currentMoment?.id === momento.id ? safeMomentElapsedMs : 0;
   const { percent, progressScale, formattedRemaining } = useMomentProgress(momento, effectiveElapsedMs);
@@ -76,7 +75,7 @@ const Programacao = () => {
     addMomento, updateMomento, removeMomento,
     isSubmitting, lastError,
   } = useCulto();
-  const { culto, momentos, getMomentStatus } = useLiveCultoView();
+  const { culto, momentos, currentMoment, getMomentStatus } = useLiveCultoView();
 
   const [showMomentoForm, setShowMomentoForm] = useState(false);
   const [editingMomento, setEditingMomento] = useState<MomentoProgramacao | null>(null);
@@ -162,11 +161,6 @@ const Programacao = () => {
     acc[key].push(m);
     return acc;
   }, {});
-
-  const currentMoment = useMemo(() => {
-    const found = momentos.find((momento, index) => getMomentStatus(index) === 'executando');
-    return found ?? null;
-  }, [getMomentStatus, momentos]);
 
   const totalPrevistoLabel = `${viewingCulto?.duracaoPrevista || 0}m`;
   const cultoDataLonga = viewingCulto?.data

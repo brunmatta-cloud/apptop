@@ -148,7 +148,7 @@ const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
 });
 
 const PainelSonoplastia = memo(() => {
-  const { culto, momentos, currentIndex, getMomentStatus } = useLiveCultoView();
+  const { culto, momentos, currentIndex, currentMoment, getMomentStatus } = useLiveCultoView();
   const { remoteState } = useSyncStore();
   const { momentElapsedMs } = useCultoTimer();
   const isPaused = remoteState.timerStatus === 'paused';
@@ -159,7 +159,6 @@ const PainelSonoplastia = memo(() => {
   const alertedRef = useRef<Set<string>>(new Set());
   const pageRef = useRef<HTMLDivElement | null>(null);
 
-  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const soundMoments = useMemo(() => momentos.filter(m => m.tipoMidia !== 'nenhum' || m.acaoSonoplastia), [momentos]);
 

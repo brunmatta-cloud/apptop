@@ -9,9 +9,8 @@ interface ProgressBarProps {
 }
 
 export const ProgressBar = ({ momento, elapsedMs }: ProgressBarProps) => {
-  const { momentos, currentIndex } = useLiveCultoView();
+  const { currentMoment } = useLiveCultoView();
   const { momentElapsedMs: liveMomentElapsedMs } = useCultoTimer();
-  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const resolvedElapsedMs = currentMoment?.id === momento.id ? liveMomentElapsedMs : elapsedMs;
   const { percent, progressScale, formattedRemaining } = useMomentProgress(momento, resolvedElapsedMs);
 

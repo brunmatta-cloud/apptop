@@ -6,11 +6,9 @@ import { calcularHorarioTermino } from '@/types/culto';
 import { useNavigate } from 'react-router-dom';
 
 const ModoFoco = () => {
-  const { culto, momentos, currentIndex } = useLiveCultoView();
+  const { culto, currentMoment, nextMoment } = useLiveCultoView();
   const { momentElapsedMs } = useCultoTimer();
   const navigate = useNavigate();
-  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
-  const nextMoment = currentIndex >= 0 && currentIndex + 1 < momentos.length ? momentos[currentIndex + 1] : null;
 
   return (
     <div className="min-h-screen flex flex-col">

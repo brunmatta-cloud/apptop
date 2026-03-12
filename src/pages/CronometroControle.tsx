@@ -110,7 +110,7 @@ const DialControl = ({
 
 const CronometroControle = () => {
   const { adjustCurrentMomentDuration, pendingAction, isSubmitting, lastError, connectionStatus } = useCultoControls();
-  const { momentos, currentIndex, culto } = useLiveCultoView();
+  const { currentIndex, currentMoment, nextMoment, culto } = useLiveCultoView();
   const { momentElapsedMs } = useCultoTimer();
   const {
     isBlinking,
@@ -160,7 +160,6 @@ const CronometroControle = () => {
     );
   }
 
-  const currentMoment = currentIndex >= 0 ? momentos[currentIndex] : null;
   const { remainingSeconds, progressScale: momentProgress, formattedRemaining, remainingLabel } = useMomentProgress(currentMoment, momentElapsedMs);
   const isDanger = remainingSeconds <= redThreshold && !!currentMoment;
   const isWarning = !isDanger && remainingSeconds <= orangeThreshold && !!currentMoment;
@@ -168,7 +167,6 @@ const CronometroControle = () => {
   const excessSeconds = currentMoment && currentMoment.duracaoOriginal != null
     ? Math.round((currentMoment.duracao - currentMoment.duracaoOriginal) * 60)
     : 0;
-  const nextMoment = currentIndex >= 0 ? momentos[currentIndex + 1] : null;
   const isLocked = isSubmitting;
   const connectionLabel = connectionStatus === 'online' ? 'Tempo ao vivo' : connectionStatus === 'degraded' ? 'Sincronizacao parcial' : connectionStatus === 'offline' ? 'Offline' : 'Conectando';
   const connectionClass = connectionStatus === 'online' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : connectionStatus === 'degraded' ? 'border-amber-500/30 text-amber-300 bg-amber-500/10' : 'border-border text-muted-foreground bg-muted/40';

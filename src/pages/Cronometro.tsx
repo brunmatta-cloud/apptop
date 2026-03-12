@@ -21,7 +21,7 @@ const blend = (base: string, overlay: string, alpha: number) => {
 };
 
 const Cronometro = memo(() => {
-  const { momentos, currentIndex, culto } = useLiveCultoView();
+  const { currentMoment, nextMoment, culto } = useLiveCultoView();
   const { momentElapsedMs } = useLiveTimerSnapshot();
   const {
     isBlinking,
@@ -63,10 +63,6 @@ const Cronometro = memo(() => {
   }
 
   const safeElapsedMs = typeof momentElapsedMs === 'number' ? momentElapsedMs : 0;
-  const safeCurrentIndex = typeof currentIndex === 'number' ? currentIndex : -1;
-  const safeMomentos = Array.isArray(momentos) ? momentos : [];
-  const currentMoment = safeCurrentIndex >= 0 ? safeMomentos[safeCurrentIndex] : null;
-  const nextMoment = safeCurrentIndex >= 0 ? safeMomentos[safeCurrentIndex + 1] : null;
   const { remainingSeconds, remainingMs, percent: progressPercent, formattedRemaining, remainingLabel } = useMomentProgress(currentMoment, safeElapsedMs);
   const isRed = remainingSeconds <= redThreshold && !!currentMoment;
   const isOrange = !isRed && remainingSeconds <= orangeThreshold && !!currentMoment;
