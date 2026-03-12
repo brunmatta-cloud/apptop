@@ -151,17 +151,26 @@ const useGlobalTimerSnapshot = () => React.useSyncExternalStore(
 const isInvalidStructuralSnapshot = (state: RemoteCultoState) => {
   const momentos = getActiveMomentos(state);
   const hasCurrentSelection = state.currentIndex >= 0;
+  const requiresActiveMoment = (state.status === 'live' || state.timerStatus === 'running' || state.timerStatus === 'paused')
+    && momentos.length > 0;
   const missingMomentosWhileLive = (state.status === 'live' || state.timerStatus === 'running' || state.timerStatus === 'paused')
     && hasCurrentSelection
     && momentos.length === 0;
   const invalidCurrentIndex = hasCurrentSelection && state.currentIndex >= momentos.length;
+  const missingCurrentSelectionWhileActive = requiresActiveMoment && state.currentIndex < 0;
+  const missingActiveCulto = !state.activeCultoId || !state.cultos.some((culto) => culto.id === state.activeCultoId);
+  const inconsistentLiveStatus = (state.timerStatus === 'running' || state.timerStatus === 'paused') && state.status !== 'live';
 
-  return missingMomentosWhileLive || invalidCurrentIndex;
+  return missingMomentosWhileLive
+    || invalidCurrentIndex
+    || missingCurrentSelectionWhileActive
+    || missingActiveCulto
+    || inconsistentLiveStatus;
 };
 
 const useStableLiveRemoteStateForView = () => {
   const remoteState = useLiveRemoteState();
-  const stableStructureRef = React.useRef<Pick<RemoteCultoState, 'cultos' | 'activeCultoId' | 'allMomentos' | 'currentIndex'> | null>(null);
+  const stableStructureRef = React.useRef<Pick<RemoteCultoState, 'cultos' | 'activeCultoId' | 'allMomentos' | 'currentIndex' | 'status'> | null>(null);
 
   const shouldReuseStructure = isInvalidStructuralSnapshot(remoteState) && stableStructureRef.current;
 
@@ -176,6 +185,7 @@ const useStableLiveRemoteStateForView = () => {
       activeCultoId: stableStructureRef.current.activeCultoId,
       allMomentos: stableStructureRef.current.allMomentos,
       currentIndex: stableStructureRef.current.currentIndex,
+      status: stableStructureRef.current.status,
     };
   }, [remoteState, shouldReuseStructure]);
 
@@ -189,6 +199,7 @@ const useStableLiveRemoteStateForView = () => {
       activeCultoId: remoteState.activeCultoId,
       allMomentos: remoteState.allMomentos,
       currentIndex: remoteState.currentIndex,
+      status: remoteState.status,
     };
   }, [remoteState]);
 
