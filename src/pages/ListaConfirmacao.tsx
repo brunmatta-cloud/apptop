@@ -15,6 +15,24 @@ const confirmacaoClass = (status: ConfirmacaoPresencaStatus) => {
   return 'border-border bg-muted/40 text-muted-foreground';
 };
 
+const presenceOptionClass = ({
+  active,
+  tone,
+}: {
+  active: boolean;
+  tone: 'confirmado' | 'ausente';
+}) => {
+  if (tone === 'confirmado') {
+    return active
+      ? 'border-emerald-400 bg-emerald-500/18 text-emerald-100 shadow-[0_0_0_1px_rgba(52,211,153,0.28)]'
+      : 'border-emerald-500/20 bg-emerald-500/6 text-emerald-200/85 hover:bg-emerald-500/12';
+  }
+
+  return active
+    ? 'border-amber-400 bg-amber-500/18 text-amber-50 shadow-[0_0_0_1px_rgba(251,191,36,0.24)]'
+    : 'border-amber-500/20 bg-amber-500/6 text-amber-100/85 hover:bg-amber-500/12';
+};
+
 const ListaConfirmacao = () => {
   const { culto, momentos, isSubmitting, pendingAction, updateMomento } = useCulto();
   const [substitutos, setSubstitutos] = useState<Record<string, string>>({});
@@ -150,25 +168,99 @@ const ListaConfirmacao = () => {
                     </div>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                    <button
-                      type="button"
-                      onClick={() => confirmarPresenca(momento)}
-                      disabled={isSubmitting}
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400 disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      <BadgeCheck className="h-4 w-4" />
-                      Confirmar presenca
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => marcarAusente(momento)}
-                      disabled={isSubmitting}
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-200 transition-colors hover:bg-amber-500/20 disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      <CircleAlert className="h-4 w-4" />
-                      Marcar ausente
-                    </button>
+                  <div className="space-y-3">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                      <button
+                        type="button"
+                        onClick={() => confirmarPresenca(momento)}
+                        disabled={isSubmitting}
+                        className={`group rounded-[1.35rem] border px-4 py-4 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${presenceOptionClass({
+                          active: status === 'confirmado',
+                          tone: 'confirmado',
+                        })}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                            status === 'confirmado'
+                              ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-200'
+                              : 'border-emerald-500/20 bg-black/10 text-emerald-300'
+                          }`}>
+                            <CheckCircle2 className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold">Confirmar presenca</p>
+                              {status === 'confirmado' && (
+                                <span className="rounded-full border border-emerald-300/30 bg-emerald-400/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                  ativo
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-xs opacity-80">
+                              Marca a pessoa como presente e deixa o card visualmente validado.
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => marcarAusente(momento)}
+                        disabled={isSubmitting}
+                        className={`group rounded-[1.35rem] border px-4 py-4 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${presenceOptionClass({
+                          active: status === 'ausente',
+                          tone: 'ausente',
+                        })}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                            status === 'ausente'
+                              ? 'border-amber-200/40 bg-amber-300/15 text-amber-100'
+                              : 'border-amber-500/20 bg-black/10 text-amber-300'
+                          }`}>
+                            <CircleAlert className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold">Marcar ausente</p>
+                              {status === 'ausente' && (
+                                <span className="rounded-full border border-amber-200/30 bg-amber-300/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                                  ativo
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-xs opacity-80">
+                              Envia o momento para a area de atencao e libera a troca por substituto.
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className={`rounded-2xl border px-4 py-3 transition-colors ${confirmacaoClass(status)}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] uppercase tracking-[0.22em] opacity-80">Status atual</p>
+                          <p className="mt-1 text-sm font-semibold">{confirmacaoLabel(status)}</p>
+                        </div>
+                        {status === 'confirmado' ? (
+                          <div className="flex items-center gap-2 text-right">
+                            <CheckCircle2 className="h-5 w-5 shrink-0" />
+                            <span className="text-xs font-medium opacity-90">Presenca validada</span>
+                          </div>
+                        ) : status === 'ausente' ? (
+                          <div className="flex items-center gap-2 text-right">
+                            <AlertTriangle className="h-5 w-5 shrink-0" />
+                            <span className="text-xs font-medium opacity-90">Substituicao necessaria</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-right">
+                            <BadgeCheck className="h-5 w-5 shrink-0" />
+                            <span className="text-xs font-medium opacity-90">Aguardando definicao</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
