@@ -9,6 +9,7 @@ export type ConnectionStatus = 'connecting' | 'online' | 'degraded' | 'offline';
 
 export interface CronometroSettings {
   isBlinking: boolean;
+  commandDelaySeconds: number;
   orangeThreshold: number;
   redThreshold: number;
   topFontSize: number;
@@ -125,6 +126,7 @@ const SAMPLE_MOMENTOS: Record<string, MomentoProgramacao[]> = {
 
 export const defaultSettings: CronometroSettings = {
   isBlinking: false,
+  commandDelaySeconds: 0,
   orangeThreshold: 120,
   redThreshold: 20,
   topFontSize: 4,
@@ -250,6 +252,7 @@ const normalizeSettings = (
 
   return {
     isBlinking: typeof value?.is_blinking === 'boolean' ? value.is_blinking : Boolean(settings?.isBlinking),
+    commandDelaySeconds: Number.isFinite(settings?.commandDelaySeconds) ? Math.max(0, Math.min(30, Number(settings.commandDelaySeconds))) : defaultSettings.commandDelaySeconds,
     orangeThreshold: Number.isFinite(value?.orange_threshold) ? Math.max(10, Math.min(600, Number(value.orange_threshold))) : Number.isFinite(settings?.orangeThreshold) ? Math.max(10, Math.min(600, Number(settings.orangeThreshold))) : defaultSettings.orangeThreshold,
     redThreshold: Number.isFinite(value?.red_threshold) ? Math.max(5, Math.min(300, Number(value.red_threshold))) : Number.isFinite(settings?.redThreshold) ? Math.max(5, Math.min(300, Number(settings.redThreshold))) : defaultSettings.redThreshold,
     topFontSize: Number.isFinite(value?.top_font_size) ? Math.max(1.25, Math.min(8, Number(value.top_font_size))) : Number.isFinite(settings?.topFontSize) ? Math.max(1.25, Math.min(8, Number(settings.topFontSize))) : defaultSettings.topFontSize,

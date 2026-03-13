@@ -11,8 +11,10 @@ interface CronometroContextType {
   showMessage: boolean;
   setShowMessage: (value: boolean) => void;
   orangeThreshold: number;
+  commandDelaySeconds: number;
   redThreshold: number;
   setOrangeThreshold: (seconds: number) => void;
+  setCommandDelaySeconds: (seconds: number) => void;
   setRedThreshold: (seconds: number) => void;
   topFontSize: number;
   bottomFontSize: number;
@@ -60,8 +62,10 @@ export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     message: '',
     setMessage: (msg: string) => patch({ message: msg }),
     showMessage: false,
+    commandDelaySeconds: 0,
     setShowMessage: (value: boolean) => patch({ showMessage: value }),
     orangeThreshold: 60,
+    setCommandDelaySeconds: (seconds: number) => patch({ commandDelaySeconds: Math.max(0, Math.min(30, Math.round(seconds))) }),
     redThreshold: 20,
     setOrangeThreshold: (seconds: number) => patch({ orangeThreshold: seconds }),
     setRedThreshold: (seconds: number) => patch({ redThreshold: seconds }),
@@ -107,6 +111,7 @@ export const useCronometro = () => {
     isBlinking: settings.isBlinking,
     message: settings.message,
     showMessage: settings.showMessage,
+    commandDelaySeconds: settings.commandDelaySeconds,
     orangeThreshold: settings.orangeThreshold,
     redThreshold: settings.redThreshold,
     topFontSize: settings.topFontSize,

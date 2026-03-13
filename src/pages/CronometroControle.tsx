@@ -1,7 +1,9 @@
 import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
+import { CommandDelayControl } from '@/components/culto/CommandDelayControl';
 import { Slider } from '@/components/ui/slider';
 import { useCallback, useState, memo } from 'react';
+import { useCommandDelay } from '@/hooks/use-command-delay';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import {
   Plus, Minus, Zap, ZapOff, MessageSquare, Timer, Settings2, Send, EyeOff, Type, Palette, Copy
@@ -248,6 +250,8 @@ const CronometroControle = () => {
     setMessage,
     showMessage,
     setShowMessage,
+    commandDelaySeconds,
+    setCommandDelaySeconds,
     orangeThreshold,
     redThreshold,
     setOrangeThreshold,
@@ -278,6 +282,12 @@ const CronometroControle = () => {
 
   const [msgDraft, setMsgDraft] = useState('');
   const [copiedCronometroLink, setCopiedCronometroLink] = useState(false);
+  const {
+    scheduledCommandLabel,
+    remainingSeconds,
+    scheduleCommand,
+    cancelScheduledCommand,
+  } = useCommandDelay(commandDelaySeconds);
 
   if (!culto || typeof currentIndex !== 'number') {
     return (
@@ -294,17 +304,26 @@ const CronometroControle = () => {
   const isLocked = isSubmitting;
   const connectionLabel = connectionStatus === 'online' ? 'Tempo ao vivo' : connectionStatus === 'degraded' ? 'Sincronizacao parcial' : connectionStatus === 'offline' ? 'Offline' : 'Conectando';
   const connectionClass = connectionStatus === 'online' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : connectionStatus === 'degraded' ? 'border-amber-500/30 text-amber-300 bg-amber-500/10' : 'border-border text-muted-foreground bg-muted/40';
+  const runDelayedCommand = useCallback((label: string, action: () => void) => {
+    scheduleCommand(label, action);
+  }, [scheduleCommand]);
 
   const sendMessage = () => {
-    if (!msgDraft.trim()) return;
-    setMessage(msgDraft.trim());
-    setShowMessage(true);
-    setMsgDraft('');
+    const nextMessage = msgDraft.trim();
+    if (!nextMessage) return;
+
+    runDelayedCommand('Enviar mensagem', () => {
+      setMessage(nextMessage);
+      setShowMessage(true);
+      setMsgDraft('');
+    });
   };
 
   const clearMessage = () => {
-    setShowMessage(false);
-    setMessage('');
+    runDelayedCommand('Remover mensagem', () => {
+      setShowMessage(false);
+      setMessage('');
+    });
   };
 
   const handleCopyCronometroLink = useCallback(async () => {
@@ -395,22 +414,31 @@ const CronometroControle = () => {
         isBlinking={isBlinking}
       />
 
+      <CommandDelayControl
+        delaySeconds={commandDelaySeconds}
+        onDelayChange={setCommandDelaySeconds}
+        scheduledCommandLabel={scheduledCommandLabel}
+        remainingSeconds={remainingSeconds}
+        onCancelScheduled={cancelScheduledCommand}
+        description="Aplica aos comandos ao vivo deste painel. O valor fica sincronizado entre dispositivos."
+      />
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="glass-card p-5">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
             <Timer className="w-4 h-4" /> Ajuste de Tempo
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" disabled={isLocked} onClick={() => adjustCurrentMomentDuration(-60)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors font-semibold disabled:opacity-50 disabled:pointer-events-none">
+            <button type="button" disabled={isLocked} onClick={() => runDelayedCommand('Remover 1 minuto', () => adjustCurrentMomentDuration(-60))} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors font-semibold disabled:opacity-50 disabled:pointer-events-none">
               <Minus className="w-4 h-4" /> 1 min
             </button>
-            <button type="button" disabled={isLocked} onClick={() => adjustCurrentMomentDuration(60)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[hsl(var(--status-completed)/0.2)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.3)] transition-colors font-semibold disabled:opacity-50 disabled:pointer-events-none">
+            <button type="button" disabled={isLocked} onClick={() => runDelayedCommand('Adicionar 1 minuto', () => adjustCurrentMomentDuration(60))} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[hsl(var(--status-completed)/0.2)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.3)] transition-colors font-semibold disabled:opacity-50 disabled:pointer-events-none">
               <Plus className="w-4 h-4" /> 1 min
             </button>
-            <button type="button" disabled={isLocked} onClick={() => adjustCurrentMomentDuration(-30)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none">
+            <button type="button" disabled={isLocked} onClick={() => runDelayedCommand('Remover 30 segundos', () => adjustCurrentMomentDuration(-30))} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none">
               <Minus className="w-4 h-4" /> 30s
             </button>
-            <button type="button" disabled={isLocked} onClick={() => adjustCurrentMomentDuration(30)} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[hsl(var(--status-completed)/0.1)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.2)] transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none">
+            <button type="button" disabled={isLocked} onClick={() => runDelayedCommand('Adicionar 30 segundos', () => adjustCurrentMomentDuration(30))} className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[hsl(var(--status-completed)/0.1)] text-[hsl(var(--status-completed))] hover:bg-[hsl(var(--status-completed)/0.2)] transition-colors text-sm disabled:opacity-50 disabled:pointer-events-none">
               <Plus className="w-4 h-4" /> 30s
             </button>
           </div>
@@ -422,7 +450,7 @@ const CronometroControle = () => {
           </h3>
           <button
             type="button"
-            onClick={toggleBlink}
+            onClick={() => runDelayedCommand(isBlinking ? 'Parar de piscar' : 'Piscar cronometro', toggleBlink)}
             disabled={isLocked}
             className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold transition-colors ${
               isBlinking

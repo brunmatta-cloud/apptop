@@ -9,11 +9,13 @@ import {
 import React, { useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
+import { useCommandDelay } from '@/hooks/use-command-delay';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTimerMs } from '@/utils/time';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
+import { CommandDelayControl } from '@/components/culto/CommandDelayControl';
 
 const emptyCultoFallback = {
   nome: 'Culto carregando...',
@@ -313,6 +315,18 @@ function PainelCerimonialista() {
   const isMobile = useIsMobile();
   const { resolvedTheme = 'dark' } = useTheme();
   const isLight = resolvedTheme === 'light';
+  const {
+    scheduledCommandLabel,
+    remainingSeconds,
+    scheduleCommand,
+    cancelScheduledCommand,
+  } = useCommandDelay(cronometroData.commandDelaySeconds);
+  const {
+    isBlinking, toggleBlink,
+    setMessage, showMessage, setShowMessage,
+    commandDelaySeconds,
+    setCommandDelaySeconds,
+  } = cronometroData;
 
   const {
     setExecutionMode,
@@ -332,11 +346,6 @@ function PainelCerimonialista() {
     executionMode,
     moderadorReleaseActive,
   } = liveCultoData;
-
-  const {
-    isBlinking, toggleBlink,
-    setMessage, showMessage, setShowMessage,
-  } = cronometroData;
 
   const safeCulto = culto ?? emptyCultoFallback;
   const safeMomentos = useMemo(
@@ -369,42 +378,55 @@ function PainelCerimonialista() {
       ? 'border border-emerald-300/60 bg-white/90 text-emerald-700 hover:bg-emerald-50'
       : 'border border-emerald-400/20 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25';
 
-  const handleSendMessage = useCallback(() => {
-    try {
-      const message = msgDraft.trim();
-      if (!message) return;
-      setMessage(message);
-      setShowMessage(true);
-      setMsgDraft('');
-    } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
-    }
-  }, [msgDraft, setMessage, setShowMessage]);
+  const runDelayedCommand = useCallback((label: string, action: () => void) => {
+    scheduleCommand(label, action);
+  }, [scheduleCommand]);
 
-  const safeAdjustDuration = useCallback((delta: number) => {
-    try {
-      adjustCurrentMomentDuration(delta);
-    } catch (error) {
-      console.error('Erro ao ajustar duracao do momento atual:', error);
-    }
-  }, [adjustCurrentMomentDuration]);
+  const handleSendMessage = useCallback(() => {
+    const message = msgDraft.trim();
+    if (!message) return;
+
+    runDelayedCommand('Enviar mensagem', () => {
+      try {
+        setMessage(message);
+        setShowMessage(true);
+        setMsgDraft('');
+      } catch (error) {
+        console.error('Erro ao enviar mensagem:', error);
+      }
+    });
+  }, [msgDraft, runDelayedCommand, setMessage, setShowMessage]);
+
+  const safeAdjustDuration = useCallback((delta: number, label: string) => {
+    runDelayedCommand(label, () => {
+      try {
+        adjustCurrentMomentDuration(delta);
+      } catch (error) {
+        console.error('Erro ao ajustar duracao do momento atual:', error);
+      }
+    });
+  }, [adjustCurrentMomentDuration, runDelayedCommand]);
 
   const safeToggleBlink = useCallback(() => {
-    try {
-      toggleBlink();
-    } catch (error) {
-      console.error('Erro ao alternar efeito visual do cronometro:', error);
-    }
-  }, [toggleBlink]);
+    runDelayedCommand(isBlinking ? 'Parar efeito de piscar' : 'Ativar efeito de piscar', () => {
+      try {
+        toggleBlink();
+      } catch (error) {
+        console.error('Erro ao alternar efeito visual do cronometro:', error);
+      }
+    });
+  }, [isBlinking, runDelayedCommand, toggleBlink]);
 
   const safeClearMessage = useCallback(() => {
-    try {
-      setShowMessage(false);
-      setMessage('');
-    } catch (error) {
-      console.error('Erro ao limpar mensagem do cronometro:', error);
-    }
-  }, [setMessage, setShowMessage]);
+    runDelayedCommand('Remover mensagem', () => {
+      try {
+        setShowMessage(false);
+        setMessage('');
+      } catch (error) {
+        console.error('Erro ao limpar mensagem do cronometro:', error);
+      }
+    });
+  }, [runDelayedCommand, setMessage, setShowMessage]);
 
   const handleExecutionModeChange = useCallback((mode: string) => {
     if (isExecutionMode(mode)) {
@@ -437,7 +459,7 @@ function PainelCerimonialista() {
           {safeCulto.status === 'planejado' && (
             <button
               type="button"
-              onClick={iniciarCulto}
+              onClick={() => runDelayedCommand('Iniciar culto', iniciarCulto)}
               disabled={!isDataReady || safeMomentos.length === 0 || isCommandLocked}
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:col-span-2 xl:w-auto xl:px-5"
             >
@@ -446,6 +468,15 @@ function PainelCerimonialista() {
           )}
         </div>
       </div>
+
+      <CommandDelayControl
+        delaySeconds={commandDelaySeconds}
+        onDelayChange={setCommandDelaySeconds}
+        scheduledCommandLabel={scheduledCommandLabel}
+        remainingSeconds={remainingSeconds}
+        onCancelScheduled={cancelScheduledCommand}
+        description="Aplica aos comandos operacionais desta tela. Sem delay executa na hora."
+      />
 
       {(lastError || isCommandLocked) && (
         <div className={`glass-card border p-4 ${lastError ? 'border-destructive/30' : 'border-primary/20'}`}>
@@ -488,7 +519,10 @@ function PainelCerimonialista() {
 
             <button
               type="button"
-              onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
+              onClick={() => runDelayedCommand(
+                moderadorReleaseActive ? 'Cancelar liberacao do moderador' : 'Liberar moderador',
+                () => toggleModeradorRelease(!moderadorReleaseActive),
+              )}
               disabled={isCommandLocked}
               className={cn(
                 "flex min-h-16 w-full items-center justify-center gap-3 rounded-[1.6rem] px-6 py-4 text-base font-semibold shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-50",
@@ -522,10 +556,10 @@ function PainelCerimonialista() {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-[repeat(4,minmax(0,auto))_minmax(220px,1fr)]">
-            <button type="button" onClick={() => safeAdjustDuration(-60)} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-destructive/20 px-3 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/30 disabled:pointer-events-none disabled:opacity-50">
+            <button type="button" onClick={() => safeAdjustDuration(-60, 'Remover 1 minuto')} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-destructive/20 px-3 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/30 disabled:pointer-events-none disabled:opacity-50">
               <Minus className="h-3 w-3" /> 1min
             </button>
-            <button type="button" onClick={() => safeAdjustDuration(60)} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[hsl(var(--status-completed)/0.2)] px-3 py-2 text-sm font-semibold text-[hsl(var(--status-completed))] transition-colors hover:bg-[hsl(var(--status-completed)/0.3)] disabled:pointer-events-none disabled:opacity-50">
+            <button type="button" onClick={() => safeAdjustDuration(60, 'Adicionar 1 minuto')} disabled={isCommandLocked} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[hsl(var(--status-completed)/0.2)] px-3 py-2 text-sm font-semibold text-[hsl(var(--status-completed))] transition-colors hover:bg-[hsl(var(--status-completed)/0.3)] disabled:pointer-events-none disabled:opacity-50">
               <Plus className="h-3 w-3" /> 1min
             </button>
             <button
@@ -582,59 +616,59 @@ function PainelCerimonialista() {
           <div className="space-y-3">
             {isMobile ? (
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-              <button type="button" onClick={voltar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+              <button type="button" onClick={() => runDelayedCommand('Voltar momento', voltar)} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <SkipBack className="h-4 w-4" /> <span>Voltar</span>
               </button>
-              <button type="button" onClick={pular} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+              <button type="button" onClick={() => runDelayedCommand('Pular momento', pular)} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <FastForward className="h-4 w-4" /> <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
-              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
+              <button type="button" onClick={() => runDelayedCommand('Retomar cronometro', retomar)} disabled={isCommandLocked || !isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--status-alert))] px-4 py-2.5 text-sm font-semibold text-[hsl(var(--status-alert-foreground))] transition-all duration-200 hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
                 <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                   <Play className="h-4 w-4 transition-transform duration-200 ease-out" />
                   <span className="transition-all duration-200 ease-out">{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
                 </span>
               </button>
-              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
+              <button type="button" onClick={() => runDelayedCommand('Pausar cronometro', pausar)} disabled={isCommandLocked || isPaused} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-6">
                 <span className="inline-flex items-center gap-2 transition-all duration-200 ease-out">
                   <Pause className="h-4 w-4 transition-transform duration-200 ease-out" />
                   <span className="transition-all duration-200 ease-out">{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
                 </span>
               </button>
-              <button type="button" onClick={avancar} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+              <button type="button" onClick={() => runDelayedCommand('Avancar momento', avancar)} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span> <SkipForward className="h-4 w-4" />
               </button>
-              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
+              <button type="button" onClick={() => runDelayedCommand('Finalizar culto', finalizarCulto)} disabled={isCommandLocked} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5">
                 <Check className="h-4 w-4" /> <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
               </button>
             </div>
             ) : (
             <div className="grid xl:grid-cols-[repeat(6,minmax(0,1fr))] xl:gap-2">
-              <button type="button" onClick={voltar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={() => runDelayedCommand('Voltar momento', voltar)} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
                 <SkipBack className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
                 <span>Voltar</span>
               </button>
 
-              <button type="button" onClick={pular} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={() => runDelayedCommand('Pular momento', pular)} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/50 px-3 py-3 text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-muted disabled:pointer-events-none disabled:opacity-50">
                 <FastForward className="h-4.5 w-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
                 <span>{activeCommand === 'skip' ? 'Pulando...' : 'Pular'}</span>
               </button>
 
-              <button type="button" onClick={retomar} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.42)] bg-[hsl(var(--status-alert))] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={() => runDelayedCommand('Retomar cronometro', retomar)} disabled={isCommandLocked || !isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-[hsl(var(--status-alert)/0.42)] bg-[hsl(var(--status-alert))] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[hsl(var(--status-alert))]/90 disabled:pointer-events-none disabled:opacity-50">
                 <Play className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                 <span>{activeCommand === 'resume' ? 'Retomando...' : 'Retomar'}</span>
               </button>
 
-              <button type="button" onClick={pausar} disabled={isCommandLocked || isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/90 px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={() => runDelayedCommand('Pausar cronometro', pausar)} disabled={isCommandLocked || isPaused} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/90 px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary disabled:pointer-events-none disabled:opacity-50">
                 <Pause className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                 <span>{activeCommand === 'pause' ? 'Pausando...' : 'Pausar'}</span>
               </button>
 
-              <button type="button" onClick={avancar} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={() => runDelayedCommand('Avancar momento', avancar)} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50">
                 <SkipForward className="h-4.5 w-4.5 transition-transform duration-200 group-hover:translate-x-0.5" />
                 <span>{activeCommand === 'advance' ? 'Avancando...' : 'Avancar'}</span>
               </button>
 
-              <button type="button" onClick={finalizarCulto} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-destructive/20 bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50">
+              <button type="button" onClick={() => runDelayedCommand('Finalizar culto', finalizarCulto)} disabled={isCommandLocked} className="group flex min-h-[72px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-destructive/20 bg-destructive px-3 py-3 text-sm font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50">
                 <Check className="h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-105" />
                 <span>{activeCommand === 'finish' ? 'Finalizando...' : 'Finalizar'}</span>
               </button>
