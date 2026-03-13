@@ -1,65 +1,49 @@
 import type { RemoteCultoState, TimerSnapshot } from '@/features/culto-sync/domain';
 import { getTimerSnapshot } from '@/features/culto-sync/domain';
-import { LIVE_TICK_MS } from '@/utils/time';
 
-export interface LiveTimerBaseline {
+export interface LiveTimerProjection {
+  revision: number;
   isRunning: boolean;
-  elapsedMs: number;
-  momentElapsedMs: number;
+  elapsedMsAtSync: number;
+  momentElapsedMsAtSync: number;
+  perfNowMsAtSync: number;
+  serverNowMsAtSync: number;
 }
 
-const parseTimestamp = (value: string | null | undefined) => {
-  if (!value) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
+const getPerfNowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-const getAuthoritativeNowMs = (state: RemoteCultoState) => {
-  return parseTimestamp(state.updatedAt)
-    ?? parseTimestamp(state.pausedAt)
-    ?? parseTimestamp(state.momentPausedAt)
-    ?? parseTimestamp(state.startedAt)
-    ?? parseTimestamp(state.momentStartedAt)
-    ?? 0;
-};
-
-export const createLiveTimerBaseline = (
+export const createLiveTimerProjection = (
   state: RemoteCultoState,
-  serverNowMs = getAuthoritativeNowMs(state),
-): LiveTimerBaseline => {
+  serverNowMs: number,
+  perfNowMs = getPerfNowMs(),
+): LiveTimerProjection => {
   const snapshot = getTimerSnapshot(state, serverNowMs);
 
   return {
+    revision: state.revision,
     isRunning: state.timerStatus === 'running',
-    elapsedMs: snapshot.elapsedMs,
-    momentElapsedMs: snapshot.momentElapsedMs,
+    elapsedMsAtSync: snapshot.elapsedMs,
+    momentElapsedMsAtSync: snapshot.momentElapsedMs,
+    perfNowMsAtSync: perfNowMs,
+    serverNowMsAtSync: serverNowMs,
   };
 };
 
-export const advanceLiveTimerBaseline = (
-  baseline: LiveTimerBaseline,
-  deltaMs = LIVE_TICK_MS,
-): LiveTimerBaseline => {
-  if (!baseline.isRunning) {
-    return baseline;
-  }
-
-  return {
-    ...baseline,
-    elapsedMs: baseline.elapsedMs + deltaMs,
-    momentElapsedMs: baseline.momentElapsedMs + deltaMs,
-  };
-};
-
-export const projectLiveTimerSnapshot = (baseline: LiveTimerBaseline): TimerSnapshot => {
-  const elapsedMs = baseline.elapsedMs;
-  const momentElapsedMs = baseline.momentElapsedMs;
+export const projectLiveTimerSnapshot = (
+  projection: LiveTimerProjection,
+  perfNowMs = getPerfNowMs(),
+): TimerSnapshot => {
+  const runningDeltaMs = projection.isRunning
+    ? Math.max(0, perfNowMs - projection.perfNowMsAtSync)
+    : 0;
+  const elapsedMs = projection.elapsedMsAtSync + runningDeltaMs;
+  const momentElapsedMs = projection.momentElapsedMsAtSync + runningDeltaMs;
 
   return {
     elapsedMs,
     momentElapsedMs,
     elapsedSeconds: Math.floor(elapsedMs / 1000),
     momentElapsedSeconds: Math.floor(momentElapsedMs / 1000),
-    isRunning: baseline.isRunning,
+    isRunning: projection.isRunning,
   };
 };

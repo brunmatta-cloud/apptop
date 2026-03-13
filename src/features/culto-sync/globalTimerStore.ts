@@ -1,16 +1,16 @@
 import React from 'react';
 import type { TimerSnapshot } from '@/features/culto-sync/domain';
-import { advanceLiveTimerBaseline, createLiveTimerBaseline, projectLiveTimerSnapshot, type LiveTimerBaseline } from '@/features/culto-sync/liveTimer';
-import { getLiveRemoteStateSnapshot, subscribeLiveRemoteStateStore } from '@/contexts/SyncStoreContext';
-import { LIVE_TICK_MS } from '@/utils/time';
+import { createLiveTimerProjection, projectLiveTimerSnapshot, type LiveTimerProjection } from '@/features/culto-sync/liveTimer';
+import { getLiveRemoteStateSnapshot, getLiveServerNowMs, subscribeLiveRemoteStateStore } from '@/contexts/SyncStoreContext';
 
 // Single app-wide timer: it rebases only when Supabase state changes and ticks locally between those changes.
-let globalTimerBaselineStore: LiveTimerBaseline = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
-let globalTimerSnapshotStore: TimerSnapshot = projectLiveTimerSnapshot(globalTimerBaselineStore);
+let globalTimerProjectionStore: LiveTimerProjection = createLiveTimerProjection(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+let globalTimerSnapshotStore: TimerSnapshot = projectLiveTimerSnapshot(globalTimerProjectionStore);
 const globalTimerListeners = new Set<() => void>();
-let globalTimerIntervalId: ReturnType<typeof setInterval> | null = null;
+let globalTimerAnimationFrameId: number | null = null;
 let globalTimerUnsubscribeRemote: (() => void) | null = null;
 let globalTimerInitialized = false;
+let globalTimerFocusCleanup: (() => void) | null = null;
 
 const publishGlobalTimerSnapshot = (nextSnapshot: TimerSnapshot) => {
   if (
@@ -26,24 +26,23 @@ const publishGlobalTimerSnapshot = (nextSnapshot: TimerSnapshot) => {
 };
 
 const emitGlobalTimerSnapshot = () => {
-  globalTimerBaselineStore = advanceLiveTimerBaseline(globalTimerBaselineStore);
-  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerBaselineStore));
+  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerProjectionStore));
 };
 
 const rebaseGlobalTimerSnapshot = () => {
-  globalTimerBaselineStore = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
-  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerBaselineStore));
+  globalTimerProjectionStore = createLiveTimerProjection(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerProjectionStore));
 };
 
 const stopGlobalTimerLoop = () => {
-  if (globalTimerIntervalId != null) {
-    clearInterval(globalTimerIntervalId);
-    globalTimerIntervalId = null;
+  if (globalTimerAnimationFrameId != null) {
+    cancelAnimationFrame(globalTimerAnimationFrameId);
+    globalTimerAnimationFrameId = null;
   }
 };
 
 const startGlobalTimerLoop = () => {
-  if (globalTimerIntervalId != null) {
+  if (globalTimerAnimationFrameId != null) {
     return;
   }
 
@@ -51,17 +50,19 @@ const startGlobalTimerLoop = () => {
     emitGlobalTimerSnapshot();
     if (getLiveRemoteStateSnapshot().timerStatus !== 'running') {
       stopGlobalTimerLoop();
+      return;
     }
+    globalTimerAnimationFrameId = requestAnimationFrame(tick);
   };
 
-  tick();
-  globalTimerIntervalId = setInterval(tick, LIVE_TICK_MS);
+  emitGlobalTimerSnapshot();
+  globalTimerAnimationFrameId = requestAnimationFrame(tick);
 };
 
 const syncGlobalTimerLoop = () => {
   rebaseGlobalTimerSnapshot();
 
-  if (globalTimerBaselineStore.isRunning) {
+  if (globalTimerProjectionStore.isRunning) {
     startGlobalTimerLoop();
     return;
   }
@@ -79,6 +80,17 @@ export const initializeGlobalTimerStore = () => {
   globalTimerUnsubscribeRemote = subscribeLiveRemoteStateStore(() => {
     syncGlobalTimerLoop();
   });
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const handleWake = () => {
+      syncGlobalTimerLoop();
+    };
+    window.addEventListener('focus', handleWake);
+    document.addEventListener('visibilitychange', handleWake);
+    globalTimerFocusCleanup = () => {
+      window.removeEventListener('focus', handleWake);
+      document.removeEventListener('visibilitychange', handleWake);
+    };
+  }
   syncGlobalTimerLoop();
 };
 
@@ -88,9 +100,13 @@ export const disposeGlobalTimerStore = () => {
     globalTimerUnsubscribeRemote();
     globalTimerUnsubscribeRemote = null;
   }
+  if (globalTimerFocusCleanup) {
+    globalTimerFocusCleanup();
+    globalTimerFocusCleanup = null;
+  }
   globalTimerInitialized = false;
-  globalTimerBaselineStore = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
-  globalTimerSnapshotStore = projectLiveTimerSnapshot(globalTimerBaselineStore);
+  globalTimerProjectionStore = createLiveTimerProjection(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+  globalTimerSnapshotStore = projectLiveTimerSnapshot(globalTimerProjectionStore);
 };
 
 const subscribeGlobalTimerSnapshot = (listener: () => void) => {

@@ -112,7 +112,7 @@ const getLegacyState = async (): Promise<RemoteCultoState> => {
     const seeded = withMutationMetadata(defaultRemoteState, 'legacy-bootstrap', new Date().toISOString());
     const { error: upsertError } = await supabase
       .from('culto_sync_state')
-      .upsert(buildRowPayload(seeded), { onConflict: 'id' });
+      .upsert(buildRowPayload(seeded) as never, { onConflict: 'id' });
 
     if (upsertError) {
       throw upsertError;
@@ -215,13 +215,13 @@ const sendLegacyCommand = async ({
     const now = new Date();
     const transition = runLegacyTransition(command, base, (payload ?? {}) as Record<string, unknown>, actor, now.toISOString(), now.getTime());
     if (!transition.ok) {
-      throw new Error(transition.reason);
+      throw new Error('reason' in transition ? transition.reason : `Falha ao executar ${command}.`);
     }
 
     const next = withMutationMetadata(transition.state, actor, now.toISOString());
     const { data, error } = await supabase
       .from('culto_sync_state')
-      .update(buildRowPayload(next))
+      .update(buildRowPayload(next) as never)
       .eq('id', SESSION_ID)
       .eq('revision', base.revision)
       .select('*')
@@ -264,6 +264,21 @@ export const getSessionState = async (sessionId = SESSION_ID): Promise<RemoteCul
     setMode('legacy_table');
     return getLegacyState();
   }
+};
+
+export const getServerNow = async (): Promise<number> => {
+  const { data, error } = await supabase.rpc('get_server_now');
+
+  if (error) {
+    throw enrichError(error, 'Falha ao consultar horario oficial do servidor.');
+  }
+
+  const parsed = Date.parse(String(data ?? ''));
+  if (!Number.isFinite(parsed)) {
+    throw new Error('Resposta invalida de get_server_now.');
+  }
+
+  return parsed;
 };
 
 export const sendSessionCommand = async ({

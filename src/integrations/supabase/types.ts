@@ -323,6 +323,10 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["session_state"]["Row"]
       }
+      get_server_now: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

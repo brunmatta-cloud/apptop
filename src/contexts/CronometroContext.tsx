@@ -3,9 +3,6 @@ import type { ConnectionStatus } from '@/features/culto-sync/domain';
 import { getLiveRemoteStateSnapshot, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
 
 interface CronometroContextType {
-  timeAdjustment: number;
-  addTime: (seconds: number) => void;
-  resetAdjustment: () => void;
   isBlinking: boolean;
   toggleBlink: () => void;
   setBlinking: (value: boolean) => void;
@@ -49,15 +46,11 @@ const CronometroContext = React.createContext<CronometroContextType | null>(null
 
 export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { uiState, runCommand } = useSyncCommands();
-  const [timeAdjustment, setTimeAdjustment] = React.useState(0);
   const patch = React.useCallback((next: Record<string, unknown>) => {
     void runCommand('patch-settings', 'patch_settings', { patch: next });
   }, [runCommand]);
 
   const value = React.useMemo<CronometroContextType>(() => ({
-    timeAdjustment,
-    addTime: (seconds: number) => setTimeAdjustment((current) => current + seconds),
-    resetAdjustment: () => setTimeAdjustment(0),
     isBlinking: false,
     toggleBlink: () => {
       const settings = getLiveRemoteStateSnapshot().settings;
@@ -98,7 +91,7 @@ export const CronometroProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isSubmitting: uiState.isSubmitting,
     lastError: uiState.lastError,
     connectionStatus: uiState.connectionStatus,
-  }), [patch, timeAdjustment, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
+  }), [patch, uiState.connectionStatus, uiState.isSubmitting, uiState.lastError, uiState.pendingAction]);
 
   return <CronometroContext.Provider value={value}>{children}</CronometroContext.Provider>;
 };

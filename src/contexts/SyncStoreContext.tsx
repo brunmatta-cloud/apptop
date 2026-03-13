@@ -16,7 +16,7 @@ import {
   startCultoTransition,
   withMutationMetadata,
 } from '@/features/culto-sync/domain';
-import { getSessionState, sendSessionCommand, subscribeSessionState } from '@/features/culto-sync/service';
+import { getServerNow, getSessionState, sendSessionCommand, subscribeSessionState } from '@/features/culto-sync/service';
 import { LIVE_TICK_MS } from '@/utils/time';
 
 interface SyncStoreContextValue {
@@ -31,7 +31,9 @@ type SyncCommandContextValue = Omit<SyncStoreContextValue, 'remoteState'>;
 
 const SyncCommandContext = createContext<SyncCommandContextValue | null>(null);
 let liveRemoteStateSnapshot: RemoteCultoState = defaultRemoteState;
-let liveServerClockOffsetMs = 0;
+const getPerfNowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+let liveServerClockBaselineMs = Date.now();
+let liveServerPerfBaselineMs = getPerfNowMs();
 const liveRemoteStateListeners = new Set<() => void>();
 
 const publishLiveRemoteState = (state: RemoteCultoState) => {
@@ -48,7 +50,10 @@ const subscribeLiveRemoteState = (listener: () => void) => {
 
 export const getLiveRemoteStateSnapshot = () => liveRemoteStateSnapshot;
 export const subscribeLiveRemoteStateStore = subscribeLiveRemoteState;
-export const getLiveServerNowMs = () => Date.now() - liveServerClockOffsetMs;
+export const getLiveServerNowMs = () => {
+  const elapsedMs = Math.max(0, getPerfNowMs() - liveServerPerfBaselineMs);
+  return liveServerClockBaselineMs + elapsedMs;
+};
 
 const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
@@ -70,6 +75,11 @@ const logSync = (scope: string, detail: Record<string, unknown> = {}) => {
 const logTimerFlow = (scope: string, detail: Record<string, unknown> = {}) => {
   if (!ENABLE_TIMER_FLOW_DEBUG) return;
   console.info(`[sync:${scope}]`, detail);
+};
+
+type ServerClockSample = {
+  receivedPerfMs: number;
+  serverNowMs?: number;
 };
 
 type TimerFlowTrace = {
@@ -129,13 +139,25 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const updateServerClockOffset = (state: RemoteCultoState, receivedAtMs: number) => {
+const updateServerClockBaseline = (
+  state: RemoteCultoState,
+  receivedPerfMs: number,
+  serverNowMs?: number,
+) => {
   const serverUpdatedAtMs = Date.parse(state.updatedAt);
-  if (!Number.isFinite(serverUpdatedAtMs) || serverUpdatedAtMs <= 0) {
+  const currentEstimatedServerNowMs = liveServerClockBaselineMs + Math.max(0, receivedPerfMs - liveServerPerfBaselineMs);
+  const nextServerNowMs = Math.max(
+    Number.isFinite(serverNowMs) ? Number(serverNowMs) : Number.NEGATIVE_INFINITY,
+    Number.isFinite(serverUpdatedAtMs) ? serverUpdatedAtMs : Number.NEGATIVE_INFINITY,
+    currentEstimatedServerNowMs,
+  );
+
+  if (!Number.isFinite(nextServerNowMs) || nextServerNowMs <= 0) {
     return;
   }
 
-  liveServerClockOffsetMs = receivedAtMs - serverUpdatedAtMs;
+  liveServerClockBaselineMs = nextServerNowMs;
+  liveServerPerfBaselineMs = receivedPerfMs;
 };
 
 const didCommandTakeEffect = (command: string, state: RemoteCultoState) => {
@@ -224,7 +246,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const remoteStateRef = useRef<RemoteCultoState>(defaultRemoteState);
   const fingerprintRef = useRef(getStateFingerprint(defaultRemoteState));
   const autoAdvanceRevisionRef = useRef<number | null>(null);
-  const autoAdvanceTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const autoAdvanceTimeoutRef = useRef<number | null>(null);
   const realtimeStatusRef = useRef('CONNECTING');
   const lastSuccessfulSyncAtRef = useRef<number | null>(null);
   const consecutiveRefreshFailuresRef = useRef(0);
@@ -253,6 +275,25 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     setUiState((current) => current.connectionStatus === resolved ? current : { ...current, connectionStatus: resolved });
+  }, []);
+
+  const sampleServerClock = useCallback(async (): Promise<ServerClockSample> => {
+    const startedPerfMs = getPerfNowMs();
+
+    try {
+      const serverNowMs = await getServerNow();
+      const receivedPerfMs = getPerfNowMs();
+      const roundTripMs = Math.max(0, receivedPerfMs - startedPerfMs);
+
+      return {
+        receivedPerfMs,
+        serverNowMs: serverNowMs + roundTripMs / 2,
+      };
+    } catch {
+      return {
+        receivedPerfMs: getPerfNowMs(),
+      };
+    }
   }, []);
 
   const syncAutoAdvance = useCallback(() => {
@@ -300,8 +341,13 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     runCommandRef.current?.('auto-advance', 'advance');
   }, []);
 
-  const applyRemoteState = useCallback((next: RemoteCultoState, origin: string) => {
+  const applyRemoteState = useCallback((
+    next: RemoteCultoState,
+    origin: string,
+    serverClockSample?: ServerClockSample,
+  ) => {
     const receivedAtMs = Date.now();
+    const receivedPerfMs = serverClockSample?.receivedPerfMs ?? getPerfNowMs();
     const nextFingerprint = getStateFingerprint(next);
     const currentFingerprint = fingerprintRef.current;
 
@@ -330,7 +376,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     remoteStateRef.current = next;
     fingerprintRef.current = nextFingerprint;
-    updateServerClockOffset(next, receivedAtMs);
+    updateServerClockBaseline(next, receivedPerfMs, serverClockSample?.serverNowMs);
     publishLiveRemoteState(next);
     syncAutoAdvance();
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
@@ -376,11 +422,14 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const refreshFromServer = useCallback(async (reason = 'manual-refresh') => {
     try {
-      const next = await getSessionState(remoteStateRef.current.sessionId);
+      const [next, serverClockSample] = await Promise.all([
+        getSessionState(remoteStateRef.current.sessionId),
+        sampleServerClock(),
+      ]);
       hasSuccessfulSyncRef.current = true;
       consecutiveRefreshFailuresRef.current = 0;
       lastSuccessfulSyncAtRef.current = Date.now();
-      applyRemoteState(next, reason);
+      applyRemoteState(next, reason, serverClockSample);
       updateConnectionStatus();
       setUiState((current) => ({ ...current, isHydrating: false, lastError: null }));
     } catch (error) {
@@ -393,7 +442,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateConnectionStatus();
       setUiState((current) => ({ ...current, isHydrating: false, lastError: message }));
     }
-  }, [applyRemoteState, updateConnectionStatus]);
+  }, [applyRemoteState, sampleServerClock, updateConnectionStatus]);
 
   const runCommand = useCallback(async (actionKey: string, command: string, payload: Record<string, unknown> = {}) => {
     queueRef.current = queueRef.current
@@ -457,17 +506,20 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             }
           }
 
-          const next = await sendSessionCommand({
-            command,
-            payload: commandPayload,
-            expectedRevision,
-            actor: actorIdRef.current,
-            sessionId: remoteStateRef.current.sessionId,
-          });
+          const [next, serverClockSample] = await Promise.all([
+            sendSessionCommand({
+              command,
+              payload: commandPayload,
+              expectedRevision,
+              actor: actorIdRef.current,
+              sessionId: remoteStateRef.current.sessionId,
+            }),
+            sampleServerClock(),
+          ]);
           hasSuccessfulSyncRef.current = true;
           consecutiveRefreshFailuresRef.current = 0;
           lastSuccessfulSyncAtRef.current = Date.now();
-          applyRemoteState(next, `${command}:rpc`);
+          applyRemoteState(next, `${command}:rpc`, serverClockSample);
           updateConnectionStatus();
           window.setTimeout(() => {
             void refreshFromServer(`${command}:confirm`);
@@ -509,7 +561,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
 
     return queueRef.current;
-  }, [applyRemoteState, refreshFromServer, uiState.isHydrating, updateConnectionStatus]);
+  }, [applyRemoteState, refreshFromServer, sampleServerClock, uiState.isHydrating, updateConnectionStatus]);
 
   runCommandRef.current = runCommand;
 
@@ -624,7 +676,7 @@ export const useCeremonySession = () => {
     setExecutionMode: (mode: ExecutionMode) => run('set-execution-mode', 'set_execution_mode', { mode }),
     setActiveCultoId: (id: string) => run('set-active-culto', 'set_active_culto', { id }),
     setCulto: (value: React.SetStateAction<Culto>) => {
-      const nextCulto = typeof value === 'function' ? value(culto) : value;
+      const nextCulto = typeof value === 'function' ? value(culto as Culto) : value;
       run('set-culto', 'set_culto', { id: nextCulto.id, culto: nextCulto });
     },
     setMomentos: (value: React.SetStateAction<MomentoProgramacao[]>) => {
