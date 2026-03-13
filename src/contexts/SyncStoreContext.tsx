@@ -34,6 +34,7 @@ let liveRemoteStateSnapshot: RemoteCultoState = defaultRemoteState;
 const getPerfNowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 let liveServerClockBaselineMs = Date.now();
 let liveServerPerfBaselineMs = getPerfNowMs();
+let liveServerBestRoundTripMs = Number.POSITIVE_INFINITY;
 const liveRemoteStateListeners = new Set<() => void>();
 
 const publishLiveRemoteState = (state: RemoteCultoState) => {
@@ -78,8 +79,9 @@ const logTimerFlow = (scope: string, detail: Record<string, unknown> = {}) => {
 };
 
 type ServerClockSample = {
-  receivedPerfMs: number;
+  midpointPerfMs: number;
   serverNowMs?: number;
+  roundTripMs?: number;
 };
 
 type TimerFlowTrace = {
@@ -142,12 +144,14 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const updateServerClockBaseline = (
   state: RemoteCultoState,
   receivedPerfMs: number,
-  serverNowMs?: number,
+  calibrationSample?: ServerClockSample,
 ) => {
   const serverUpdatedAtMs = Date.parse(state.updatedAt);
   const currentEstimatedServerNowMs = liveServerClockBaselineMs + Math.max(0, receivedPerfMs - liveServerPerfBaselineMs);
+  const calibratedServerNowMs = calibrationSample?.serverNowMs;
+  const calibratedPerfNowMs = calibrationSample?.midpointPerfMs;
   const nextServerNowMs = Math.max(
-    Number.isFinite(serverNowMs) ? Number(serverNowMs) : Number.NEGATIVE_INFINITY,
+    Number.isFinite(calibratedServerNowMs) ? Number(calibratedServerNowMs) : Number.NEGATIVE_INFINITY,
     Number.isFinite(serverUpdatedAtMs) ? serverUpdatedAtMs : Number.NEGATIVE_INFINITY,
     currentEstimatedServerNowMs,
   );
@@ -157,7 +161,10 @@ const updateServerClockBaseline = (
   }
 
   liveServerClockBaselineMs = nextServerNowMs;
-  liveServerPerfBaselineMs = receivedPerfMs;
+  liveServerPerfBaselineMs = Number.isFinite(calibratedPerfNowMs) ? Number(calibratedPerfNowMs) : receivedPerfMs;
+  if (Number.isFinite(calibrationSample?.roundTripMs)) {
+    liveServerBestRoundTripMs = Math.min(liveServerBestRoundTripMs, Number(calibrationSample?.roundTripMs));
+  }
 };
 
 const didCommandTakeEffect = (command: string, state: RemoteCultoState) => {
@@ -251,6 +258,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const lastSuccessfulSyncAtRef = useRef<number | null>(null);
   const consecutiveRefreshFailuresRef = useRef(0);
   const hasSuccessfulSyncRef = useRef(false);
+  const clockCalibrationInFlightRef = useRef<Promise<void> | null>(null);
   const timerFlowTraceRef = useRef<TimerFlowTrace | null>(null);
   const runCommandRef = useRef<SyncStoreContextValue['runCommand'] | null>(null);
   const [uiState, setUiState] = useState<UiSyncState>({
@@ -277,24 +285,64 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUiState((current) => current.connectionStatus === resolved ? current : { ...current, connectionStatus: resolved });
   }, []);
 
-  const sampleServerClock = useCallback(async (): Promise<ServerClockSample> => {
+  const sampleServerClockOnce = useCallback(async (): Promise<ServerClockSample | null> => {
     const startedPerfMs = getPerfNowMs();
 
     try {
       const serverNowMs = await getServerNow();
       const receivedPerfMs = getPerfNowMs();
       const roundTripMs = Math.max(0, receivedPerfMs - startedPerfMs);
+      const midpointPerfMs = startedPerfMs + roundTripMs / 2;
 
       return {
-        receivedPerfMs,
-        serverNowMs: serverNowMs + roundTripMs / 2,
+        midpointPerfMs,
+        serverNowMs,
+        roundTripMs,
       };
     } catch {
-      return {
-        receivedPerfMs: getPerfNowMs(),
-      };
+      return null;
     }
   }, []);
+
+  const calibrateServerClock = useCallback((sampleCount = 4) => {
+    if (clockCalibrationInFlightRef.current) {
+      return clockCalibrationInFlightRef.current;
+    }
+
+    const calibrationPromise = (async () => {
+      const samples: ServerClockSample[] = [];
+
+      for (let index = 0; index < sampleCount; index += 1) {
+        const sample = await sampleServerClockOnce();
+        if (sample?.serverNowMs != null) {
+          samples.push(sample);
+        }
+      }
+
+      if (samples.length === 0) {
+        return;
+      }
+
+      const bestSample = samples.reduce((best, current) => {
+        if ((current.roundTripMs ?? Number.POSITIVE_INFINITY) < (best.roundTripMs ?? Number.POSITIVE_INFINITY)) {
+          return current;
+        }
+        return best;
+      }, samples[0]);
+
+      if ((bestSample.roundTripMs ?? Number.POSITIVE_INFINITY) > liveServerBestRoundTripMs) {
+        return;
+      }
+
+      updateServerClockBaseline(remoteStateRef.current, getPerfNowMs(), bestSample);
+    })()
+      .finally(() => {
+        clockCalibrationInFlightRef.current = null;
+      });
+
+    clockCalibrationInFlightRef.current = calibrationPromise;
+    return calibrationPromise;
+  }, [sampleServerClockOnce]);
 
   const syncAutoAdvance = useCallback(() => {
     if (autoAdvanceTimeoutRef.current) {
@@ -347,7 +395,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     serverClockSample?: ServerClockSample,
   ) => {
     const receivedAtMs = Date.now();
-    const receivedPerfMs = serverClockSample?.receivedPerfMs ?? getPerfNowMs();
+    const receivedPerfMs = getPerfNowMs();
     const nextFingerprint = getStateFingerprint(next);
     const currentFingerprint = fingerprintRef.current;
 
@@ -376,7 +424,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     remoteStateRef.current = next;
     fingerprintRef.current = nextFingerprint;
-    updateServerClockBaseline(next, receivedPerfMs, serverClockSample?.serverNowMs);
+    updateServerClockBaseline(next, receivedPerfMs, serverClockSample);
     publishLiveRemoteState(next);
     syncAutoAdvance();
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
@@ -422,14 +470,14 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const refreshFromServer = useCallback(async (reason = 'manual-refresh') => {
     try {
-      const [next, serverClockSample] = await Promise.all([
-        getSessionState(remoteStateRef.current.sessionId),
-        sampleServerClock(),
-      ]);
+      const next = await getSessionState(remoteStateRef.current.sessionId);
       hasSuccessfulSyncRef.current = true;
       consecutiveRefreshFailuresRef.current = 0;
       lastSuccessfulSyncAtRef.current = Date.now();
-      applyRemoteState(next, reason, serverClockSample);
+      applyRemoteState(next, reason);
+      if (reason === 'bootstrap' || reason === 'realtime-subscribed' || reason === 'realtime-reconnect') {
+        void calibrateServerClock();
+      }
       updateConnectionStatus();
       setUiState((current) => ({ ...current, isHydrating: false, lastError: null }));
     } catch (error) {
@@ -442,7 +490,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateConnectionStatus();
       setUiState((current) => ({ ...current, isHydrating: false, lastError: message }));
     }
-  }, [applyRemoteState, sampleServerClock, updateConnectionStatus]);
+  }, [applyRemoteState, calibrateServerClock, updateConnectionStatus]);
 
   const runCommand = useCallback(async (actionKey: string, command: string, payload: Record<string, unknown> = {}) => {
     queueRef.current = queueRef.current
@@ -506,20 +554,18 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             }
           }
 
-          const [next, serverClockSample] = await Promise.all([
-            sendSessionCommand({
-              command,
-              payload: commandPayload,
-              expectedRevision,
-              actor: actorIdRef.current,
-              sessionId: remoteStateRef.current.sessionId,
-            }),
-            sampleServerClock(),
-          ]);
+          const next = await sendSessionCommand({
+            command,
+            payload: commandPayload,
+            expectedRevision,
+            actor: actorIdRef.current,
+            sessionId: remoteStateRef.current.sessionId,
+          });
           hasSuccessfulSyncRef.current = true;
           consecutiveRefreshFailuresRef.current = 0;
           lastSuccessfulSyncAtRef.current = Date.now();
-          applyRemoteState(next, `${command}:rpc`, serverClockSample);
+          applyRemoteState(next, `${command}:rpc`);
+          void calibrateServerClock();
           updateConnectionStatus();
           window.setTimeout(() => {
             void refreshFromServer(`${command}:confirm`);
@@ -561,7 +607,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
 
     return queueRef.current;
-  }, [applyRemoteState, refreshFromServer, sampleServerClock, uiState.isHydrating, updateConnectionStatus]);
+  }, [applyRemoteState, calibrateServerClock, refreshFromServer, uiState.isHydrating, updateConnectionStatus]);
 
   runCommandRef.current = runCommand;
 
@@ -599,6 +645,23 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     };
   }, []);
+
+  useEffect(() => {
+    const handleWake = () => {
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+      void calibrateServerClock();
+    };
+
+    window.addEventListener('focus', handleWake);
+    document.addEventListener('visibilitychange', handleWake);
+
+    return () => {
+      window.removeEventListener('focus', handleWake);
+      document.removeEventListener('visibilitychange', handleWake);
+    };
+  }, [calibrateServerClock]);
 
   const commandValue = useMemo<SyncCommandContextValue>(() => ({
     uiState,
