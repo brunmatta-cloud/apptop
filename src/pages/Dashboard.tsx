@@ -1,28 +1,116 @@
-import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
-import { Clock, Play, TrendingUp, Timer, Zap, Radio, Volume2, List, Users, Focus } from 'lucide-react';
-import { StatusBadge } from '@/components/culto/StatusBadge';
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Clock, Focus, List, Play, Radio, Timer, TrendingUp, Users, Volume2, Zap } from 'lucide-react';
+import { StatusBadge } from '@/components/culto/StatusBadge';
+import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useClock } from '@/hooks/useClock';
 import { formatElapsedLabel } from '@/utils/time';
 
-const Dashboard = () => {
-  const { iniciarCulto, pendingAction, isSubmitting, connectionStatus } = useCultoControls();
-  const { culto, momentos, getMomentStatus } = useLiveCultoView();
-  const liveSnapshot = useCultoTimer();
-  const navigate = useNavigate();
+const DashboardHeaderDate = memo(function DashboardHeaderDate() {
+  const { currentTime } = useClock();
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+    </p>
+  );
+});
+
+const DashboardHeaderTime = memo(function DashboardHeaderTime() {
   const { currentTime, formatTime } = useClock();
+  return <span className="font-mono text-2xl font-bold text-primary sm:text-3xl">{formatTime(currentTime)}</span>;
+});
+
+const DashboardLiveSummary = memo(function DashboardLiveSummary({
+  cultoStatus,
+  momentos,
+}: {
+  cultoStatus: string;
+  momentos: ReturnType<typeof useLiveCultoView>['momentos'];
+}) {
+  const liveSnapshot = useCultoTimer();
   const safeElapsedMs = Number.isFinite(liveSnapshot.elapsedMs) ? liveSnapshot.elapsedMs : 0;
-  const totalMinutes = momentos.reduce((sum, momento) => sum + momento.duracao, 0);
+  const totalMinutes = useMemo(() => momentos.reduce((sum, momento) => sum + momento.duracao, 0), [momentos]);
   const totalMs = totalMinutes * 60 * 1000;
   const normalizedProgressPercent = totalMs > 0
     ? Math.min(100, Math.max(0, (safeElapsedMs / totalMs) * 100))
     : 0;
   const progressScale = normalizedProgressPercent / 100;
   const displayProgressPercent = normalizedProgressPercent >= 100 ? '100.0' : normalizedProgressPercent.toFixed(1);
+  const statusLabel = cultoStatus === 'planejado' ? 'Sem horario' : cultoStatus === 'em_andamento' ? 'Em andamento' : 'Finalizado';
 
-  const statusLabel = culto.status === 'planejado' ? 'Sem horario' : culto.status === 'em_andamento' ? 'Em andamento' : 'Finalizado';
-  const connectionLabel = connectionStatus === 'online' ? 'Sincronizado' : connectionStatus === 'degraded' ? 'Sincronizacao parcial' : connectionStatus === 'offline' ? 'Offline' : 'Conectando';
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="glass-card p-3 sm:p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Progresso</span>
+          </div>
+          <p className="font-display text-xl font-bold text-primary sm:text-2xl">{displayProgressPercent} %</p>
+        </div>
+        <div className="glass-card p-3 sm:p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Decorrido</span>
+          </div>
+          <p className="font-display text-xl font-bold sm:text-2xl">{formatElapsedLabel(safeElapsedMs)}</p>
+        </div>
+        <div className="glass-card p-3 sm:p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Timer className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Duracao total</span>
+          </div>
+          <p className="font-display text-xl font-bold sm:text-2xl">{totalMinutes} min</p>
+        </div>
+        <div className="glass-card p-3 sm:p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Status</span>
+          </div>
+          <p className={`font-display text-xl font-bold sm:text-2xl ${
+            cultoStatus === 'em_andamento'
+              ? 'text-status-executing'
+              : cultoStatus === 'finalizado'
+                ? 'text-status-completed'
+                : 'text-status-alert'
+          }`}>
+            {statusLabel}
+          </p>
+        </div>
+      </div>
+
+      <div className="glass-card p-4 sm:p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Progresso do culto</h3>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            {cultoStatus === 'planejado' ? 'Planejado' : cultoStatus === 'em_andamento' ? 'Em andamento' : 'Finalizado'}
+          </span>
+        </div>
+        <div className="progress-bar h-2.5 rounded-full">
+          <div
+            className="progress-bar-fill rounded-full"
+            style={{ transform: `scaleX(${progressScale})`, transformOrigin: 'left', width: '100%' }}
+          />
+        </div>
+        <p className="mt-1.5 text-right text-xs text-muted-foreground">{displayProgressPercent} %</p>
+      </div>
+    </>
+  );
+});
+
+const Dashboard = () => {
+  const { iniciarCulto, pendingAction, isSubmitting, connectionStatus } = useCultoControls();
+  const { culto, momentos, getMomentStatus } = useLiveCultoView();
+  const navigate = useNavigate();
+
+  const connectionLabel = connectionStatus === 'online'
+    ? 'Sincronizado'
+    : connectionStatus === 'degraded'
+      ? 'Sincronizacao parcial'
+      : connectionStatus === 'offline'
+        ? 'Offline'
+        : 'Conectando';
   const connectionClass = connectionStatus === 'online'
     ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
     : connectionStatus === 'degraded'
@@ -40,27 +128,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-display">Painel</h1>
-          <p className="text-muted-foreground text-sm">
-            {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">Painel</h1>
+          <DashboardHeaderDate />
         </div>
+
         <div className="flex items-center gap-4">
-          <span className={`text-xs px-2.5 py-1 rounded-full border ${connectionClass}`}>
+          <span className={`rounded-full border px-2.5 py-1 text-xs ${connectionClass}`}>
             {connectionLabel}
           </span>
-          <span className="text-2xl sm:text-3xl font-mono font-bold text-primary">{formatTime(currentTime)}</span>
+          <DashboardHeaderTime />
           {culto.status === 'planejado' && (
             <button
-              onClick={() => {
-                try { iniciarCulto(); } catch (error) { console.error('Erro ao iniciar culto:', error); }
-              }}
+              onClick={() => iniciarCulto()}
               disabled={isSubmitting}
-              className="px-4 sm:px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:pointer-events-none"
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:px-5"
             >
-              <Play className="w-4 h-4" /> {pendingAction === 'start' ? 'Iniciando...' : 'Iniciar Culto'}
+              <Play className="h-4 w-4" />
+              {pendingAction === 'start' ? 'Iniciando...' : 'Iniciar Culto'}
             </button>
           )}
         </div>
@@ -68,75 +154,38 @@ const Dashboard = () => {
 
       <div className="glass-card p-4">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-primary" />
+          <div className="h-3 w-3 rounded-full bg-primary" />
           <div>
             <p className="font-display font-semibold">{culto.nome}</p>
             <p className="text-sm text-muted-foreground">
-              {new Date(`${culto.data}T00:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })} • {culto.horarioInicial}
+              {new Date(`${culto.data}T00:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })} - {culto.horarioInicial}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="glass-card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Progresso</span>
-              </div>
-              <p className="text-xl sm:text-2xl font-bold font-display text-primary">{displayProgressPercent} %</p>
-            </div>
-            <div className="glass-card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Decorrido</span>
-              </div>
-              <p className="text-xl sm:text-2xl font-bold font-display">{formatElapsedLabel(safeElapsedMs)}</p>
-            </div>
-            <div className="glass-card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Timer className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Duracao Total</span>
-              </div>
-              <p className="text-xl sm:text-2xl font-bold font-display">{totalMinutes} min</p>
-            </div>
-            <div className="glass-card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Status</span>
-              </div>
-              <p className={`text-xl sm:text-2xl font-bold font-display ${culto.status === 'em_andamento' ? 'text-status-executing' : culto.status === 'finalizado' ? 'text-status-completed' : 'text-status-alert'}`}>
-                {statusLabel}
-              </p>
-            </div>
-          </div>
+          <DashboardLiveSummary cultoStatus={culto.status} momentos={momentos} />
 
           <div className="glass-card p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progresso do Culto</h3>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
-                {culto.status === 'planejado' ? 'Planejado' : culto.status === 'em_andamento' ? 'Em Andamento' : 'Finalizado'}
-              </span>
-            </div>
-            <div className="progress-bar h-2.5 rounded-full">
-              <div className="progress-bar-fill rounded-full" style={{ transform: `scaleX(${progressScale})`, transformOrigin: 'left', width: '100%' }} />
-            </div>
-            <p className="text-right text-xs text-muted-foreground mt-1.5">{displayProgressPercent} %</p>
-          </div>
-
-          <div className="glass-card p-4 sm:p-5">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Programacao</h3>
+            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Programacao</h3>
             <div className="space-y-1">
               {momentos.map((momento, index) => {
                 const status = getMomentStatus(index);
                 return (
-                  <div key={momento.id} className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg transition-colors ${status === 'executando' ? 'bg-status-executing/10' : 'hover:bg-muted/30'}`}>
-                    <span className="text-xs sm:text-sm font-mono text-muted-foreground w-10 sm:w-12">{momento.horarioInicio}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-sm ${status === 'concluido' ? 'text-muted-foreground line-through' : ''} truncate`}>{momento.atividade}</p>
-                      <p className="text-xs text-muted-foreground truncate">{momento.responsavel}</p>
+                  <div
+                    key={momento.id}
+                    className={`flex items-center gap-3 rounded-lg p-2 transition-colors sm:gap-4 sm:p-3 ${
+                      status === 'executando' ? 'bg-status-executing/10' : 'hover:bg-muted/30'
+                    }`}
+                  >
+                    <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground sm:w-12 sm:text-sm">{momento.horarioInicio}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-sm font-medium ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>
+                        {momento.atividade}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{momento.responsavel}</p>
                     </div>
                     <StatusBadge status={status} />
                   </div>
@@ -147,16 +196,16 @@ const Dashboard = () => {
         </div>
 
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Acesso Rapido</h3>
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acesso rapido</h3>
           <div className="grid grid-cols-2 gap-3">
             {quickLinks.map((link) => (
               <button
                 key={link.to}
                 onClick={() => navigate(link.to)}
-                className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                className="flex flex-col items-center gap-2 rounded-xl bg-muted/30 p-3 transition-colors hover:bg-muted/50 sm:p-4"
               >
-                <div className={`w-10 h-10 rounded-xl ${link.color} flex items-center justify-center`}>
-                  <link.icon className="w-5 h-5" />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${link.color}`}>
+                  <link.icon className="h-5 w-5" />
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">{link.label}</span>
               </button>
@@ -167,4 +216,5 @@ const Dashboard = () => {
     </div>
   );
 };
+
 export default Dashboard;

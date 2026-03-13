@@ -1,7 +1,7 @@
 import { useCultoControls, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useCronometro } from '@/contexts/CronometroContext';
 import { Slider } from '@/components/ui/slider';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, memo } from 'react';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import {
   Plus, Minus, Zap, ZapOff, MessageSquare, Timer, Settings2, Send, EyeOff, Type, Palette, Copy
@@ -108,10 +108,139 @@ const DialControl = ({
   );
 };
 
+const CronometroControlePreview = memo(function CronometroControlePreview({
+  currentMoment,
+  nextMoment,
+  showMessage,
+  message,
+  topFontSize,
+  bottomFontSize,
+  timerFontSize,
+  messageFontSize,
+  backgroundColor,
+  timerTextColor,
+  topTextColor,
+  bottomTextColor,
+  messageTextColor,
+  warningColor,
+  dangerColor,
+  orangeThreshold,
+  redThreshold,
+  isBlinking,
+}: {
+  currentMoment: ReturnType<typeof useLiveCultoView>['currentMoment'];
+  nextMoment: ReturnType<typeof useLiveCultoView>['nextMoment'];
+  showMessage: boolean;
+  message: string;
+  topFontSize: number;
+  bottomFontSize: number;
+  timerFontSize: number;
+  messageFontSize: number;
+  backgroundColor: string;
+  timerTextColor: string;
+  topTextColor: string;
+  bottomTextColor: string;
+  messageTextColor: string;
+  warningColor: string;
+  dangerColor: string;
+  orangeThreshold: number;
+  redThreshold: number;
+  isBlinking: boolean;
+}) {
+  const { momentElapsedMs } = useCultoTimer();
+  const { remainingSeconds, progressScale: momentProgress, formattedRemaining, remainingLabel } = useMomentProgress(currentMoment, momentElapsedMs);
+  const isDanger = remainingSeconds <= redThreshold && !!currentMoment;
+  const isWarning = !isDanger && remainingSeconds <= orangeThreshold && !!currentMoment;
+  const previewTimerColor = isDanger ? dangerColor : isWarning ? warningColor : timerTextColor;
+
+  return (
+    <div
+      className="glass-card min-h-[46vh] overflow-hidden p-6 sm:p-8 lg:min-h-[56vh] lg:p-10"
+      style={{ background: `radial-gradient(circle at top, ${warningColor}14 0%, transparent 32%), ${backgroundColor}` }}
+    >
+      <div className="flex h-full flex-col justify-between gap-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 text-white/75">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">Estado oficial</p>
+            <p className="text-sm">{showMessage ? 'Mensagem publicada' : currentMoment ? 'Cronometro sincronizado' : 'Aguardando inicio'}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">Proximo comando</p>
+            <p className="max-w-[18rem] truncate text-sm">{nextMoment?.atividade ?? 'Nenhum'}</p>
+          </div>
+        </div>
+
+        <p
+          className="truncate text-center uppercase tracking-wider"
+          style={{
+            color: topTextColor,
+            fontSize: `clamp(1rem, 3vw, ${topFontSize}rem)`,
+          }}
+        >
+          {currentMoment ? `${currentMoment.bloco} - ${currentMoment.atividade}` : 'Nenhum momento em execucao'}
+        </p>
+
+        {showMessage && message ? (
+          <p
+            className="flex flex-1 items-center justify-center break-words text-center font-display font-bold"
+            style={{
+              color: messageTextColor,
+              fontSize: `clamp(2.5rem, 8vw, ${messageFontSize}rem)`,
+            }}
+          >
+            {message}
+          </p>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <div
+              className={`font-mono font-bold ${isBlinking ? 'cronometro-blink' : ''}`}
+              style={{
+                color: previewTimerColor,
+                fontSize: `clamp(6rem, 16vw, ${timerFontSize}rem)`,
+                lineHeight: 1,
+              }}
+            >
+              {formattedRemaining}
+            </div>
+            {currentMoment && (
+              <p
+                className="mt-4 text-center"
+                style={{
+                  color: bottomTextColor,
+                  fontSize: `clamp(1rem, 3vw, ${bottomFontSize}rem)`,
+                }}
+              >
+                {currentMoment.responsavel}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="h-3 w-full overflow-hidden rounded-full border border-white/10 bg-white/10">
+            <div
+              className="h-full rounded-full transition-transform duration-300"
+              style={{
+                width: '100%',
+                transform: `scaleX(${momentProgress})`,
+                transformOrigin: 'left',
+                background: `linear-gradient(90deg, ${timerTextColor}, ${previewTimerColor})`,
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4 text-sm text-white/75">
+            <span>{currentMoment ? `${remainingLabel} restantes` : 'Sem momento ativo'}</span>
+            <span>{remainingSeconds}s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const CronometroControle = () => {
   const { adjustCurrentMomentDuration, pendingAction, isSubmitting, lastError, connectionStatus } = useCultoControls();
   const { currentIndex, currentMoment, nextMoment, culto } = useLiveCultoView();
-  const { momentElapsedMs } = useCultoTimer();
   const {
     isBlinking,
     toggleBlink,
@@ -150,7 +279,7 @@ const CronometroControle = () => {
   const [msgDraft, setMsgDraft] = useState('');
   const [copiedCronometroLink, setCopiedCronometroLink] = useState(false);
 
-  if (!culto || typeof currentIndex !== 'number' || typeof momentElapsedMs !== 'number') {
+  if (!culto || typeof currentIndex !== 'number') {
     return (
       <div className="p-6 space-y-4">
         <div className="glass-card p-4">
@@ -159,11 +288,6 @@ const CronometroControle = () => {
       </div>
     );
   }
-
-  const { remainingSeconds, progressScale: momentProgress, formattedRemaining, remainingLabel } = useMomentProgress(currentMoment, momentElapsedMs);
-  const isDanger = remainingSeconds <= redThreshold && !!currentMoment;
-  const isWarning = !isDanger && remainingSeconds <= orangeThreshold && !!currentMoment;
-  const previewTimerColor = isDanger ? dangerColor : isWarning ? warningColor : timerTextColor;
   const excessSeconds = currentMoment && currentMoment.duracaoOriginal != null
     ? Math.round((currentMoment.duracao - currentMoment.duracaoOriginal) * 60)
     : 0;
@@ -250,74 +374,26 @@ const CronometroControle = () => {
         </div>
       )}
 
-      <div className="glass-card min-h-[46vh] lg:min-h-[56vh] p-6 sm:p-8 lg:p-10 overflow-hidden flex flex-col justify-between gap-8" style={{ background: `radial-gradient(circle at top, ${warningColor}14 0%, transparent 32%), ${backgroundColor}` }}>
-        <div className="flex items-center justify-between gap-4 flex-wrap text-white/75">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">Estado oficial</p>
-            <p className="text-sm">{showMessage ? 'Mensagem publicada' : currentMoment ? 'Cronometro sincronizado' : 'Aguardando inicio'}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">Proximo comando</p>
-            <p className="text-sm max-w-[18rem] truncate">{nextMoment?.atividade ?? 'Nenhum'}</p>
-          </div>
-        </div>
-
-        <p
-          className="uppercase tracking-wider truncate text-center"
-          style={{
-            color: topTextColor,
-            fontSize: `clamp(1rem, 3vw, ${topFontSize}rem)`,
-          }}
-        >
-          {currentMoment ? `${currentMoment.bloco} - ${currentMoment.atividade}` : 'Nenhum momento em execucao'}
-        </p>
-
-        {showMessage && message ? (
-          <p
-            className="font-display font-bold break-words text-center flex-1 flex items-center justify-center"
-            style={{
-              color: messageTextColor,
-              fontSize: `clamp(2.5rem, 8vw, ${messageFontSize}rem)`,
-            }}
-          >
-            {message}
-          </p>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div
-              className={`font-mono font-bold ${isBlinking ? 'cronometro-blink' : ''}`}
-              style={{
-                color: previewTimerColor,
-                fontSize: `clamp(6rem, 16vw, ${timerFontSize}rem)`,
-                lineHeight: 1,
-              }}
-            >
-              {formattedRemaining}
-            </div>
-            {currentMoment && (
-              <p
-                className="mt-4 text-center"
-                style={{
-                  color: bottomTextColor,
-                  fontSize: `clamp(1rem, 3vw, ${bottomFontSize}rem)`,
-                }}
-              >
-                {currentMoment.responsavel}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <div className="w-full rounded-full overflow-hidden h-3 bg-white/10 border border-white/10">
-            <div className="h-full rounded-full transition-transform duration-300" style={{ width: '100%', transform: `scaleX(${momentProgress})`, transformOrigin: 'left', background: `linear-gradient(90deg, ${timerTextColor}, ${previewTimerColor})` }} />
-          </div>
-          <div className="flex items-center justify-between gap-4 text-sm text-white/75">
-            <span>{currentMoment ? `${remainingLabel} restantes` : 'Sem momento ativo'}</span>
-            <span>{excessSeconds !== 0 ? `Ajuste ${excessSeconds > 0 ? '+' : ''}${excessSeconds}s` : 'Sem ajuste'}</span>
-          </div>
-        </div>
-      </div>
+      <CronometroControlePreview
+        currentMoment={currentMoment}
+        nextMoment={nextMoment}
+        showMessage={showMessage}
+        message={message}
+        topFontSize={topFontSize}
+        bottomFontSize={bottomFontSize}
+        timerFontSize={timerFontSize}
+        messageFontSize={messageFontSize}
+        backgroundColor={backgroundColor}
+        timerTextColor={timerTextColor}
+        topTextColor={topTextColor}
+        bottomTextColor={bottomTextColor}
+        messageTextColor={messageTextColor}
+        warningColor={warningColor}
+        dangerColor={dangerColor}
+        orangeThreshold={orangeThreshold}
+        redThreshold={redThreshold}
+        isBlinking={isBlinking}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="glass-card p-5">

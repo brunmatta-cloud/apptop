@@ -355,35 +355,94 @@ const TimelineSection = memo(function TimelineSection({
   );
 });
 
-const Moderador = () => {
-  const { resolvedTheme = 'dark' } = useTheme();
-  const isLight = resolvedTheme === 'light';
-  const {
-    toggleModeradorRelease,
-    updateModeradorStatus,
-    isSubmitting,
-    pendingAction,
-  } = useCultoControls();
-  const {
-    culto,
-    momentos,
-    currentIndex,
-    currentMoment,
-    nextMoment,
-    getMomentStatus,
-    moderadorReleaseActive,
-    moderadorReleaseUpdatedAt,
-    moderadorReleaseBy,
-    moderadorReleasePendingMomentId,
-  } = useLiveCultoView();
-  const { momentElapsedSeconds, momentElapsedMs, isPaused } = useCultoTimer();
+const ModeradorTimerEffects = memo(function ModeradorTimerEffects({
+  currentMoment,
+  currentIndex,
+  isReleasePending,
+  pushNotice,
+}: {
+  currentMoment: MomentoProgramacao | null | undefined;
+  currentIndex: number;
+  isReleasePending: boolean;
+  pushNotice: (title: string, description: string, tone: ModeradorNotice['tone']) => void;
+}) {
+  const { momentElapsedMs, isPaused } = useCultoTimer();
   const alertedRef = useRef<Set<string>>(new Set());
   const releasePendingAlertedRef = useRef<Set<string>>(new Set());
-  const noticeIdRef = useRef(0);
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+  const currentRemainingMs = currentMoment ? Math.max(0, currentMoment.duracao * 60 * 1000 - safeMomentElapsedMs) : 0;
 
+  useEffect(() => {
+    if (!currentMoment || isPaused) return;
+
+    const alertKey = `moderador-10s-${currentMoment.id}`;
+    if (currentRemainingMs <= 10000 && currentRemainingMs > 8000 && !alertedRef.current.has(alertKey)) {
+      alertedRef.current.add(alertKey);
+      pushNotice(
+        'Atencao moderador',
+        `Faltam 10 segundos para encerrar: ${currentMoment.responsavel || currentMoment.atividade}`,
+        'alert'
+      );
+    }
+  }, [currentMoment, currentRemainingMs, isPaused, pushNotice]);
+
+  useEffect(() => {
+    alertedRef.current.clear();
+  }, [currentIndex]);
+
+  useEffect(() => {
+    if (!currentMoment || !isReleasePending) return;
+
+    const pendingKey = `pending-release-${currentMoment.id}`;
+    if (!releasePendingAlertedRef.current.has(pendingKey)) {
+      releasePendingAlertedRef.current.add(pendingKey);
+      pushNotice(
+        'Liberacao pendente',
+        `${currentMoment.responsavel || currentMoment.atividade} iniciou sem receber liberacao.`,
+        'warning'
+      );
+    }
+  }, [currentMoment, isReleasePending, pushNotice]);
+
+  return null;
+});
+
+const ModeradorLivePanels = memo(function ModeradorLivePanels({
+  momentos,
+  currentIndex,
+  currentMoment,
+  nextMoment,
+  getMomentStatus,
+  moderadorReleaseActive,
+  moderadorReleaseUpdatedAt,
+  moderadorReleaseBy,
+  moderadorReleasePendingMomentId,
+  isLight,
+  isSubmitting,
+  pendingAction,
+  toggleModeradorRelease,
+  updateModeradorStatus,
+  pushNotice,
+}: {
+  momentos: MomentoProgramacao[];
+  currentIndex: number;
+  currentMoment: MomentoProgramacao | null | undefined;
+  nextMoment: MomentoProgramacao | null | undefined;
+  getMomentStatus: (index: number) => MomentStatus;
+  moderadorReleaseActive: boolean;
+  moderadorReleaseUpdatedAt: string | null;
+  moderadorReleaseBy: string | null;
+  moderadorReleasePendingMomentId: string | null;
+  isLight: boolean;
+  isSubmitting: boolean;
+  pendingAction: string | null;
+  toggleModeradorRelease: (active: boolean) => void;
+  updateModeradorStatus: (id: string, status: ModeradorCallStatus) => void;
+  pushNotice: (title: string, description: string, tone: ModeradorNotice['tone']) => void;
+}) {
+  const { momentElapsedSeconds, momentElapsedMs, isPaused } = useCultoTimer();
   const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
-  const [notices, setNotices] = useState<ModeradorNotice[]>([]);
   const currentMomentEnd = currentMoment ? calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao) : '--:--';
   const currentRemainingMs = currentMoment ? Math.max(0, currentMoment.duracao * 60 * 1000 - safeMomentElapsedMs) : 0;
   const isCurrentAlertWindow = !!currentMoment && !isPaused && currentRemainingMs <= 10000 && currentRemainingMs > 0;
@@ -404,7 +463,7 @@ const Moderador = () => {
 
       return adjustedMinutes <= momento.antecedenciaChamada || status !== 'pendente';
     })
-  ), [currentIndex, momentos, safeMomentElapsedSeconds]);
+  ), [currentIndex, getMomentStatus, momentos, safeMomentElapsedSeconds]);
 
   const queueItems = useMemo(() => (
     momentos.filter((_, index) => index > currentIndex).slice(0, 6)
@@ -433,6 +492,195 @@ const Moderador = () => {
     ? `${new Date(moderadorReleaseUpdatedAt).toLocaleTimeString('pt-BR')} | ${moderadorReleaseBy ?? 'sistema'}`
     : 'Sem liberacao recente';
 
+  return (
+    <>
+      <ModeradorTimerEffects
+        currentMoment={currentMoment}
+        currentIndex={currentIndex}
+        isReleasePending={isReleasePending}
+        pushNotice={pushNotice}
+      />
+
+      <div className={`glass-card border p-6 sm:p-8 ${
+        isCurrentAlertWindow ? 'border-status-alert/60 ring-2 ring-status-alert/40' : 'border-border bg-card'
+      }`}>
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center gap-3">
+            <Timer className={`h-5 w-5 ${isCurrentAlertWindow ? 'text-status-alert' : 'text-primary'}`} />
+            <span className={`text-xs uppercase tracking-[0.28em] ${isCurrentAlertWindow ? 'text-status-alert' : 'text-muted-foreground'}`}>
+              Pessoa em andamento
+            </span>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-3">
+              <h2 className="break-words text-4xl font-black leading-none tracking-tight sm:text-6xl">
+                {currentMoment?.responsavel || 'Aguardando inicio'}
+              </h2>
+              <p className="text-lg text-muted-foreground sm:text-2xl">
+                {currentMoment?.ministerio || currentMoment?.funcao || 'Sem ministerio informado'}
+              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground sm:text-base">
+                <span>Entrada: <span className="font-mono text-foreground">{currentMoment?.horarioInicio ?? '--:--'}</span></span>
+                <span>Saida: <span className="font-mono text-foreground">{currentMomentEnd}</span></span>
+                <span>Momento: <span className="text-foreground">{currentMoment?.atividade ?? 'Nenhum'}</span></span>
+              </div>
+            </div>
+            <div className={`flex flex-col justify-center rounded-2xl border p-5 sm:p-6 ${
+              isCurrentAlertWindow ? 'border-status-alert/50 bg-status-alert/10' : 'border-border bg-muted/20'
+            }`}>
+              <span className="mb-3 text-xs uppercase tracking-[0.24em] text-muted-foreground">Tempo restante</span>
+              <span className={`font-mono text-4xl font-black leading-none sm:text-5xl ${isCurrentAlertWindow ? 'text-status-alert' : 'text-primary'}`}>
+                {currentMoment ? formatTimerMs(currentRemainingMs) : '--:--'}
+              </span>
+              <p className={`mt-3 text-sm ${isCurrentAlertWindow ? 'text-status-alert' : 'text-muted-foreground'}`}>
+                {currentMoment
+                  ? isPaused
+                    ? 'Cronometro pausado'
+                    : isCurrentAlertWindow
+                      ? 'Alerta: faltam menos de 10 segundos'
+                      : 'Contagem ate a saida'
+                  : 'Sem pessoa em execucao'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={`glass-card border p-6 sm:p-8 ${
+        isReleasePending
+          ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+          : moderadorReleaseActive
+            ? 'border-emerald-500/40 bg-emerald-500/15 shadow-[0_0_0_1px_rgba(16,185,129,0.15)]'
+            : 'border-border bg-card'
+      }`}>
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <BellRing className={`h-5 w-5 ${
+                isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-700' : 'text-emerald-300') : 'text-muted-foreground'
+              }`} />
+              <span className={`text-xs uppercase tracking-[0.28em] ${isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : 'text-muted-foreground'}`}>
+                {isReleasePending ? 'Liberacao pendente' : 'Proxima pessoa'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              <h2 className={`text-3xl font-black leading-none tracking-tight sm:text-5xl ${
+                isReleasePending ? (isLight ? 'text-amber-900' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-900' : 'text-emerald-200') : 'text-foreground'
+              }`}>
+                {displayedNextMoment?.responsavel || 'Nenhuma pessoa na fila'}
+              </h2>
+              <p className="text-base text-muted-foreground sm:text-xl">
+                {displayedNextMoment?.ministerio || displayedNextMoment?.funcao || 'Sem ministerio informado'}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-3 sm:gap-4 sm:text-base">
+              <span>Entrada: <span className="font-mono text-foreground">{displayedNextMoment?.horarioInicio ?? '--:--'}</span></span>
+              <span>Saida: <span className="font-mono text-foreground">{displayedNextMomentEnd}</span></span>
+              <span>Momento: <span className="text-foreground">{displayedNextMoment?.atividade ?? 'Nenhum'}</span></span>
+            </div>
+            {isReleasePending ? (
+              <>
+                <p className={`text-sm sm:text-base ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>Essa pessoa ja iniciou sem receber a liberacao.</p>
+                <div className="space-y-1">
+                  <p className={`text-xs uppercase tracking-[0.22em] ${isLight ? 'text-amber-700/90' : 'text-amber-300/80'}`}>Tempo excedente sem liberacao</p>
+                  <p className={`font-mono text-5xl font-black leading-none sm:text-7xl ${isLight ? 'text-amber-900' : 'text-amber-300'}`}>
+                    {formatTimerMs(pendingReleaseElapsedMs)}
+                  </p>
+                </div>
+                <p className={`text-xs ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>O card so vai avancar depois que a liberacao verde sair.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground sm:text-base">{releaseLabel}</p>
+                <p className="text-xs text-muted-foreground">{releaseMeta}</p>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col items-start gap-4 xl:items-end">
+            <div className={`text-xs font-semibold uppercase tracking-[0.28em] ${
+              isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-700' : 'text-emerald-300') : 'text-muted-foreground'
+            }`}>
+              {isReleasePending ? 'Liberacao pendente' : moderadorReleaseActive ? 'Liberacao ativa' : 'Aguardando liberacao'}
+            </div>
+            <button
+              type="button"
+              onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
+              disabled={isSubmitting}
+              className={`rounded-2xl px-8 py-4 text-base font-semibold transition-colors sm:px-10 sm:text-lg ${
+                isReleasePending
+                  ? 'bg-amber-500 text-amber-950 hover:bg-amber-400'
+                  : moderadorReleaseActive
+                    ? isLight
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                      : 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
+                    : 'bg-muted text-foreground hover:bg-muted/80'
+              } disabled:pointer-events-none disabled:opacity-50`}
+            >
+              {pendingAction === 'toggle-moderador-release'
+                ? 'Sincronizando...'
+                : moderadorReleaseActive
+                  ? 'Liberacao Feita'
+                  : 'Liberar'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <CallListSection
+          callItems={callItems}
+          isSubmitting={isSubmitting}
+          onUpdateStatus={updateModeradorStatus}
+          isLight={isLight}
+        />
+        <QueueSection
+          queueItems={queueItems}
+          moderadorReleaseActive={moderadorReleaseActive}
+          isLight={isLight}
+        />
+      </div>
+
+      <TimelineSection
+        momentos={momentos}
+        totalMinutes={totalMinutes}
+        firstTime={firstTime}
+        lastEnd={lastEnd}
+        blockColors={blockColors}
+        getMomentStatusForIndex={getMomentStatus}
+        safeMomentElapsedMs={safeMomentElapsedMs}
+        isPaused={isPaused}
+        isLight={isLight}
+      />
+    </>
+  );
+});
+
+const Moderador = () => {
+  const { resolvedTheme = 'dark' } = useTheme();
+  const isLight = resolvedTheme === 'light';
+  const {
+    toggleModeradorRelease,
+    updateModeradorStatus,
+    isSubmitting,
+    pendingAction,
+  } = useCultoControls();
+  const {
+    culto,
+    momentos,
+    currentIndex,
+    currentMoment,
+    nextMoment,
+    getMomentStatus,
+    moderadorReleaseActive,
+    moderadorReleaseUpdatedAt,
+    moderadorReleaseBy,
+    moderadorReleasePendingMomentId,
+  } = useLiveCultoView();
+  const noticeIdRef = useRef(0);
+
+  const [notices, setNotices] = useState<ModeradorNotice[]>([]);
+
   const dismissNotice = (id: string) => {
     setNotices((current) => current.filter((notice) => notice.id !== id));
   };
@@ -444,42 +692,6 @@ const Moderador = () => {
     window.setTimeout(() => {
       setNotices((current) => current.filter((notice) => notice.id !== id));
     }, 8000);
-  };
-
-  useEffect(() => {
-    if (!currentMoment || isPaused) return;
-
-    const alertKey = `moderador-10s-${currentMoment.id}`;
-    if (currentRemainingMs <= 10000 && currentRemainingMs > 8000 && !alertedRef.current.has(alertKey)) {
-      alertedRef.current.add(alertKey);
-      pushNotice(
-        'Atencao moderador',
-        `Faltam 10 segundos para encerrar: ${currentMoment.responsavel || currentMoment.atividade}`,
-        'alert'
-      );
-    }
-  }, [currentMoment, currentRemainingMs, isPaused]);
-
-  useEffect(() => {
-    alertedRef.current.clear();
-  }, [currentIndex]);
-
-  useEffect(() => {
-    if (!currentMoment || !isReleasePending) return;
-
-    const pendingKey = `pending-release-${currentMoment.id}`;
-    if (!releasePendingAlertedRef.current.has(pendingKey)) {
-      releasePendingAlertedRef.current.add(pendingKey);
-      pushNotice(
-        'Liberacao pendente',
-        `${currentMoment.responsavel || currentMoment.atividade} iniciou sem receber liberacao.`,
-        'warning'
-      );
-    }
-  }, [currentMoment, isReleasePending]);
-
-  const handleUpdateModeradorStatus = (id: string, status: ModeradorCallStatus) => {
-    updateModeradorStatus(id, status);
   };
 
   return (
@@ -550,157 +762,22 @@ const Moderador = () => {
             Abrir confirmacao
           </Link>
         </div>
-
-        <div className={`glass-card border p-6 sm:p-8 ${
-          isCurrentAlertWindow ? 'border-status-alert/60 ring-2 ring-status-alert/40' : 'border-border bg-card'
-        }`}>
-          <div className="flex flex-col gap-5">
-            <div className="flex items-center gap-3">
-              <Timer className={`h-5 w-5 ${isCurrentAlertWindow ? 'text-status-alert' : 'text-primary'}`} />
-              <span className={`text-xs uppercase tracking-[0.28em] ${isCurrentAlertWindow ? 'text-status-alert' : 'text-muted-foreground'}`}>
-                Pessoa em andamento
-              </span>
-            </div>
-            <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-3">
-                <h2 className="break-words text-4xl font-black leading-none tracking-tight sm:text-6xl">
-                  {currentMoment?.responsavel || 'Aguardando inicio'}
-                </h2>
-                <p className="text-lg text-muted-foreground sm:text-2xl">
-                  {currentMoment?.ministerio || currentMoment?.funcao || 'Sem ministerio informado'}
-                </p>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground sm:text-base">
-                  <span>Entrada: <span className="font-mono text-foreground">{currentMoment?.horarioInicio ?? '--:--'}</span></span>
-                  <span>Saida: <span className="font-mono text-foreground">{currentMomentEnd}</span></span>
-                  <span>Momento: <span className="text-foreground">{currentMoment?.atividade ?? 'Nenhum'}</span></span>
-                </div>
-              </div>
-              <div className={`flex flex-col justify-center rounded-2xl border p-5 sm:p-6 ${
-                isCurrentAlertWindow ? 'border-status-alert/50 bg-status-alert/10' : 'border-border bg-muted/20'
-              }`}>
-                <span className="mb-3 text-xs uppercase tracking-[0.24em] text-muted-foreground">Tempo restante</span>
-                <span className={`font-mono text-4xl font-black leading-none sm:text-5xl ${isCurrentAlertWindow ? 'text-status-alert' : 'text-primary'}`}>
-                  {currentMoment ? formatTimerMs(currentRemainingMs) : '--:--'}
-                </span>
-                <p className={`mt-3 text-sm ${isCurrentAlertWindow ? 'text-status-alert' : 'text-muted-foreground'}`}>
-                  {currentMoment
-                    ? isPaused
-                      ? 'Cronometro pausado'
-                      : isCurrentAlertWindow
-                        ? 'Alerta: faltam menos de 10 segundos'
-                        : 'Contagem ate a saida'
-                    : 'Sem pessoa em execucao'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={`glass-card border p-6 sm:p-8 ${
-          isReleasePending
-            ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
-            : moderadorReleaseActive
-              ? 'border-emerald-500/40 bg-emerald-500/15 shadow-[0_0_0_1px_rgba(16,185,129,0.15)]'
-              : 'border-border bg-card'
-        }`}>
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <BellRing className={`h-5 w-5 ${
-                  isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-700' : 'text-emerald-300') : 'text-muted-foreground'
-                }`} />
-                <span className={`text-xs uppercase tracking-[0.28em] ${isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : 'text-muted-foreground'}`}>
-                  {isReleasePending ? 'Liberacao pendente' : 'Proxima pessoa'}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <h2 className={`text-3xl font-black leading-none tracking-tight sm:text-5xl ${
-                  isReleasePending ? (isLight ? 'text-amber-900' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-900' : 'text-emerald-200') : 'text-foreground'
-                }`}>
-                  {displayedNextMoment?.responsavel || 'Nenhuma pessoa na fila'}
-                </h2>
-                <p className="text-base text-muted-foreground sm:text-xl">
-                  {displayedNextMoment?.ministerio || displayedNextMoment?.funcao || 'Sem ministerio informado'}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-3 sm:gap-4 sm:text-base">
-                <span>Entrada: <span className="font-mono text-foreground">{displayedNextMoment?.horarioInicio ?? '--:--'}</span></span>
-                <span>Saida: <span className="font-mono text-foreground">{displayedNextMomentEnd}</span></span>
-                <span>Momento: <span className="text-foreground">{displayedNextMoment?.atividade ?? 'Nenhum'}</span></span>
-              </div>
-              {isReleasePending ? (
-                <>
-                  <p className={`text-sm sm:text-base ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>Essa pessoa ja iniciou sem receber a liberacao.</p>
-                  <div className="space-y-1">
-                    <p className={`text-xs uppercase tracking-[0.22em] ${isLight ? 'text-amber-700/90' : 'text-amber-300/80'}`}>Tempo excedente sem liberacao</p>
-                    <p className={`font-mono text-5xl font-black leading-none sm:text-7xl ${isLight ? 'text-amber-900' : 'text-amber-300'}`}>
-                      {formatTimerMs(pendingReleaseElapsedMs)}
-                    </p>
-                  </div>
-                  <p className={`text-xs ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>O card so vai avancar depois que a liberacao verde sair.</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground sm:text-base">{releaseLabel}</p>
-                  <p className="text-xs text-muted-foreground">{releaseMeta}</p>
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-col items-start gap-4 xl:items-end">
-              <div className={`text-xs font-semibold uppercase tracking-[0.28em] ${
-                isReleasePending ? (isLight ? 'text-amber-700' : 'text-amber-300') : moderadorReleaseActive ? (isLight ? 'text-emerald-700' : 'text-emerald-300') : 'text-muted-foreground'
-              }`}>
-                {isReleasePending ? 'Liberacao pendente' : moderadorReleaseActive ? 'Liberacao ativa' : 'Aguardando liberacao'}
-              </div>
-              <button
-                type="button"
-                onClick={() => toggleModeradorRelease(!moderadorReleaseActive)}
-                disabled={isSubmitting}
-                className={`rounded-2xl px-8 py-4 text-base font-semibold transition-colors sm:px-10 sm:text-lg ${
-                  isReleasePending
-                    ? 'bg-amber-500 text-amber-950 hover:bg-amber-400'
-                    : moderadorReleaseActive
-                      ? isLight
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                        : 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400'
-                      : 'bg-muted text-foreground hover:bg-muted/80'
-                } disabled:pointer-events-none disabled:opacity-50`}
-              >
-                {pendingAction === 'toggle-moderador-release'
-                  ? 'Sincronizando...'
-                  : moderadorReleaseActive
-                    ? 'Liberacao Feita'
-                    : 'Liberar'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <CallListSection
-            callItems={callItems}
-            isSubmitting={isSubmitting}
-            onUpdateStatus={handleUpdateModeradorStatus}
-            isLight={isLight}
-          />
-          <QueueSection
-            queueItems={queueItems}
-            moderadorReleaseActive={moderadorReleaseActive}
-            isLight={isLight}
-          />
-        </div>
-
-        <TimelineSection
+        <ModeradorLivePanels
           momentos={momentos}
-          totalMinutes={totalMinutes}
-          firstTime={firstTime}
-          lastEnd={lastEnd}
-          blockColors={blockColors}
-          getMomentStatusForIndex={getMomentStatus}
-          safeMomentElapsedMs={safeMomentElapsedMs}
-          isPaused={isPaused}
+          currentIndex={currentIndex}
+          currentMoment={currentMoment}
+          nextMoment={nextMoment}
+          getMomentStatus={getMomentStatus}
+          moderadorReleaseActive={moderadorReleaseActive}
+          moderadorReleaseUpdatedAt={moderadorReleaseUpdatedAt}
+          moderadorReleaseBy={moderadorReleaseBy}
+          moderadorReleasePendingMomentId={moderadorReleasePendingMomentId}
           isLight={isLight}
+          isSubmitting={isSubmitting}
+          pendingAction={pendingAction}
+          toggleModeradorRelease={toggleModeradorRelease}
+          updateModeradorStatus={updateModeradorStatus}
+          pushNotice={pushNotice}
         />
       </div>
     </div>

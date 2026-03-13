@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getLiveServerNowMs, useLiveRemoteState } from '@/contexts/SyncStoreContext';
-import { getTimerSnapshot } from '@/features/culto-sync/domain';
+import { useLiveRemoteState } from '@/contexts/SyncStoreContext';
+import { advanceLiveTimerBaseline, createLiveTimerBaseline, projectLiveTimerSnapshot } from '@/features/culto-sync/liveTimer';
+import { LIVE_TICK_MS } from '@/utils/time';
 
 export const useLiveTimerSnapshot = () => {
   const remoteState = useLiveRemoteState();
-  const [nowMs, setNowMs] = useState(() => getLiveServerNowMs());
+  const [baseline, setBaseline] = useState(() => createLiveTimerBaseline(remoteState));
 
   useEffect(() => {
-    setNowMs(getLiveServerNowMs());
+    setBaseline(createLiveTimerBaseline(remoteState));
   }, [
     remoteState.timerStatus,
     remoteState.startedAt,
@@ -20,30 +21,22 @@ export const useLiveTimerSnapshot = () => {
   ]);
 
   useEffect(() => {
-    if (remoteState.timerStatus !== 'running') {
+    if (!baseline.isRunning) {
       return;
     }
 
-    let frameId = 0;
-
     const tick = () => {
-      setNowMs(getLiveServerNowMs());
-      frameId = window.requestAnimationFrame(tick);
+      setBaseline((current) => advanceLiveTimerBaseline(current));
     };
 
-    tick();
+    const intervalId = window.setInterval(tick, LIVE_TICK_MS);
 
     return () => {
-      if (frameId) {
-        window.cancelAnimationFrame(frameId);
-      }
+      window.clearInterval(intervalId);
     };
   }, [
-    remoteState.timerStatus,
-    remoteState.startedAt,
-    remoteState.momentStartedAt,
-    remoteState.updatedAt,
+    baseline.isRunning,
   ]);
 
-  return useMemo(() => getTimerSnapshot(remoteState, nowMs), [remoteState, nowMs]);
+  return useMemo(() => projectLiveTimerSnapshot(baseline), [baseline]);
 };

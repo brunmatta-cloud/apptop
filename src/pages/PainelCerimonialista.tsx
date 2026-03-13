@@ -6,7 +6,7 @@ import {
   Play, Pause, SkipForward, SkipBack, FastForward, Users, Radio, Check,
   Plus, Minus, Zap, ZapOff, Send, EyeOff, Timer, ExternalLink
 } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
@@ -20,37 +20,42 @@ const emptyCultoFallback = {
   status: 'planejado' as const,
 };
 
-const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefined, index: number): MomentoProgramacao => ({
-  id: momento?.id || `momento-${index}`,
-  cultoId: momento?.cultoId || '',
-  ordem: Number.isFinite(momento?.ordem) ? Number(momento?.ordem) : index,
-  bloco: momento?.bloco || '',
-  horarioInicio: typeof momento?.horarioInicio === 'string' && momento.horarioInicio.includes(':') ? momento.horarioInicio : '00:00',
-  duracao: Number.isFinite(momento?.duracao) ? Math.max(0, Number(momento?.duracao)) : 0,
-  atividade: momento?.atividade || 'Momento sem nome',
-  responsavel: momento?.responsavel || 'Nao informado',
-  ministerio: momento?.ministerio || 'Nao informado',
-  funcao: momento?.funcao || 'Nao informado',
-  fotoUrl: momento?.fotoUrl || '',
-  tipoMomento: momento?.tipoMomento || 'nenhum',
-  tipoMidia: momento?.tipoMidia || 'nenhum',
-  acaoSonoplastia: momento?.acaoSonoplastia || '',
-  observacao: momento?.observacao || '',
-  antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento?.antecedenciaChamada)) : 0,
-  chamado: Boolean(momento?.chamado),
-  moderadorStatus: momento?.moderadorStatus === 'chamado' || momento?.moderadorStatus === 'pronto'
-    ? momento.moderadorStatus
-    : momento?.moderadorStatus === 'confirmado'
-      ? 'pronto'
-    : 'pendente',
-  confirmacaoStatus: momento?.confirmacaoStatus === 'confirmado' || momento?.confirmacaoStatus === 'ausente'
-    ? momento.confirmacaoStatus
-    : momento?.moderadorStatus === 'confirmado' || momento?.moderadorStatus === 'ausente'
-      ? momento.moderadorStatus
+const normalizeMomento = (momento: Partial<MomentoProgramacao> | null | undefined, index: number): MomentoProgramacao => {
+  const moderadorStatusValue = String(momento?.moderadorStatus ?? '');
+  const confirmacaoStatusValue = String(momento?.confirmacaoStatus ?? '');
+
+  return {
+    id: momento?.id || `momento-${index}`,
+    cultoId: momento?.cultoId || '',
+    ordem: Number.isFinite(momento?.ordem) ? Number(momento?.ordem) : index,
+    bloco: momento?.bloco || '',
+    horarioInicio: typeof momento?.horarioInicio === 'string' && momento.horarioInicio.includes(':') ? momento.horarioInicio : '00:00',
+    duracao: Number.isFinite(momento?.duracao) ? Math.max(0, Number(momento?.duracao)) : 0,
+    atividade: momento?.atividade || 'Momento sem nome',
+    responsavel: momento?.responsavel || 'Nao informado',
+    ministerio: momento?.ministerio || 'Nao informado',
+    funcao: momento?.funcao || 'Nao informado',
+    fotoUrl: momento?.fotoUrl || '',
+    tipoMomento: momento?.tipoMomento || 'nenhum',
+    tipoMidia: momento?.tipoMidia || 'nenhum',
+    acaoSonoplastia: momento?.acaoSonoplastia || '',
+    observacao: momento?.observacao || '',
+    antecedenciaChamada: Number.isFinite(momento?.antecedenciaChamada) ? Math.max(0, Number(momento?.antecedenciaChamada)) : 0,
+    chamado: Boolean(momento?.chamado),
+    moderadorStatus: moderadorStatusValue === 'chamado' || moderadorStatusValue === 'pronto'
+      ? moderadorStatusValue
+      : moderadorStatusValue === 'confirmado'
+        ? 'pronto'
       : 'pendente',
-  responsavelOriginal: typeof momento?.responsavelOriginal === 'string' ? momento.responsavelOriginal : undefined,
-  duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento?.duracaoOriginal) : undefined,
-});
+    confirmacaoStatus: confirmacaoStatusValue === 'confirmado' || confirmacaoStatusValue === 'ausente'
+      ? confirmacaoStatusValue
+      : moderadorStatusValue === 'confirmado' || moderadorStatusValue === 'ausente'
+        ? (moderadorStatusValue as 'confirmado' | 'ausente')
+      : 'pendente',
+    responsavelOriginal: typeof momento?.responsavelOriginal === 'string' ? momento.responsavelOriginal : undefined,
+    duracaoOriginal: Number.isFinite(momento?.duracaoOriginal) ? Number(momento?.duracaoOriginal) : undefined,
+  };
+};
 
 const isExecutionMode = (value: string): value is ExecutionMode => value === 'manual' || value === 'automatico';
 
@@ -72,71 +77,35 @@ const connectionLabel = (status: string) => {
   return 'Conectando';
 };
 
-function PainelCerimonialista() {
-  const cultoData = useCultoControls();
-  const liveCultoData = useLiveCultoView();
-  const cronometroData = useCronometro();
-  const [msgDraft, setMsgDraft] = useState('');
-  const clockData = useClock();
-  const isMobile = useIsMobile();
-  const { resolvedTheme = 'dark' } = useTheme();
-  const isLight = resolvedTheme === 'light';
+const CerimonialistaHeaderClock = React.memo(function CerimonialistaHeaderClock() {
+  const { currentTime, formatTime } = useClock();
+  return <span className="text-xl font-mono font-bold text-primary sm:text-2xl">{formatTime(currentTime)}</span>;
+});
 
-  const {
-    executionMode, setExecutionMode,
-    avancar, voltar, pausar, retomar, pular, iniciarCulto, finalizarCulto,
-    marcarChamado, adjustCurrentMomentDuration,
-    pendingAction, isSubmitting, lastError, connectionStatus,
-    toggleModeradorRelease,
-  } = cultoData;
-  const { culto, momentos, currentIndex, currentMoment: liveCurrentMoment, getMomentStatus, isLive, moderadorReleaseActive } = liveCultoData;
+const CerimonialistaLiveOverview = React.memo(function CerimonialistaLiveOverview({
+  cultoStatus,
+  safeMomentos,
+  currentMoment,
+  isLight,
+}: {
+  cultoStatus: string;
+  safeMomentos: MomentoProgramacao[];
+  currentMoment: MomentoProgramacao | null;
+  isLight: boolean;
+}) {
   const { isPaused, elapsedMs, momentElapsedSeconds, momentElapsedMs } = useCultoTimer();
-
-  const {
-    isBlinking, toggleBlink,
-    setMessage, showMessage, setShowMessage,
-  } = cronometroData;
-
-  const { currentTime, formatTime } = clockData;
-
-  const safeCulto = culto ?? emptyCultoFallback;
-  const safeMomentos = useMemo(
-    () => (Array.isArray(momentos) ? momentos : []).map((momento, index) => normalizeMomento(momento, index)),
-    [momentos]
-  );
-  const safeCurrentIndex = Number.isInteger(currentIndex) ? currentIndex : -1;
   const safeElapsedMs = Number.isFinite(elapsedMs) ? elapsedMs : 0;
   const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
-  const isDataReady = Boolean(culto) && Array.isArray(momentos);
 
-  const currentMoment = liveCurrentMoment ? normalizeMomento(liveCurrentMoment, safeCurrentIndex) : null;
-
-  const totalMinutes = safeMomentos.reduce((sum, momento) => sum + (Number.isFinite(momento.duracao) ? momento.duracao : 0), 0);
+  const totalMinutes = useMemo(
+    () => safeMomentos.reduce((sum, momento) => sum + (Number.isFinite(momento.duracao) ? momento.duracao : 0), 0),
+    [safeMomentos],
+  );
   const totalMs = totalMinutes * 60 * 1000;
   const summaryProgressPercent = totalMs > 0 ? Math.min(100, (safeElapsedMs / totalMs) * 100) : 0;
   const summaryRemainingMs = Math.max(0, totalMs - safeElapsedMs);
-
-  const chamadaItems = useMemo(() => {
-    return safeMomentos.filter((momento, index) => {
-      if (index <= safeCurrentIndex) return false;
-      const minutesUntil = safeMomentos
-        .slice(safeCurrentIndex >= 0 ? safeCurrentIndex : 0, index)
-        .reduce((sum, item) => sum + (Number.isFinite(item.duracao) ? item.duracao : 0), 0);
-      const adjustedMinutes = minutesUntil - Math.floor(safeMomentElapsedSeconds / 60);
-      return adjustedMinutes <= momento.antecedenciaChamada && !momento.chamado;
-    });
-  }, [safeMomentos, safeCurrentIndex, safeMomentElapsedSeconds]);
-
-  const nextMoments = useMemo(
-    () => safeMomentos.slice(Math.max(0, safeCurrentIndex + 1), safeCurrentIndex + 5),
-    [safeMomentos, safeCurrentIndex]
-  );
-
   const { percent: currentMomentPercent } = useMomentProgress(currentMoment, safeMomentElapsedMs);
-  const currentAdjustment = getAdjustmentLabel(currentMoment);
-  const isCommandLocked = isSubmitting;
-  const activeCommand = pendingAction ?? '';
   const currentMomentTotalMs = currentMoment ? currentMoment.duracao * 60 * 1000 : 0;
   const currentMomentRemainingMs = currentMoment ? Math.max(0, currentMomentTotalMs - safeMomentElapsedMs) : 0;
   const isCurrentMomentWarning = !!currentMoment && !isPaused && currentMomentRemainingMs <= 60000 && currentMomentRemainingMs > 20000;
@@ -167,6 +136,226 @@ function PainelCerimonialista() {
     : isCurrentMomentWarning
       ? isLight ? 'text-amber-800/90' : 'text-amber-100/90'
       : 'text-muted-foreground';
+  const cultoStatusLabel = cultoStatus === 'em_andamento'
+    ? (isPaused ? 'Pausado' : 'Em andamento')
+    : cultoStatus === 'finalizado'
+      ? 'Finalizado'
+      : 'Aguardando';
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="glass-card p-3 sm:p-4">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Progresso</span>
+          <p className="mt-1 text-xl font-bold font-display sm:text-2xl">{Math.round(summaryProgressPercent)} %</p>
+        </div>
+        <div className="glass-card p-3 sm:p-4">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Decorrido</span>
+          <p className="mt-1 text-xl font-bold font-display sm:text-2xl">{formatTimerMs(safeElapsedMs)}</p>
+        </div>
+        <div className="glass-card p-3 sm:p-4">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Restante</span>
+          <p className="mt-1 text-xl font-bold font-display sm:text-2xl">{formatTimerMs(summaryRemainingMs)}</p>
+        </div>
+        <div className="glass-card p-3 sm:p-4">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Status</span>
+          <p className="mt-1 text-base font-bold font-display text-status-completed sm:text-lg">{cultoStatusLabel}</p>
+        </div>
+      </div>
+
+      <div className="glass-card border border-border/60 p-4">
+        <div className="progress-bar h-2.5 rounded-full">
+          <div
+            className="progress-bar-fill rounded-full"
+            style={{ transform: `scaleX(${summaryProgressPercent / 100})`, transformOrigin: 'left', width: '100%' }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>{totalMinutes} min planejados</span>
+          <span>{Math.round(summaryProgressPercent)} %</span>
+        </div>
+      </div>
+
+      {currentMoment && (
+        <div className="sticky top-2 z-20 sm:top-3 lg:top-4">
+          <div className={cn("glass-card border p-3 backdrop-blur-xl sm:p-4", currentMomentCardClass)}>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(230px,0.8fr)] lg:items-center">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full animate-pulse ${
+                    isCurrentMomentDanger ? 'bg-red-400' : isCurrentMomentWarning ? 'bg-amber-400' : 'bg-status-executing'
+                  }`} />
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.24em]", currentMomentAccentClass)}>Momento em execucao</span>
+                  <span className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
+                    isLight ? 'border-border/80 bg-white/80' : 'border-border/60 bg-background/60'
+                  )}>
+                    {currentMoment.funcao}
+                  </span>
+                  <span className={cn(
+                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
+                    isLight ? 'border-border/80 bg-white/80' : 'border-border/60 bg-background/60'
+                  )}>
+                    {currentMoment.ministerio}
+                  </span>
+                </div>
+                <h2 className="mt-2 truncate text-base font-black font-display text-foreground sm:text-lg lg:text-xl">
+                  {currentMoment.atividade}
+                </h2>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-[280px]">
+                  <div className={cn("rounded-2xl border px-3 py-2.5", isLight ? 'border-border/80 bg-white/82' : 'border-border/60 bg-background/55')}>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{currentMoment.horarioInicio}</p>
+                  </div>
+                  <div className={cn("rounded-2xl border px-3 py-2.5", isLight ? 'border-border/80 bg-white/82' : 'border-border/60 bg-background/55')}>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
+                    <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={cn(
+                "rounded-[1.4rem] border px-4 py-3 text-center lg:px-5",
+                isLight ? 'border-border/80 bg-white/84' : 'border-border/60 bg-background/60'
+              )}>
+                <p className={cn("text-[10px] font-semibold uppercase tracking-[0.24em]", isCurrentMomentDanger || isCurrentMomentWarning ? currentMomentAccentClass : 'text-muted-foreground')}>Tempo restante</p>
+                <p className={cn("mt-2 font-mono text-4xl font-black leading-none sm:text-5xl lg:text-[3.5rem]", currentMomentTimeClass)}>
+                  {formatTimerMs(currentMomentRemainingMs)}
+                </p>
+                <p className={cn("mt-2 text-xs sm:text-sm", currentMomentHintClass)}>
+                  {isPaused
+                    ? 'Cronometro pausado'
+                    : isCurrentMomentDanger
+                      ? 'Menos de 20 segundos'
+                      : isCurrentMomentWarning
+                        ? 'Menos de 1 minuto'
+                        : 'Acompanhamento ao vivo'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <div className="progress-bar h-2 rounded-full">
+                <div
+                  className="progress-bar-fill rounded-full"
+                  style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+});
+
+const CerimonialistaCallPanel = React.memo(function CerimonialistaCallPanel({
+  safeMomentos,
+  safeCurrentIndex,
+  isCommandLocked,
+  marcarChamado,
+}: {
+  safeMomentos: MomentoProgramacao[];
+  safeCurrentIndex: number;
+  isCommandLocked: boolean;
+  marcarChamado: (id: string) => void;
+}) {
+  const { momentElapsedSeconds } = useCultoTimer();
+  const safeMomentElapsedSeconds = Number.isFinite(momentElapsedSeconds) ? momentElapsedSeconds : 0;
+
+  const chamadaItems = useMemo(() => {
+    return safeMomentos.filter((momento, index) => {
+      if (index <= safeCurrentIndex) return false;
+      const minutesUntil = safeMomentos
+        .slice(safeCurrentIndex >= 0 ? safeCurrentIndex : 0, index)
+        .reduce((sum, item) => sum + (Number.isFinite(item.duracao) ? item.duracao : 0), 0);
+      const adjustedMinutes = minutesUntil - Math.floor(safeMomentElapsedSeconds / 60);
+      return adjustedMinutes <= momento.antecedenciaChamada && !momento.chamado;
+    });
+  }, [safeCurrentIndex, safeMomentElapsedSeconds, safeMomentos]);
+
+  return (
+    <div className="glass-card border border-status-alert/20 p-4 sm:p-5">
+      <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+        <Users className="h-4 w-4 text-status-alert" />
+        <span className="text-status-alert">Painel de Chamada</span>
+      </h3>
+      {chamadaItems.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">Ninguem para ligar no momento</p>
+      ) : (
+        <div className="space-y-3">
+          {chamadaItems.map((momento) => (
+            <div key={momento.id} className="rounded-xl border border-status-alert/20 bg-status-alert/10 p-3">
+              <p className="text-sm font-semibold">{momento.responsavel}</p>
+              <p className="text-xs text-muted-foreground">{momento.ministerio} • {momento.funcao}</p>
+              <p className="text-xs text-muted-foreground">{momento.atividade} as {momento.horarioInicio}</p>
+              <button
+                type="button"
+                onClick={() => marcarChamado(momento.id)}
+                disabled={isCommandLocked}
+                className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded-xl bg-status-completed/20 px-3 py-2 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/30 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Check className="h-3 w-3" /> Marcar como chamado
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+function PainelCerimonialista() {
+  const cultoData = useCultoControls();
+  const liveCultoData = useLiveCultoView();
+  const cronometroData = useCronometro();
+  const [msgDraft, setMsgDraft] = useState('');
+  const isMobile = useIsMobile();
+  const { resolvedTheme = 'dark' } = useTheme();
+  const isLight = resolvedTheme === 'light';
+
+  const {
+    setExecutionMode,
+    avancar, voltar, pausar, retomar, pular, iniciarCulto, finalizarCulto,
+    marcarChamado, adjustCurrentMomentDuration,
+    pendingAction, isSubmitting, lastError, connectionStatus,
+    toggleModeradorRelease,
+  } = cultoData;
+  const {
+    culto,
+    momentos,
+    currentIndex,
+    currentMoment: liveCurrentMoment,
+    getMomentStatus,
+    isLive,
+    isPaused,
+    executionMode,
+    moderadorReleaseActive,
+  } = liveCultoData;
+
+  const {
+    isBlinking, toggleBlink,
+    setMessage, showMessage, setShowMessage,
+  } = cronometroData;
+
+  const safeCulto = culto ?? emptyCultoFallback;
+  const safeMomentos = useMemo(
+    () => (Array.isArray(momentos) ? momentos : []).map((momento, index) => normalizeMomento(momento, index)),
+    [momentos]
+  );
+  const safeCurrentIndex = Number.isInteger(currentIndex) ? currentIndex : -1;
+  const isDataReady = Boolean(culto) && Array.isArray(momentos);
+
+  const currentMoment = liveCurrentMoment ? normalizeMomento(liveCurrentMoment, safeCurrentIndex) : null;
+
+  const nextMoments = useMemo(
+    () => safeMomentos.slice(Math.max(0, safeCurrentIndex + 1), safeCurrentIndex + 5),
+    [safeMomentos, safeCurrentIndex]
+  );
+
+  const currentAdjustment = getAdjustmentLabel(currentMoment);
+  const isCommandLocked = isSubmitting;
+  const activeCommand = pendingAction ?? '';
   const releaseCardClass = isLight
     ? 'border-emerald-300/45 bg-[linear-gradient(180deg,rgba(236,253,245,0.98)_0%,rgba(209,250,229,0.64)_100%)]'
     : 'border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.14)_0%,rgba(16,185,129,0.06)_100%)]';
@@ -239,7 +428,7 @@ function PainelCerimonialista() {
         <div className="grid gap-3 sm:grid-cols-[auto_auto] xl:flex xl:flex-wrap xl:items-center xl:justify-end">
           <div className="rounded-2xl border border-border bg-card px-4 py-3 text-center sm:text-left">
             <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Agora</p>
-            <span className="text-xl font-mono font-bold text-primary sm:text-2xl">{formatTime(currentTime)}</span>
+            <CerimonialistaHeaderClock />
           </div>
           <div className={`rounded-2xl border px-4 py-3 text-center sm:text-left ${connectionBadge(connectionStatus, isLight)}`}>
             <p className="text-[11px] uppercase tracking-[0.24em]">Conexao</p>
@@ -274,118 +463,12 @@ function PainelCerimonialista() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Progresso</span>
-          <p className="mt-1 text-xl font-bold font-display sm:text-2xl">{Math.round(summaryProgressPercent)} %</p>
-        </div>
-        <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Decorrido</span>
-          <p className="mt-1 text-xl font-bold font-display sm:text-2xl">{formatTimerMs(safeElapsedMs)}</p>
-        </div>
-        <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Restante</span>
-          <p className="mt-1 text-xl font-bold font-display sm:text-2xl">{formatTimerMs(summaryRemainingMs)}</p>
-        </div>
-        <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Status</span>
-          <p className="mt-1 text-base font-bold font-display text-status-completed sm:text-lg">
-            {safeCulto.status === 'em_andamento' ? (isPaused ? 'Pausado' : 'Em andamento') : safeCulto.status === 'finalizado' ? 'Finalizado' : 'Aguardando'}
-          </p>
-        </div>
-      </div>
-
-      <div className="glass-card border border-border/60 p-4">
-        <div className="progress-bar h-2.5 rounded-full">
-          <div
-            className="progress-bar-fill rounded-full"
-            style={{ transform: `scaleX(${summaryProgressPercent / 100})`, transformOrigin: 'left', width: '100%' }}
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{totalMinutes} min planejados</span>
-          <span>{Math.round(summaryProgressPercent)} %</span>
-        </div>
-      </div>
-
-      {currentMoment && (
-        <div className="sticky top-2 z-20 sm:top-3 lg:top-4">
-          <div className={cn(
-            "glass-card border p-3 backdrop-blur-xl sm:p-4",
-            currentMomentCardClass
-          )}>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(230px,0.8fr)] lg:items-center">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full animate-pulse ${
-                    isCurrentMomentDanger ? 'bg-red-400' : isCurrentMomentWarning ? 'bg-amber-400' : 'bg-status-executing'
-                  }`} />
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.24em]", currentMomentAccentClass)}>Momento em execucao</span>
-                  <span className={cn(
-                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
-                    isLight ? 'border-border/80 bg-white/80' : 'border-border/60 bg-background/60'
-                  )}>
-                    {currentMoment.funcao}
-                  </span>
-                  <span className={cn(
-                    "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground",
-                    isLight ? 'border-border/80 bg-white/80' : 'border-border/60 bg-background/60'
-                  )}>
-                    {currentMoment.ministerio}
-                  </span>
-                </div>
-                <h2 className="mt-2 truncate text-base font-black font-display text-foreground sm:text-lg lg:text-xl">
-                  {currentMoment.atividade}
-                </h2>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-[280px]">
-                  <div className={cn(
-                    "rounded-2xl border px-3 py-2.5",
-                    isLight ? 'border-border/80 bg-white/82' : 'border-border/60 bg-background/55'
-                  )}>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
-                    <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{currentMoment.horarioInicio}</p>
-                  </div>
-                  <div className={cn(
-                    "rounded-2xl border px-3 py-2.5",
-                    isLight ? 'border-border/80 bg-white/82' : 'border-border/60 bg-background/55'
-                  )}>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Saida</p>
-                    <p className="mt-1 font-mono text-lg font-bold text-foreground sm:text-xl">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className={cn(
-                "rounded-[1.4rem] border px-4 py-3 text-center lg:px-5",
-                isLight ? 'border-border/80 bg-white/84' : 'border-border/60 bg-background/60'
-              )}>
-                <p className={cn("text-[10px] font-semibold uppercase tracking-[0.24em]", isCurrentMomentDanger || isCurrentMomentWarning ? currentMomentAccentClass : 'text-muted-foreground')}>Tempo restante</p>
-                <p className={cn("mt-2 font-mono text-4xl font-black leading-none sm:text-5xl lg:text-[3.5rem]", currentMomentTimeClass)}>
-                  {formatTimerMs(currentMomentRemainingMs)}
-                </p>
-                <p className={cn("mt-2 text-xs sm:text-sm", currentMomentHintClass)}>
-                  {isPaused
-                    ? 'Cronometro pausado'
-                    : isCurrentMomentDanger
-                      ? 'Menos de 20 segundos'
-                      : isCurrentMomentWarning
-                        ? 'Menos de 1 minuto'
-                        : 'Acompanhamento ao vivo'}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <div className="progress-bar h-2 rounded-full">
-                <div
-                  className="progress-bar-fill rounded-full"
-                  style={{ transform: `scaleX(${currentMomentPercent / 100})`, transformOrigin: 'left', width: '100%' }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CerimonialistaLiveOverview
+        cultoStatus={safeCulto.status}
+        safeMomentos={safeMomentos}
+        currentMoment={currentMoment}
+        isLight={isLight}
+      />
 
       <div
         aria-hidden={!isLive}
@@ -602,33 +685,12 @@ function PainelCerimonialista() {
 
         <div className="order-1 min-w-0 xl:order-2">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-            <div className="glass-card border border-status-alert/20 p-4 sm:p-5">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
-                <Users className="h-4 w-4 text-status-alert" />
-                <span className="text-status-alert">Painel de Chamada</span>
-              </h3>
-              {chamadaItems.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">Ninguem para ligar no momento</p>
-              ) : (
-                <div className="space-y-3">
-                  {chamadaItems.map((momento) => (
-                    <div key={momento.id} className="rounded-xl border border-status-alert/20 bg-status-alert/10 p-3">
-                      <p className="text-sm font-semibold">{momento.responsavel}</p>
-                      <p className="text-xs text-muted-foreground">{momento.ministerio} • {momento.funcao}</p>
-                      <p className="text-xs text-muted-foreground">{momento.atividade} as {momento.horarioInicio}</p>
-                      <button
-                        type="button"
-                        onClick={() => marcarChamado(momento.id)}
-                        disabled={isCommandLocked}
-                        className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded-xl bg-status-completed/20 px-3 py-2 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/30 disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        <Check className="h-3 w-3" /> Marcar como chamado
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <CerimonialistaCallPanel
+              safeMomentos={safeMomentos}
+              safeCurrentIndex={safeCurrentIndex}
+              isCommandLocked={isCommandLocked}
+              marcarChamado={marcarChamado}
+            />
 
             <div className="glass-card border border-border/60 p-4 sm:p-5">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proximos Momentos</h3>

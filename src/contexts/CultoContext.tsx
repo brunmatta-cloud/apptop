@@ -1,8 +1,10 @@
 import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus, RemoteCultoState, TimerSnapshot } from '@/features/culto-sync/domain';
-import { getActiveCulto, getActiveMomentos, getCurrentMoment, getMomentStatus, getNextMoment, getTimerSnapshot } from '@/features/culto-sync/domain';
-import { getLiveRemoteStateSnapshot, getLiveServerNowMs, subscribeLiveRemoteStateStore, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
+import { getActiveCulto, getActiveMomentos, getCurrentMoment, getMomentStatus, getNextMoment } from '@/features/culto-sync/domain';
+import { advanceLiveTimerBaseline, createLiveTimerBaseline, projectLiveTimerSnapshot, type LiveTimerBaseline } from '@/features/culto-sync/liveTimer';
+import { getLiveRemoteStateSnapshot, subscribeLiveRemoteStateStore, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
+import { LIVE_TICK_MS } from '@/utils/time';
 
 interface CultoContextType {
   cultos: Culto[];
@@ -48,14 +50,14 @@ interface CultoContextType {
 
 const CultoContext = React.createContext<CultoContextType | null>(null);
 
-let globalTimerSnapshotStore: TimerSnapshot = getTimerSnapshot(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+let globalTimerBaselineStore: LiveTimerBaseline = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
+let globalTimerSnapshotStore: TimerSnapshot = projectLiveTimerSnapshot(globalTimerBaselineStore);
 const globalTimerListeners = new Set<() => void>();
-let globalTimerFrameId: number | null = null;
+let globalTimerIntervalId: ReturnType<typeof setInterval> | null = null;
 let globalTimerUnsubscribeRemote: (() => void) | null = null;
 let globalTimerSubscriberCount = 0;
 
-const emitGlobalTimerSnapshot = () => {
-  const nextSnapshot = getTimerSnapshot(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+const publishGlobalTimerSnapshot = (nextSnapshot: TimerSnapshot) => {
   if (
     nextSnapshot.elapsedMs === globalTimerSnapshotStore.elapsedMs &&
     nextSnapshot.momentElapsedMs === globalTimerSnapshotStore.momentElapsedMs &&
@@ -68,35 +70,43 @@ const emitGlobalTimerSnapshot = () => {
   globalTimerListeners.forEach((listener) => listener());
 };
 
+const emitGlobalTimerSnapshot = () => {
+  globalTimerBaselineStore = advanceLiveTimerBaseline(globalTimerBaselineStore);
+  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerBaselineStore));
+};
+
+const rebaseGlobalTimerSnapshot = () => {
+  globalTimerBaselineStore = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
+  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerBaselineStore));
+};
+
 const stopGlobalTimerLoop = () => {
-  if (globalTimerFrameId != null) {
-    window.cancelAnimationFrame(globalTimerFrameId);
-    globalTimerFrameId = null;
+  if (globalTimerIntervalId != null) {
+    clearInterval(globalTimerIntervalId);
+    globalTimerIntervalId = null;
   }
 };
 
 const startGlobalTimerLoop = () => {
-  if (globalTimerFrameId != null) {
+  if (globalTimerIntervalId != null) {
     return;
   }
 
   const tick = () => {
     emitGlobalTimerSnapshot();
-    if (getLiveRemoteStateSnapshot().timerStatus === 'running' && globalTimerSubscriberCount > 0) {
-      globalTimerFrameId = window.requestAnimationFrame(tick);
-      return;
+    if (getLiveRemoteStateSnapshot().timerStatus !== 'running' || globalTimerSubscriberCount <= 0) {
+      stopGlobalTimerLoop();
     }
-
-    globalTimerFrameId = null;
   };
 
-  globalTimerFrameId = window.requestAnimationFrame(tick);
+  tick();
+  globalTimerIntervalId = setInterval(tick, LIVE_TICK_MS);
 };
 
 const syncGlobalTimerLoop = () => {
-  emitGlobalTimerSnapshot();
+  rebaseGlobalTimerSnapshot();
 
-  if (getLiveRemoteStateSnapshot().timerStatus === 'running' && globalTimerSubscriberCount > 0) {
+  if (globalTimerBaselineStore.isRunning && globalTimerSubscriberCount > 0) {
     startGlobalTimerLoop();
     return;
   }
@@ -127,7 +137,8 @@ const cleanupGlobalTimerStore = () => {
     globalTimerUnsubscribeRemote();
     globalTimerUnsubscribeRemote = null;
   }
-  globalTimerSnapshotStore = getTimerSnapshot(getLiveRemoteStateSnapshot(), getLiveServerNowMs());
+  globalTimerBaselineStore = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
+  globalTimerSnapshotStore = projectLiveTimerSnapshot(globalTimerBaselineStore);
 };
 
 const subscribeGlobalTimerSnapshot = (listener: () => void) => {
@@ -153,7 +164,7 @@ const MOMENT_CLEAR_DELAY_MS = 320;
 let stableViewStateSnapshot: RemoteCultoState = getLiveRemoteStateSnapshot();
 const stableViewListeners = new Set<() => void>();
 let stableViewUnsubscribeRemote: (() => void) | null = null;
-let stableViewTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
+let stableViewTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let stableViewSubscriberCount = 0;
 
 const getStructuralViewKey = (state: RemoteCultoState) => {
@@ -210,7 +221,7 @@ const projectStableViewState = (nextState: RemoteCultoState, fallbackState: Remo
 
 const clearStableViewTimeout = () => {
   if (stableViewTimeoutId != null) {
-    window.clearTimeout(stableViewTimeoutId);
+    clearTimeout(stableViewTimeoutId);
     stableViewTimeoutId = null;
   }
 };
@@ -222,7 +233,7 @@ const applyStableViewState = (nextState: RemoteCultoState) => {
 
 const scheduleStableViewUpdate = (nextState: RemoteCultoState, delayMs = 120) => {
   clearStableViewTimeout();
-  stableViewTimeoutId = window.setTimeout(() => {
+  stableViewTimeoutId = setTimeout(() => {
     stableViewTimeoutId = null;
     applyStableViewState(nextState);
   }, delayMs);
@@ -416,7 +427,7 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     setCulto: (value: React.SetStateAction<Culto>) => {
       const remoteState = getLiveRemoteStateSnapshot();
-      const currentCulto = getActiveCulto(remoteState);
+      const currentCulto = getActiveCulto(remoteState) as Culto;
       const nextCulto = typeof value === 'function' ? value(currentCulto) : value;
       run('set-culto', 'set_culto', { id: nextCulto.id, culto: nextCulto });
     },
