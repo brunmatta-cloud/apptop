@@ -1,10 +1,9 @@
 import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
-import type { ConnectionStatus, RemoteCultoState, TimerSnapshot } from '@/features/culto-sync/domain';
+import type { ConnectionStatus, RemoteCultoState } from '@/features/culto-sync/domain';
 import { getActiveCulto, getActiveMomentos, getCurrentMoment, getMomentStatus, getNextMoment } from '@/features/culto-sync/domain';
-import { advanceLiveTimerBaseline, createLiveTimerBaseline, projectLiveTimerSnapshot, type LiveTimerBaseline } from '@/features/culto-sync/liveTimer';
 import { getLiveRemoteStateSnapshot, subscribeLiveRemoteStateStore, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
-import { LIVE_TICK_MS } from '@/utils/time';
+import { disposeGlobalTimerStore, initializeGlobalTimerStore, useGlobalTimerSnapshot } from '@/features/culto-sync/globalTimerStore';
 
 interface CultoContextType {
   cultos: Culto[];
@@ -49,115 +48,6 @@ interface CultoContextType {
 }
 
 const CultoContext = React.createContext<CultoContextType | null>(null);
-
-let globalTimerBaselineStore: LiveTimerBaseline = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
-let globalTimerSnapshotStore: TimerSnapshot = projectLiveTimerSnapshot(globalTimerBaselineStore);
-const globalTimerListeners = new Set<() => void>();
-let globalTimerIntervalId: ReturnType<typeof setInterval> | null = null;
-let globalTimerUnsubscribeRemote: (() => void) | null = null;
-let globalTimerSubscriberCount = 0;
-
-const publishGlobalTimerSnapshot = (nextSnapshot: TimerSnapshot) => {
-  if (
-    nextSnapshot.elapsedMs === globalTimerSnapshotStore.elapsedMs &&
-    nextSnapshot.momentElapsedMs === globalTimerSnapshotStore.momentElapsedMs &&
-    nextSnapshot.isRunning === globalTimerSnapshotStore.isRunning
-  ) {
-    return;
-  }
-
-  globalTimerSnapshotStore = nextSnapshot;
-  globalTimerListeners.forEach((listener) => listener());
-};
-
-const emitGlobalTimerSnapshot = () => {
-  globalTimerBaselineStore = advanceLiveTimerBaseline(globalTimerBaselineStore);
-  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerBaselineStore));
-};
-
-const rebaseGlobalTimerSnapshot = () => {
-  globalTimerBaselineStore = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
-  publishGlobalTimerSnapshot(projectLiveTimerSnapshot(globalTimerBaselineStore));
-};
-
-const stopGlobalTimerLoop = () => {
-  if (globalTimerIntervalId != null) {
-    clearInterval(globalTimerIntervalId);
-    globalTimerIntervalId = null;
-  }
-};
-
-const startGlobalTimerLoop = () => {
-  if (globalTimerIntervalId != null) {
-    return;
-  }
-
-  const tick = () => {
-    emitGlobalTimerSnapshot();
-    if (getLiveRemoteStateSnapshot().timerStatus !== 'running' || globalTimerSubscriberCount <= 0) {
-      stopGlobalTimerLoop();
-    }
-  };
-
-  tick();
-  globalTimerIntervalId = setInterval(tick, LIVE_TICK_MS);
-};
-
-const syncGlobalTimerLoop = () => {
-  rebaseGlobalTimerSnapshot();
-
-  if (globalTimerBaselineStore.isRunning && globalTimerSubscriberCount > 0) {
-    startGlobalTimerLoop();
-    return;
-  }
-
-  stopGlobalTimerLoop();
-};
-
-const ensureGlobalTimerStore = () => {
-  if (globalTimerUnsubscribeRemote) {
-    syncGlobalTimerLoop();
-    return;
-  }
-
-  globalTimerUnsubscribeRemote = subscribeLiveRemoteStateStore(() => {
-    syncGlobalTimerLoop();
-  });
-
-  syncGlobalTimerLoop();
-};
-
-const cleanupGlobalTimerStore = () => {
-  if (globalTimerSubscriberCount > 0) {
-    return;
-  }
-
-  stopGlobalTimerLoop();
-  if (globalTimerUnsubscribeRemote) {
-    globalTimerUnsubscribeRemote();
-    globalTimerUnsubscribeRemote = null;
-  }
-  globalTimerBaselineStore = createLiveTimerBaseline(getLiveRemoteStateSnapshot());
-  globalTimerSnapshotStore = projectLiveTimerSnapshot(globalTimerBaselineStore);
-};
-
-const subscribeGlobalTimerSnapshot = (listener: () => void) => {
-  globalTimerSubscriberCount += 1;
-  globalTimerListeners.add(listener);
-  ensureGlobalTimerStore();
-
-  return () => {
-    globalTimerListeners.delete(listener);
-    globalTimerSubscriberCount = Math.max(0, globalTimerSubscriberCount - 1);
-    cleanupGlobalTimerStore();
-  };
-};
-
-const useGlobalTimerSnapshot = () => React.useSyncExternalStore(
-  subscribeGlobalTimerSnapshot,
-  () => globalTimerSnapshotStore,
-  () => globalTimerSnapshotStore,
-);
 
 const MOMENT_CLEAR_DELAY_MS = 320;
 
@@ -388,6 +278,14 @@ const usePinnedRemoteStateForView = (remoteState: RemoteCultoState) => {
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { uiState, runCommand } = useSyncCommands();
+
+  React.useEffect(() => {
+    initializeGlobalTimerStore();
+
+    return () => {
+      disposeGlobalTimerStore();
+    };
+  }, []);
 
   const run = React.useCallback((actionKey: string, command: string, payload?: Record<string, unknown>) => {
     void runCommand(actionKey, command, payload);
