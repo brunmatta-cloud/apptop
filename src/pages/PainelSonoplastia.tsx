@@ -288,7 +288,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
       {/* CONTEÚDO PRINCIPAL - LAYOUT OTIMIZADO */}
       <div className="flex-1 overflow-hidden flex gap-1.5 p-2">
         {/* COLUNA ESQUERDA - Próxima Ação e Ação Atual */}
-        <div className="flex flex-col gap-1.5 overflow-hidden" style={{ width: '32%' }}>
+        <div className="flex flex-col gap-1.5 overflow-hidden" style={{ width: '48%' }}>
           {/* Próxima Ação */}
           <div className="overflow-hidden flex-1 rounded-lg">
             <NextActionEnhanced

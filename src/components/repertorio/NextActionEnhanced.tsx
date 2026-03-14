@@ -79,7 +79,7 @@ export const NextActionEnhanced = memo(function NextActionEnhanced({
           <div className="flex items-center gap-1.5 mb-0.5">
             {showAlert && <AlertCircle className="h-4 w-4 text-yellow-300 animate-pulse shrink-0" />}
             <span className={cn('text-[11px] font-black uppercase tracking-tight', isUrgent ? 'text-yellow-200' : 'text-cyan-100')}>
-              {isUrgent ? '⚠ ATENÇÃO!' : '▶▶ PRÓXIMA'}
+              {isUrgent ? '⚠ ATENÇÃO!' : '▶▶ PRÓXIMO A EXECUTAR'}
             </span>
           </div>
           <h3 className="font-display font-black text-sm line-clamp-2 text-white leading-tight">{nextSoundAction.atividade}</h3>
