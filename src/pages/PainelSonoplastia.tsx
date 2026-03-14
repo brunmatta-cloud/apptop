@@ -404,6 +404,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
       </div>
 
       <NextActionEnhanced
+        currentMoment={currentMoment}
         nextSoundAction={nextSoundAction}
         momentos={momentos}
         currentIndex={currentIndex}
