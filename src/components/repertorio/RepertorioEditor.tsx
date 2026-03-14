@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   buildEditableSongDraft,
   formatSongDuration,
@@ -17,6 +18,7 @@ type RepertorioEditorProps = {
   helperText?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  showBottomAddButton?: boolean;
 };
 
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
@@ -33,8 +35,11 @@ export function RepertorioEditor({
   helperText,
   emptyTitle = 'Nenhuma musica adicionada ainda',
   emptyDescription = 'Monte a ordem do repertorio, informe a duracao e inclua links do YouTube se quiser ajudar a sonoplastia.',
+  showBottomAddButton = true,
 }: RepertorioEditorProps) {
   const [draggingClientId, setDraggingClientId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const canDrag = !disabled && !isMobile;
 
   const orderedSongs = useMemo(() => songs.map((song, index) => ({ ...song, order: index })), [songs]);
 
@@ -81,16 +86,21 @@ export function RepertorioEditor({
           {orderedSongs.map((song, index) => (
             <article
               key={song.clientId}
-              draggable={!disabled}
-              onDragStart={() => setDraggingClientId(song.clientId)}
+              draggable={canDrag}
+              onDragStart={() => {
+                if (!canDrag) {
+                  return;
+                }
+                setDraggingClientId(song.clientId);
+              }}
               onDragEnd={() => setDraggingClientId(null)}
               onDragOver={(event) => {
-                if (!disabled) {
+                if (canDrag) {
                   event.preventDefault();
                 }
               }}
               onDrop={() => {
-                if (disabled || !draggingClientId) {
+                if (!canDrag || !draggingClientId) {
                   return;
                 }
 
@@ -231,15 +241,17 @@ export function RepertorioEditor({
         </div>
       )}
 
-      <Button
-        type="button"
-        disabled={disabled}
-        onClick={addSong}
-        className="h-12 w-full rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        Adicionar musica
-      </Button>
+      {showBottomAddButton && (
+        <Button
+          type="button"
+          disabled={disabled}
+          onClick={addSong}
+          className="h-12 w-full rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar musica
+        </Button>
+      )}
     </div>
   );
 }

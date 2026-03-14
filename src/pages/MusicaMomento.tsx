@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, HeartHandshake, Loader2, Music4, Save, Sparkles } from 'lucide-react';
+import { CheckCircle2, ExternalLink, HeartHandshake, Loader2, Music4, Plus, Save, Sparkles } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useSyncStore } from '@/contexts/SyncStoreContext';
 import { Button } from '@/components/ui/button';
@@ -100,6 +100,10 @@ const MusicaMomento = () => {
     }
   };
 
+  const addSong = () => {
+    setDraftSongs((current) => [...current, buildEditableSongDraft()]);
+  };
+
   if (bundleQuery.isLoading) {
     return (
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_32%),hsl(var(--background))] px-4 py-10">
@@ -131,35 +135,32 @@ const MusicaMomento = () => {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.16),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_24%),hsl(var(--background))] px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto max-w-6xl space-y-5">
-        <div className="rounded-[2.25rem] border border-border/70 bg-card/85 p-6 shadow-[0_28px_80px_-36px_rgba(15,23,42,0.55)] backdrop-blur-xl sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <div className="mx-auto max-w-5xl space-y-5">
+        <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
                 <Music4 className="h-3.5 w-3.5" />
                 Repertorio do momento
               </div>
-              <h1 className="mt-4 break-words text-3xl font-display font-black sm:text-4xl">
+              <h1 className="mt-3 break-words text-2xl font-display font-black sm:text-3xl">
                 {momento?.atividade || 'Momento musical'}
               </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                 {culto?.nome && <span className="rounded-full bg-muted/50 px-3 py-1">{culto.nome}</span>}
                 {culto?.data && <span className="rounded-full bg-muted/50 px-3 py-1">{new Date(`${culto.data}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>}
                 {momento?.horarioInicio && <span className="rounded-full bg-muted/50 px-3 py-1">{momento.horarioInicio}</span>}
               </div>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Adicione abaixo as musicas que serao usadas neste momento do culto. Essas informacoes ajudam a sonoplastia, o cerimonialista e a organizacao geral a funcionarem com clareza e reverencia.
-              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Musicas</p>
-                <p className="mt-1 text-xl font-black">{songsCount}</p>
+                <p className="mt-1 text-lg font-black sm:text-xl">{songsCount}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Duracao</p>
-                <p className="mt-1 text-xl font-black">{Math.floor(totalDurationSeconds / 60)} min</p>
+                <p className="mt-1 text-lg font-black sm:text-xl">{Math.floor(totalDurationSeconds / 60)} min</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Respons.</p>
@@ -169,27 +170,6 @@ const MusicaMomento = () => {
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Status</p>
                 <p className="mt-1 text-sm font-semibold">{hasMomentPassed ? 'Somente leitura' : 'Edicao liberada'}</p>
               </div>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
-            <RepertorioStatusBadge summary={summary} />
-            <div className="rounded-[1.75rem] border border-border/70 bg-muted/25 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Como preencher</p>
-              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <p>1. Informe o titulo de cada musica na ordem correta.</p>
-                <p>2. Se puder, adicione a duracao em segundos para ajudar o painel da sonoplastia.</p>
-                <p>3. O link do YouTube e as observacoes sao opcionais, mas deixam o fluxo muito mais seguro.</p>
-              </div>
-              {form.token && (
-                <a
-                  href={window.location.href}
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Este link pode ser reutilizado ate o momento acontecer
-                </a>
-              )}
             </div>
           </div>
         </div>
@@ -237,16 +217,43 @@ const MusicaMomento = () => {
           </div>
         )}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="rounded-[2.25rem] border border-border/70 bg-card/85 p-6 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-8">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-4">
+          <div className="sticky top-3 z-20 rounded-[1.75rem] border border-border/70 bg-card/95 p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                type="button"
+                onClick={addSong}
+                disabled={hasMomentPassed || saveMutation.isPending}
+                className="h-12 flex-1 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar musica
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={hasMomentPassed || saveMutation.isPending || !hasChanges}
+                className="h-12 flex-1 rounded-2xl bg-foreground text-background hover:bg-foreground/90"
+              >
+                {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar repertorio
+              </Button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>O principal aqui e simples: adicionar as musicas e salvar.</span>
+            </div>
+          </div>
+
+          <div className="rounded-[2.25rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Edicao guiada</p>
-                <h2 className="mt-1 text-2xl font-display font-black">Lista de musicas</h2>
+                <h2 className="mt-1 text-xl font-display font-black sm:text-2xl">Lista de musicas</h2>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
+              <div className="hidden rounded-full border border-border/70 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground sm:inline-flex sm:items-center sm:gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Salve quando terminar para atualizar o restante do sistema
+                Edicao leve e rapida
               </div>
             </div>
 
@@ -254,8 +261,9 @@ const MusicaMomento = () => {
               songs={draftSongs}
               onChange={setDraftSongs}
               disabled={hasMomentPassed || saveMutation.isPending}
-              helperText="Voce pode editar quantas vezes precisar antes do momento acontecer. Depois que salvar, Programacao, Sonoplastia e Cerimonialista serao atualizados automaticamente."
+              helperText="Preencha primeiro o titulo. Duracao, YouTube e observacoes ajudam a equipe, mas sao opcionais."
               emptyDescription="Comece adicionando a primeira musica deste momento. A interface foi pensada para ser simples no celular e clara para a equipe."
+              showBottomAddButton={false}
             />
 
             <div className="mt-6 flex flex-col gap-3 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -263,48 +271,29 @@ const MusicaMomento = () => {
                 <p>{songsCount} {songsCount === 1 ? 'musica pronta' : 'musicas prontas'} para este momento.</p>
                 <p className="mt-1">{worshipVerse}</p>
               </div>
-
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={hasMomentPassed || saveMutation.isPending || !hasChanges}
-                className="h-12 rounded-2xl bg-primary px-6 text-primary-foreground hover:bg-primary/90"
-              >
-                {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Salvar repertorio
-              </Button>
             </div>
           </div>
 
-          <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-[2rem] border border-border/70 bg-card/80 p-5 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Resumo rapido</p>
-              <div className="mt-4 grid gap-3">
-                <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Etapa</p>
-                  <p className="mt-1 text-base font-semibold">{momento?.atividade || 'Momento musical'}</p>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Andamento</p>
-                  <p className="mt-1 text-base font-semibold">{hasChanges ? 'Com alteracoes nao salvas' : 'Tudo salvo'}</p>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Uso ao vivo</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Assim que salvar, Programacao, Sonoplastia e Cerimonialista recebem a atualizacao.</p>
-                </div>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.9fr)]">
+            <RepertorioStatusBadge summary={summary} />
+            <div className="rounded-[1.75rem] border border-border/70 bg-card/80 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Ajuda rapida</p>
+              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <p>1. Toque em adicionar musica.</p>
+                <p>2. Preencha pelo menos o titulo.</p>
+                <p>3. Salve para atualizar o restante do sistema.</p>
               </div>
+              {form.token && (
+                <a
+                  href={window.location.href}
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Este link pode ser reutilizado ate o momento acontecer
+                </a>
+              )}
             </div>
-
-            <div className="rounded-[2rem] border border-border/70 bg-card/80 p-5 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Checklist</p>
-              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                <p>Confirme a ordem final das musicas.</p>
-                <p>Preencha a duracao sempre que souber.</p>
-                <p>Cole o link do YouTube quando isso ajudar a operacao.</p>
-                <p>Use observacoes para tonalidade, playback ou avisos rapidos.</p>
-              </div>
-            </div>
-          </aside>
+          </div>
         </div>
       </div>
     </div>

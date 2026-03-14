@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, ExternalLink, Link2, Loader2, Sparkles } from 'lucide-react';
+import { Copy, ExternalLink, Link2, Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -92,6 +92,10 @@ export function RepertorioManagerDialog({
     return null;
   }
 
+  const addSong = () => {
+    setDraftSongs((current) => [...current, buildEditableSongDraft()]);
+  };
+
   const copyLink = async () => {
     try {
       const ensured = resolvedForm ?? await ensureFormMutation.mutateAsync({
@@ -136,9 +140,13 @@ export function RepertorioManagerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[95vh] overflow-hidden rounded-[2rem] border-border/70 p-0 sm:max-w-[min(96vw,72rem)]">
-        <div className="flex max-h-[95vh] flex-col overflow-hidden">
-          <div className="border-b border-border/60 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.02))] px-5 py-5 sm:px-7">
+      <DialogContent
+        className="left-0 right-0 top-auto bottom-0 h-[92dvh] max-h-[92dvh] w-full translate-x-0 translate-y-0 overflow-hidden rounded-t-[2rem] rounded-b-none border-border/70 p-0 sm:bottom-auto sm:left-[50%] sm:right-auto sm:top-[50%] sm:h-auto sm:max-h-[95vh] sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[2rem] sm:max-w-[min(96vw,72rem)]"
+        onInteractOutside={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+      >
+        <div className="flex h-full max-h-[92dvh] flex-col overflow-hidden sm:max-h-[95vh]">
+          <div className="shrink-0 border-b border-border/60 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.02))] px-4 py-4 sm:px-7 sm:py-5">
             <DialogHeader className="space-y-3 text-left">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="rounded-2xl border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
@@ -158,16 +166,16 @@ export function RepertorioManagerDialog({
                 )}
               </div>
               <div>
-                <DialogTitle className="text-2xl font-display font-black sm:text-3xl">
+                <DialogTitle className="pr-10 text-2xl font-display font-black sm:text-3xl">
                   {momento.atividade}
                 </DialogTitle>
                 <DialogDescription className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                  Monte o repertorio deste momento em um fluxo separado do formulario principal. Assim o louvor consegue preencher com clareza e a operacao ao vivo recebe tudo organizado.
+                  Adicione e salve as musicas deste momento sem sair da programacao.
                 </DialogDescription>
               </div>
             </DialogHeader>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
+            <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
                   <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Responsavel</p>
@@ -188,18 +196,40 @@ export function RepertorioManagerDialog({
               </div>
               <RepertorioStatusBadge summary={summary} />
             </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                onClick={addSong}
+                disabled={saveMutation.isPending}
+                className="h-12 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar musica
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={saveMutation.isPending || !hasChanges}
+                className="h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90"
+              >
+                {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Salvar repertorio
+              </Button>
+            </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24 sm:px-7 sm:py-5 sm:pb-6">
             <RepertorioEditor
               songs={draftSongs}
               onChange={setDraftSongs}
               disabled={saveMutation.isPending}
-              helperText="Use duracao em segundos para ajudar a sonoplastia a prever a proxima entrada. O link do YouTube e as observacoes sao opcionais, mas deixam a operacao mais segura."
+              helperText="Preencha primeiro o titulo. Duracao, YouTube e observacoes ajudam a operacao, mas sao opcionais."
+              showBottomAddButton={false}
             />
           </div>
 
-          <DialogFooter className="border-t border-border/60 bg-card/90 px-5 py-4 sm:px-7">
+          <DialogFooter className="shrink-0 border-t border-border/60 bg-card/95 px-4 py-3 sm:px-7 sm:py-4">
             <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5">
