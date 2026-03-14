@@ -421,7 +421,7 @@ const MusicaMomento = () => {
                   </Button>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {!showSavedState && currentStep === 3 && (
@@ -499,7 +499,7 @@ const MusicaMomento = () => {
                 )}
               </div>
             </>
-          ) : null}
+          )}
 
           <div className="rounded-[1.75rem] border border-border/70 bg-card/70 px-4 py-4 text-center text-xs leading-relaxed text-muted-foreground shadow-[0_16px_40px_-34px_rgba(15,23,42,0.45)] sm:px-5">
             <span className="font-semibold text-foreground">App liturgico IASD da Serraria</span>
