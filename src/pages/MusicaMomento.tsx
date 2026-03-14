@@ -113,6 +113,18 @@ const MusicaMomento = () => {
     }
   }, [hasChanges]);
 
+  useEffect(() => {
+    if (!showSavedState || typeof window === 'undefined') {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [showSavedState]);
+
   const handleSave = async () => {
     try {
       await saveMutation.mutateAsync(sanitizeSongDraftsForSave(draftSongs));
@@ -226,35 +238,6 @@ const MusicaMomento = () => {
           </p>
         </div>
 
-        {showSavedState && (
-          <div className="rounded-[2rem] border border-emerald-500/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(15,23,42,0.03))] p-6 shadow-[0_18px_50px_-35px_rgba(16,185,129,0.45)]">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
-                  <CheckCircle2 className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-display font-black">Repertorio salvo com sucesso</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                    Muito obrigado por contribuir com a organizacao deste culto. Sua colaboracao ajuda a equipe a servir com ordem, clareza e excelencia.
-                  </p>
-                  <p className="mt-3 text-sm font-semibold text-emerald-300">{worshipVerse}</p>
-                </div>
-              </div>
-              {!hasMomentPassed && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-2xl"
-                  onClick={() => setShowSavedState(false)}
-                >
-                  Continuar editando
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
         {hasMomentPassed && (
           <div className="rounded-[2rem] border border-amber-500/20 bg-amber-500/10 p-5">
             <div className="flex items-start gap-3">
@@ -270,7 +253,70 @@ const MusicaMomento = () => {
         )}
 
         <div className="space-y-4">
-          {currentStep === 1 && (
+          {showSavedState ? (
+            <>
+              <div className="rounded-[2rem] border border-emerald-500/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(15,23,42,0.03))] p-6 shadow-[0_18px_50px_-35px_rgba(16,185,129,0.45)]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-display font-black">Repertorio salvo com sucesso</h2>
+                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                        O repertorio foi concluido e salvo. Abaixo voce ve a revisao do que foi adicionado neste momento.
+                      </p>
+                      <p className="mt-3 text-sm font-semibold text-emerald-300">{worshipVerse}</p>
+                    </div>
+                  </div>
+                  {!hasMomentPassed && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-2xl"
+                      onClick={() => {
+                        setShowSavedState(false);
+                        setCurrentStep(2);
+                      }}
+                    >
+                      Voltar a editar
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Revisao do repertorio salvo</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Musicas</p>
+                    <p className="mt-1 text-lg font-black text-foreground">{songsCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Com midia</p>
+                    <p className="mt-1 text-lg font-black text-foreground">{songsWithMediaCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Playback</p>
+                    <p className="mt-1 text-lg font-black text-foreground">{songsWithPlaybackCount}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {draftSongs.length > 0 ? draftSongs.map((song, index) => (
+                    <div key={song.clientId} className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+                      <p className="font-semibold text-foreground">#{index + 1} {song.title.trim() || 'Musica sem titulo'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {song.hasMedia ? 'Com midia' : 'Sem midia'} • {song.hasPlayback ? 'Com playback' : 'Sem playback'}
+                      </p>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma musica foi adicionada ainda.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : currentStep === 1 ? (
             <div className="rounded-[2.25rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
               <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Passo 1 de 3</p>
               <h2 className="mt-2 text-2xl font-display font-black">Comece por aqui</h2>
@@ -313,9 +359,9 @@ const MusicaMomento = () => {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {currentStep === 2 && (
+          {!showSavedState && currentStep === 2 && (
             <>
               <div className="sticky top-3 z-20 rounded-[1.75rem] border border-border/70 bg-card/95 p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Passo 2 de 3</p>
@@ -376,9 +422,9 @@ const MusicaMomento = () => {
                 </div>
               </div>
             </>
-          )}
+          ) : null}
 
-          {currentStep === 3 && (
+          {!showSavedState && currentStep === 3 && (
             <>
               <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Resumo de tudo</p>
@@ -453,7 +499,7 @@ const MusicaMomento = () => {
                 )}
               </div>
             </>
-          )}
+          ) : null}
 
           <div className="rounded-[1.75rem] border border-border/70 bg-card/70 px-4 py-4 text-center text-xs leading-relaxed text-muted-foreground shadow-[0_16px_40px_-34px_rgba(15,23,42,0.45)] sm:px-5">
             <span className="font-semibold text-foreground">App liturgico IASD da Serraria</span>

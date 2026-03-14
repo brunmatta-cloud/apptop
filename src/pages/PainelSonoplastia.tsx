@@ -10,6 +10,7 @@ import { formatTimerMs } from '@/utils/time';
 import { calcularHorarioTermino, tipoMomentoLabel, type MomentoProgramacao } from '@/types/culto';
 import { useSessionRepertoire } from '@/features/repertorio/hooks';
 import { SonoplastiaMusicQueue } from '@/components/repertorio/SonoplastiaMusicQueue';
+import { getSongMediaLabel, getSongPlaybackLabel, sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
 
 const SonoplastiaHeaderClock = memo(function SonoplastiaHeaderClock() {
   const { currentTime, formatTime } = useClock();
@@ -38,14 +39,21 @@ const NextSoundActionCard = memo(function NextSoundActionCard({
   nextSoundAction,
   momentos,
   currentIndex,
+  songsByMomentId,
 }: {
   currentMoment: MomentoProgramacao | null;
   nextSoundAction: MomentoProgramacao | null;
   momentos: MomentoProgramacao[];
   currentIndex: number;
+  songsByMomentId: Record<string, MomentSong[]>;
 }) {
   const { momentElapsedMs } = useCultoTimer();
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+  const nextActionSongs = useMemo(
+    () => nextSoundAction ? sortMomentSongs(songsByMomentId[nextSoundAction.id] ?? []) : [],
+    [nextSoundAction, songsByMomentId],
+  );
+  const featuredSong = nextActionSongs[0] ?? null;
   const remainingMsUntilNext = useMemo(() => {
     if (!currentMoment || !nextSoundAction) return Infinity;
 
@@ -63,7 +71,7 @@ const NextSoundActionCard = memo(function NextSoundActionCard({
   const isUrgent = remainingMsUntilNext <= 10000;
 
   return (
-    <div className={`glass-card p-4 sm:p-6 transition-all ${isUrgent ? 'ring-2 ring-status-alert border-status-alert/50' : ''}`}>
+    <div className={`glass-card p-4 sm:p-5 transition-all ${isUrgent ? 'ring-2 ring-status-alert border-status-alert/50' : ''}`}>
       <div className="mb-4 flex items-center gap-2">
         <PlayCircle className={`w-4 h-4 ${isUrgent ? 'text-status-alert' : 'text-status-next'}`} />
         <span className={`text-xs font-semibold uppercase tracking-wider ${isUrgent ? 'text-status-alert' : 'text-status-next'}`}>
@@ -72,8 +80,8 @@ const NextSoundActionCard = memo(function NextSoundActionCard({
       </div>
 
       {nextSoundAction ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <div className={`flex shrink-0 flex-col items-center justify-center ${isUrgent ? 'animate-pulse' : ''}`}>
+        <div className="grid gap-3 xl:grid-cols-[auto_minmax(0,1fr)_minmax(260px,0.85fr)] xl:items-center">
+          <div className={`flex shrink-0 flex-col items-center justify-center rounded-[1.35rem] border border-border/50 bg-card/55 px-3 py-3 ${isUrgent ? 'animate-pulse' : ''}`}>
             <span className={`font-mono font-black leading-none ${isUrgent ? 'text-status-alert' : 'text-primary'} ${remainingMsUntilNext < 60000 ? 'text-5xl sm:text-7xl' : 'text-4xl sm:text-5xl'}`}>
               {Number.isFinite(remainingMsUntilNext) ? formatTimerMs(remainingMsUntilNext) : '--:--'}
             </span>
@@ -82,7 +90,7 @@ const NextSoundActionCard = memo(function NextSoundActionCard({
             </span>
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             <div className="flex items-start gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${isUrgent ? 'bg-status-alert/20' : 'bg-muted'}`}>
                 {getMediaIcon(nextSoundAction.tipoMidia)}
@@ -112,6 +120,34 @@ const NextSoundActionCard = memo(function NextSoundActionCard({
               </span>
             </div>
           </div>
+
+          {featuredSong ? (
+            <div className="rounded-[1.35rem] border border-border/60 bg-card/75 p-3 sm:p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Musica ligada a esta acao</p>
+              <div className="mt-2 flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <span className="font-mono text-xs font-black">#{featuredSong.position + 1}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">{featuredSong.title || 'Musica sem titulo'}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="rounded-full bg-muted/50 px-2 py-1">{getSongMediaLabel(featuredSong.has_media)}</span>
+                    <span className="rounded-full bg-muted/50 px-2 py-1">{getSongPlaybackLabel(featuredSong.has_playback)}</span>
+                  </div>
+                  {featuredSong.youtube_url ? (
+                    <a
+                      href={featuredSong.youtube_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    >
+                      Abrir YouTube
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="py-2 text-center text-sm text-muted-foreground">Nenhuma proxima acao</p>
@@ -303,7 +339,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
   }, []);
 
   return (
-    <div ref={pageRef} className={`space-y-6 ${isFullscreen ? 'min-h-screen bg-background p-4 sm:p-6' : ''}`}>
+    <div ref={pageRef} className={`space-y-4 ${isFullscreen ? 'min-h-screen bg-background p-4 sm:p-5' : ''}`}>
       <SonoplastiaAlertWatcher
         currentMoment={currentMoment}
         nextSoundAction={nextSoundAction}
@@ -343,10 +379,11 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
         nextSoundAction={nextSoundAction}
         momentos={momentos}
         currentIndex={currentIndex}
+        songsByMomentId={songsByMomentId}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_320px]">
+        <div className="space-y-3">
           <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} />
           <SonoplastiaMusicQueue
             momentos={momentos}
@@ -359,16 +396,18 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
 
           <div className="glass-card p-4 sm:p-5">
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fila da sonoplastia</h3>
-            <div className="space-y-2">
+            <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {soundMoments.map((momento) => {
                 const index = momentos.findIndex((item) => item.id === momento.id);
                 const status = getMomentStatus(index);
                 const isNext = nextSoundAction?.id === momento.id;
+                const linkedSongs = sortMomentSongs(songsByMomentId[momento.id] ?? []);
+                const firstSong = linkedSongs[0] ?? null;
 
                 return (
                   <div
                     key={momento.id}
-                    className={`flex items-center gap-2 rounded-lg p-2 transition-colors sm:gap-3 sm:p-3 ${
+                    className={`flex items-start gap-2 rounded-lg p-2 transition-colors sm:gap-3 sm:p-3 ${
                       status === 'executando'
                         ? 'border border-status-executing/30 bg-status-executing/10'
                         : isNext
@@ -385,6 +424,12 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
                         {momento.atividade}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">{momento.acaoSonoplastia}</p>
+                      {firstSong ? (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="truncate rounded-full bg-muted/40 px-2 py-0.5">#{firstSong.position + 1} {firstSong.title}</span>
+                          <span className="rounded-full bg-muted/40 px-2 py-0.5">{getSongMediaLabel(firstSong.has_media)}</span>
+                        </div>
+                      ) : null}
                     </div>
                     {status === 'executando' ? (
                       <span className="flex shrink-0 items-center gap-1 rounded bg-status-executing/20 px-2 py-0.5 text-[11px] text-status-executing">
@@ -402,7 +447,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="glass-card p-4 sm:p-5">
             <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
               <Bell className="h-4 w-4 text-status-alert" />
@@ -412,7 +457,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
             {alerts.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">Nenhum alerta</p>
             ) : (
-              <div className="max-h-60 space-y-2 overflow-y-auto">
+              <div className="max-h-60 space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <AnimatePresence>
                   {alerts.map((alert) => (
                     <motion.div
