@@ -176,6 +176,14 @@ const MusicaMomento = () => {
       <div className="mx-auto max-w-5xl space-y-5">
         <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
           <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                IASD da Serraria
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                Ministerio OC
+              </span>
+            </div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
               <Music4 className="h-3.5 w-3.5" />
               Repertorio do momento
@@ -183,6 +191,10 @@ const MusicaMomento = () => {
             <h1 className="mt-3 break-words text-2xl font-display font-black sm:text-3xl">
               {momento?.atividade || 'Momento musical'}
             </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Plataforma criada pela <span className="font-semibold text-foreground">IASD da Serraria</span>, pelo
+              <span className="font-semibold text-foreground"> Ministerio OC</span>, para organizar programacao, culto e repertorio com clareza entre todas as equipes.
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
               {culto?.nome && <span className="rounded-full bg-muted/50 px-3 py-1">{culto.nome}</span>}
               {culto?.data && <span className="rounded-full bg-muted/50 px-3 py-1">{new Date(`${culto.data}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>}
@@ -383,24 +395,6 @@ const MusicaMomento = () => {
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-border/70 bg-card/80 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Resumo rapido</p>
-                <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-                  <p>{songsCount} {songsCount === 1 ? 'musica pronta' : 'musicas prontas'}</p>
-                  <p>{songsWithMediaCount} com midia</p>
-                  <p>{songsWithPlaybackCount} com playback</p>
-                </div>
-                {form.token && (
-                  <a
-                    href={window.location.href}
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Este link pode ser reutilizado ate o momento acontecer
-                  </a>
-                )}
-              </div>
-
               <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Ultima revisao</p>
                 <div className="mt-3 space-y-2">
@@ -429,8 +423,42 @@ const MusicaMomento = () => {
                   <p className="text-sm text-muted-foreground">{worshipVerse}</p>
                 </div>
               </div>
+
+              <div className="rounded-[2rem] border border-primary/20 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.03))] p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-primary">Passo 3 de 3</p>
+                <h2 className="mt-2 text-xl font-display font-black">Concluir repertorio</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Agora finalize. Para concluir de verdade e enviar tudo para a programacao, sonoplastia e cerimonialista, aperte em <span className="font-semibold text-foreground">Salvar repertorio</span>.
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={hasMomentPassed || saveMutation.isPending || !hasChanges}
+                  className="mt-4 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  {saveMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                  Salvar repertorio
+                </Button>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Se voce sair antes de salvar, as alteracoes nao serao concluidas.
+                </p>
+                {form.token && (
+                  <a
+                    href={window.location.href}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Este link pode ser reutilizado ate o momento acontecer
+                  </a>
+                )}
+              </div>
             </>
           )}
+
+          <div className="rounded-[1.75rem] border border-border/70 bg-card/70 px-4 py-4 text-center text-xs leading-relaxed text-muted-foreground shadow-[0_16px_40px_-34px_rgba(15,23,42,0.45)] sm:px-5">
+            <span className="font-semibold text-foreground">App liturgico IASD da Serraria</span>
+            {' '}• desenvolvido para uso ministerial pelo <span className="font-semibold text-foreground">Ministerio OC</span>.
+          </div>
         </div>
       </div>
     </div>
