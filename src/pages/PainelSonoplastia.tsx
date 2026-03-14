@@ -10,6 +10,8 @@ import { formatTimerMs } from '@/utils/time';
 import { calcularHorarioTermino, tipoMomentoLabel, type MomentoProgramacao } from '@/types/culto';
 import { useSessionRepertoire } from '@/features/repertorio/hooks';
 import { SonoplastiaMusicQueue } from '@/components/repertorio/SonoplastiaMusicQueue';
+import { SonoplastiaQueuePlaylist } from '@/components/repertorio/SonoplastiaQueuePlaylist';
+import { SonoplastiaFullMusicList } from '@/components/repertorio/SonoplastiaFullMusicList';
 import { getSongMediaLabel, getSongPlaybackLabel, sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
 
 const SonoplastiaHeaderClock = memo(function SonoplastiaHeaderClock() {
@@ -385,7 +387,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_320px]">
         <div className="space-y-3">
           <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} />
-          <SonoplastiaMusicQueue
+          <SonoplastiaQueuePlaylist
             momentos={momentos}
             currentMoment={currentMoment}
             currentIndex={currentIndex}
@@ -393,58 +395,10 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
             songsByMomentId={songsByMomentId}
             isPaused={isPaused}
           />
-
-          <div className="glass-card p-4 sm:p-5">
-            <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fila da sonoplastia</h3>
-            <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {soundMoments.map((momento) => {
-                const index = momentos.findIndex((item) => item.id === momento.id);
-                const status = getMomentStatus(index);
-                const isNext = nextSoundAction?.id === momento.id;
-                const linkedSongs = sortMomentSongs(songsByMomentId[momento.id] ?? []);
-                const firstSong = linkedSongs[0] ?? null;
-
-                return (
-                  <div
-                    key={momento.id}
-                    className={`flex items-start gap-2 rounded-lg p-2 transition-colors sm:gap-3 sm:p-3 ${
-                      status === 'executando'
-                        ? 'border border-status-executing/30 bg-status-executing/10'
-                        : isNext
-                          ? 'border border-status-alert/20 bg-status-alert/5'
-                          : 'hover:bg-muted/20'
-                    }`}
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      {getMediaIcon(momento.tipoMidia)}
-                    </div>
-                    <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground sm:w-12">{momento.horarioInicio}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className={`truncate text-sm font-medium ${status === 'concluido' ? 'text-muted-foreground line-through' : ''}`}>
-                        {momento.atividade}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">{momento.acaoSonoplastia}</p>
-                      {firstSong ? (
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <span className="truncate rounded-full bg-muted/40 px-2 py-0.5">#{firstSong.position + 1} {firstSong.title}</span>
-                          <span className="rounded-full bg-muted/40 px-2 py-0.5">{getSongMediaLabel(firstSong.has_media)}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                    {status === 'executando' ? (
-                      <span className="flex shrink-0 items-center gap-1 rounded bg-status-executing/20 px-2 py-0.5 text-[11px] text-status-executing">
-                        <PlayCircle className="h-3 w-3" /> Agora
-                      </span>
-                    ) : status === 'concluido' ? (
-                      <span className="shrink-0 rounded bg-status-completed/20 px-2 py-0.5 text-[11px] text-status-completed">OK</span>
-                    ) : isNext ? (
-                      <span className="shrink-0 rounded bg-status-alert/20 px-2 py-0.5 text-[11px] font-semibold text-status-alert">Proximo</span>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <SonoplastiaFullMusicList
+            momentos={momentos}
+            songsByMomentId={songsByMomentId}
+          />
         </div>
 
         <div className="space-y-3">
