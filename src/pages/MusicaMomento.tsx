@@ -359,7 +359,7 @@ const MusicaMomento = () => {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
 
           {!showSavedState && currentStep === 2 && (
             <>
