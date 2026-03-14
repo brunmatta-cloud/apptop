@@ -16,6 +16,9 @@ import { formatTimerMs } from '@/utils/time';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { CommandDelayControl } from '@/components/culto/CommandDelayControl';
+import { useSessionRepertoire } from '@/features/repertorio/hooks';
+import { isMusicMoment } from '@/features/repertorio/model';
+import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
 
 const emptyCultoFallback = {
   nome: 'Culto carregando...',
@@ -311,6 +314,7 @@ function PainelCerimonialista() {
   const cultoData = useCultoControls();
   const liveCultoData = useLiveCultoView();
   const cronometroData = useCronometro();
+  const { getSummaryForMoment } = useSessionRepertoire();
   const [msgDraft, setMsgDraft] = useState('');
   const isMobile = useIsMobile();
   const { resolvedTheme = 'dark' } = useTheme();
@@ -689,6 +693,7 @@ function PainelCerimonialista() {
                 {safeMomentos.map((momento, index) => {
                   const status = getMomentStatus(index);
                   const adjustment = getAdjustmentLabel(momento);
+                  const repertoireSummary = isMusicMoment(momento) ? getSummaryForMoment(momento) : null;
                   return (
                     <div
                       key={momento.id}
@@ -707,6 +712,11 @@ function PainelCerimonialista() {
                           )}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">{momento.responsavel}</p>
+                        {repertoireSummary && (
+                          <div className="mt-2 max-w-lg">
+                            <RepertorioStatusBadge summary={repertoireSummary} compact />
+                          </div>
+                        )}
                       </div>
                       <StatusBadge status={status} />
                     </div>
@@ -738,6 +748,11 @@ function PainelCerimonialista() {
                       <div className="min-w-0 flex-1">
                         <span className="block break-words text-sm">{momento.atividade}</span>
                         <span className="block truncate text-xs text-muted-foreground">{momento.responsavel}</span>
+                        {isMusicMoment(momento) && (
+                          <div className="mt-2 max-w-md">
+                            <RepertorioStatusBadge summary={getSummaryForMoment(momento)} compact />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -1,12 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
-import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown } from 'lucide-react';
+import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown, Link2, Music4 } from 'lucide-react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
 import { exportarProgramacao } from '@/utils/exportProgramacao';
 import { exportarProgramacaoImagem } from '@/utils/exportProgramacaoImagem';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from '@/hooks/use-toast';
+import { RepertorioManagerDialog } from '@/components/repertorio/RepertorioManagerDialog';
+import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
+import { useEnsureMomentSongFormMutation, useSessionRepertoire } from '@/features/repertorio/hooks';
+import { isMusicMoment } from '@/features/repertorio/model';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 
@@ -84,6 +89,9 @@ const Programacao = () => {
   const [newBlocoMode, setNewBlocoMode] = useState(false);
   const [newBlocoName, setNewBlocoName] = useState('');
   const [showCultoSelector, setShowCultoSelector] = useState(false);
+  const [repertorioMoment, setRepertorioMoment] = useState<MomentoProgramacao | null>(null);
+  const { formByMomentId, songsByMomentId, getSummaryForMoment } = useSessionRepertoire();
+  const ensureMomentSongFormMutation = useEnsureMomentSongFormMutation();
 
   const viewingCultoId = activeCultoId;
   const viewingCulto = cultos.find((c) => c.id === viewingCultoId) || culto;
@@ -173,6 +181,38 @@ const Programacao = () => {
   const inputClass = 'w-full bg-muted/50 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground';
   const labelClass = 'text-xs text-muted-foreground font-medium mb-1.5 block';
   const statusLabel = (s: string) => s === 'planejado' ? 'Planejado' : s === 'em_andamento' ? 'Em andamento' : 'Finalizado';
+
+  const handleCopyRepertorioLink = async (momento: MomentoProgramacao) => {
+    try {
+      const form = await ensureMomentSongFormMutation.mutateAsync({
+        cultoId: momento.cultoId,
+        momentoId: momento.id,
+      });
+      const link = `${window.location.origin}/musica/${form.token}`;
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = link;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+
+      toast({
+        title: 'Link do repertorio copiado',
+        description: `A equipe de louvor ja pode preencher as musicas de ${momento.atividade}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Nao foi possivel copiar o link',
+        description: error instanceof Error ? error.message : 'Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="space-y-5 pb-24 sm:space-y-6 sm:pb-6">
@@ -397,6 +437,10 @@ const Programacao = () => {
                   const status = getMomentStatus(idx);
                   const isExecuting = status === 'executando';
                   const isDone = status === 'concluido';
+                  const isMusicBlock = isMusicMoment(m);
+                  const repertoireSummary = getSummaryForMoment(m);
+                  const repertoireForm = formByMomentId[m.id];
+                  const repertoireSongs = songsByMomentId[m.id] ?? [];
 
                   return (
                     <div key={m.id} className={`glass-card p-3.5 transition-colors sm:p-4 ${isExecuting ? 'border-l-4 border-l-status-executing' : ''}`}>
@@ -431,6 +475,35 @@ const Programacao = () => {
                           </div>
                           {m.acaoSonoplastia && (
                             <p className="mt-2 rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">Sonoplastia: {m.acaoSonoplastia}</p>
+                          )}
+                          {isMusicBlock && (
+                            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,auto)] lg:items-start">
+                              <RepertorioStatusBadge summary={repertoireSummary} compact />
+                              <div className="grid gap-2 sm:grid-cols-2 lg:max-w-[240px] lg:grid-cols-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setRepertorioMoment(m)}
+                                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                                >
+                                  <Music4 className="h-3.5 w-3.5" />
+                                  Gerenciar musicas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyRepertorioLink(m)}
+                                  disabled={ensureMomentSongFormMutation.isPending}
+                                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted"
+                                >
+                                  {repertoireForm?.token ? <Copy className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                                  {repertoireForm?.token ? 'Copiar link' : 'Gerar link'}
+                                </button>
+                                {repertoireSongs.length > 0 && (
+                                  <p className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+                                    {repertoireSongs.length} {repertoireSongs.length === 1 ? 'musica salva' : 'musicas salvas'} neste momento.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
                         <div className="hidden items-center gap-2 self-end sm:flex sm:self-auto">
@@ -535,6 +608,19 @@ const Programacao = () => {
           </div>
         </div>
       )}
+
+      <RepertorioManagerDialog
+        open={Boolean(repertorioMoment)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setRepertorioMoment(null);
+          }
+        }}
+        momento={repertorioMoment}
+        songs={repertorioMoment ? songsByMomentId[repertorioMoment.id] ?? [] : []}
+        form={repertorioMoment ? formByMomentId[repertorioMoment.id] ?? null : null}
+        summary={repertorioMoment ? getSummaryForMoment(repertorioMoment) : null}
+      />
 
       {showCultoForm && editingCulto && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">

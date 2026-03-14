@@ -1,0 +1,244 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Copy, ExternalLink, Link2, Loader2, Sparkles } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { RepertorioEditor } from '@/components/repertorio/RepertorioEditor';
+import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
+import {
+  buildEditableSongDraft,
+  sanitizeSongDraftsForSave,
+  sortMomentSongs,
+  type EditableSongDraft,
+  type MomentSong,
+  type MomentSongForm,
+  type RepertoireSummary,
+} from '@/features/repertorio/model';
+import {
+  useEnsureMomentSongFormMutation,
+  useRepertoireDraftStats,
+  useSaveMomentRepertoireMutation,
+} from '@/features/repertorio/hooks';
+import type { MomentoProgramacao } from '@/types/culto';
+
+type RepertorioManagerDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  momento: MomentoProgramacao | null;
+  songs: MomentSong[];
+  form?: MomentSongForm | null;
+  summary: RepertoireSummary | null;
+};
+
+const createMomentLink = (token: string) => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return `${window.location.origin}/musica/${token}`;
+};
+
+const copyText = async (value: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const tempInput = document.createElement('input');
+  tempInput.value = value;
+  document.body.appendChild(tempInput);
+  tempInput.select();
+  document.execCommand('copy');
+  document.body.removeChild(tempInput);
+};
+
+export function RepertorioManagerDialog({
+  open,
+  onOpenChange,
+  momento,
+  songs,
+  form,
+  summary,
+}: RepertorioManagerDialogProps) {
+  const [draftSongs, setDraftSongs] = useState<EditableSongDraft[]>([]);
+  const ensureFormMutation = useEnsureMomentSongFormMutation();
+  const saveMutation = useSaveMomentRepertoireMutation();
+  const { songsCount, totalDurationSeconds } = useRepertoireDraftStats(draftSongs);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setDraftSongs(sortMomentSongs(songs).map((song) => buildEditableSongDraft(song)));
+  }, [open, songs]);
+
+  const resolvedForm = form ?? ensureFormMutation.data ?? null;
+  const linkUrl = resolvedForm?.token ? createMomentLink(resolvedForm.token) : '';
+  const hasChanges = useMemo(() => {
+    const current = JSON.stringify(sanitizeSongDraftsForSave(draftSongs));
+    const existing = JSON.stringify(sanitizeSongDraftsForSave(sortMomentSongs(songs).map((song) => buildEditableSongDraft(song))));
+    return current !== existing;
+  }, [draftSongs, songs]);
+
+  if (!momento || !summary) {
+    return null;
+  }
+
+  const copyLink = async () => {
+    try {
+      const ensured = resolvedForm ?? await ensureFormMutation.mutateAsync({
+        cultoId: momento.cultoId,
+        momentoId: momento.id,
+      });
+      const url = createMomentLink(ensured.token);
+      await copyText(url);
+      toast({
+        title: 'Link do repertorio copiado',
+        description: 'Envie este link para a equipe de louvor preencher as musicas deste momento.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Nao foi possivel copiar o link',
+        description: error instanceof Error ? error.message : 'Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await saveMutation.mutateAsync({
+        cultoId: momento.cultoId,
+        momentoId: momento.id,
+        songs: sanitizeSongDraftsForSave(draftSongs),
+      });
+
+      toast({
+        title: 'Repertorio salvo',
+        description: 'Programacao, sonoplastia e cerimonialista ja receberam a atualizacao.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Nao foi possivel salvar o repertorio',
+        description: error instanceof Error ? error.message : 'Revise os dados e tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[95vh] overflow-hidden rounded-[2rem] border-border/70 p-0 sm:max-w-[min(96vw,72rem)]">
+        <div className="flex max-h-[95vh] flex-col overflow-hidden">
+          <div className="border-b border-border/60 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.02))] px-5 py-5 sm:px-7">
+            <DialogHeader className="space-y-3 text-left">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-2xl border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                  Playlist do momento
+                </div>
+                {resolvedForm?.token && (
+                  <a
+                    href={linkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    Link externo pronto
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-display font-black sm:text-3xl">
+                  {momento.atividade}
+                </DialogTitle>
+                <DialogDescription className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                  Monte o repertorio deste momento em um fluxo separado do formulario principal. Assim o louvor consegue preencher com clareza e a operacao ao vivo recebe tudo organizado.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+
+            <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Responsavel</p>
+                  <p className="mt-1 truncate text-sm font-semibold">{momento.responsavel || 'Nao informado'}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Minis.</p>
+                  <p className="mt-1 truncate text-sm font-semibold">{momento.ministerio || 'Louvor'}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Musicas</p>
+                  <p className="mt-1 text-sm font-semibold">{songsCount}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Duracao</p>
+                  <p className="mt-1 text-sm font-semibold">{Math.floor(totalDurationSeconds / 60)} min</p>
+                </div>
+              </div>
+              <RepertorioStatusBadge summary={summary} />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+            <RepertorioEditor
+              songs={draftSongs}
+              onChange={setDraftSongs}
+              disabled={saveMutation.isPending}
+              helperText="Use duracao em segundos para ajudar a sonoplastia a prever a proxima entrada. O link do YouTube e as observacoes sao opcionais, mas deixam a operacao mais segura."
+            />
+          </div>
+
+          <DialogFooter className="border-t border-border/60 bg-card/90 px-5 py-4 sm:px-7">
+            <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Mudancas sincronizadas em tempo real
+                </span>
+                {resolvedForm?.token && (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5">
+                    <Link2 className="h-4 w-4 text-primary" />
+                    Link pronto para o louvor
+                  </span>
+                )}
+              </div>
+
+              <div className="grid gap-2 sm:flex sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={copyLink}
+                  disabled={ensureFormMutation.isPending || saveMutation.isPending}
+                  className="rounded-2xl"
+                >
+                  {ensureFormMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+                  Copiar link do louvor
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saveMutation.isPending || !hasChanges}
+                  className="rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Salvar repertorio
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

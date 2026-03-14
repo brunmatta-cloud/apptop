@@ -8,6 +8,8 @@ import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { toast } from '@/hooks/use-toast';
 import { formatTimerMs } from '@/utils/time';
 import { calcularHorarioTermino, tipoMomentoLabel, type MomentoProgramacao } from '@/types/culto';
+import { useSessionRepertoire } from '@/features/repertorio/hooks';
+import { SonoplastiaMusicQueue } from '@/components/repertorio/SonoplastiaMusicQueue';
 
 const SonoplastiaHeaderClock = memo(function SonoplastiaHeaderClock() {
   const { currentTime, formatTime } = useClock();
@@ -251,10 +253,13 @@ const SonoplastiaAlertWatcher = memo(function SonoplastiaAlertWatcher({
 
 const PainelSonoplastia = memo(function PainelSonoplastia() {
   const { culto, momentos, currentIndex, currentMoment, getMomentStatus, isPaused } = useLiveCultoView();
+  const { momentElapsedMs } = useCultoTimer();
+  const { songsByMomentId } = useSessionRepertoire();
   const isMobile = useIsMobile();
   const [alerts, setAlerts] = useState<SonoplastiaAlert[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const pageRef = useRef<HTMLDivElement | null>(null);
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
 
   const soundMoments = useMemo(
     () => momentos.filter((momento) => momento.tipoMidia !== 'nenhum' || momento.acaoSonoplastia),
@@ -343,6 +348,14 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
           <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} />
+          <SonoplastiaMusicQueue
+            momentos={momentos}
+            currentMoment={currentMoment}
+            currentIndex={currentIndex}
+            momentElapsedMs={safeMomentElapsedMs}
+            songsByMomentId={songsByMomentId}
+            isPaused={isPaused}
+          />
 
           <div className="glass-card p-4 sm:p-5">
             <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fila da sonoplastia</h3>

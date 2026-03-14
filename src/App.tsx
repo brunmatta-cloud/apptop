@@ -26,6 +26,7 @@ const Configuracoes = React.lazy(() => import("./pages/Configuracoes"));
 const Estatisticas = React.lazy(() => import("./pages/Estatisticas"));
 const Cronometro = React.lazy(() => import("./pages/Cronometro"));
 const CronometroControle = React.lazy(() => import("./pages/CronometroControle"));
+const MusicaMomento = React.lazy(() => import("./pages/MusicaMomento"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -77,6 +78,7 @@ const App = () => (
                       <Route path="/estatisticas" element={withPageGuard(<Estatisticas />)} />
                       <Route path="/cronometro" element={withPageGuard(<Cronometro />, "O cronometro falhou ao renderizar. A tela foi contida para evitar pagina preta.")} />
                       <Route path="/cronometro-controle" element={withPageGuard(<CronometroControle />, "O controle do cronometro falhou ao renderizar. A aplicacao foi mantida ativa.")} />
+                      <Route path="/musica/:token" element={withPageGuard(<MusicaMomento />, "A pagina externa do repertorio falhou ao renderizar, mas o restante do app segue ativo.")} />
                       <Route path="*" element={withPageGuard(<NotFound />)} />
                     </Routes>
                   </Suspense>

@@ -58,7 +58,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     };
   }, [isMobile]);
 
-  if (location.pathname === '/foco' || location.pathname === '/cronometro') {
+  if (location.pathname === '/foco' || location.pathname === '/cronometro' || location.pathname.startsWith('/musica/')) {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
 

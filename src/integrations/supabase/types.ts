@@ -179,6 +179,81 @@ export type Database = {
         }
         Relationships: []
       }
+      moment_song_forms: {
+        Row: {
+          created_at: string
+          culto_id: string
+          id: string
+          momento_id: string
+          session_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          culto_id: string
+          id?: string
+          momento_id: string
+          session_id?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          culto_id?: string
+          id?: string
+          momento_id?: string
+          session_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      moment_songs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          culto_id: string
+          duration_seconds: number | null
+          id: string
+          momento_id: string
+          notes: string | null
+          position: number
+          session_id: string
+          title: string
+          updated_at: string
+          youtube_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          culto_id: string
+          duration_seconds?: number | null
+          id?: string
+          momento_id: string
+          notes?: string | null
+          position?: number
+          session_id?: string
+          title?: string
+          updated_at?: string
+          youtube_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          culto_id?: string
+          duration_seconds?: number | null
+          id?: string
+          momento_id?: string
+          notes?: string | null
+          position?: number
+          session_id?: string
+          title?: string
+          updated_at?: string
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
       session_events: {
         Row: {
           applied_revision: number | null
@@ -317,6 +392,20 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["session_state"]["Row"]
       }
+      ensure_moment_song_form: {
+        Args: {
+          p_culto_id?: string
+          p_momento_id?: string
+          p_session_id?: string
+        }
+        Returns: Database["public"]["Tables"]["moment_song_forms"]["Row"]
+      }
+      get_moment_song_bundle_by_token: {
+        Args: {
+          p_token: string
+        }
+        Returns: Json
+      }
       get_session_state: {
         Args: {
           p_session_id?: string
@@ -326,6 +415,24 @@ export type Database = {
       get_server_now: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      save_moment_repertoire: {
+        Args: {
+          p_created_by?: string | null
+          p_culto_id?: string
+          p_momento_id?: string
+          p_session_id?: string
+          p_songs?: Json
+        }
+        Returns: Json
+      }
+      save_moment_repertoire_by_token: {
+        Args: {
+          p_created_by?: string | null
+          p_songs?: Json
+          p_token: string
+        }
+        Returns: Json
       }
     }
     Enums: {
