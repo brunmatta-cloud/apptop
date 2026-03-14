@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Copy, ExternalLink, Link2, Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -79,6 +79,17 @@ export function RepertorioManagerDialog({
     }
 
     setDraftSongs(sortMomentSongs(songs).map((song) => buildEditableSongDraft(song)));
+    
+    // Prevent Escape key from closing dialog while editing
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && open) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey, true);
+    return () => document.removeEventListener('keydown', handleEscapeKey, true);
   }, [open, songs]);
 
   const resolvedForm = form ?? ensureFormMutation.data ?? null;
@@ -93,11 +104,11 @@ export function RepertorioManagerDialog({
     return null;
   }
 
-  const addSong = () => {
+  const addSong = useCallback(() => {
     setDraftSongs((current) => [...current, buildEditableSongDraft()]);
-  };
+  }, []);
 
-  const generateLink = async () => {
+  const generateLink = useCallback(async () => {
     try {
       const ensured = resolvedForm ?? await ensureFormMutation.mutateAsync({
         cultoId: momento.cultoId,
@@ -114,9 +125,9 @@ export function RepertorioManagerDialog({
         variant: 'destructive',
       });
     }
-  };
+  }, [resolvedForm, ensureFormMutation, momento.cultoId, momento.id]);
 
-  const copyLink = async () => {
+  const copyLink = useCallback(async () => {
     try {
       const ensured = resolvedForm ?? await ensureFormMutation.mutateAsync({
         cultoId: momento.cultoId,
@@ -135,9 +146,9 @@ export function RepertorioManagerDialog({
         variant: 'destructive',
       });
     }
-  };
+  }, [resolvedForm, ensureFormMutation, momento.cultoId, momento.id]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       await saveMutation.mutateAsync({
         cultoId: momento.cultoId,
@@ -156,22 +167,37 @@ export function RepertorioManagerDialog({
         variant: 'destructive',
       });
     }
+  }, [saveMutation, momento.cultoId, momento.id, draftSongs]);
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+    }
+  };
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    // Prevent accidental closes when actively editing with unsaved changes
+    if (!nextOpen && open && hasChanges) {
+      return;
+    }
+    onOpenChange(nextOpen);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
         className="left-0 right-0 top-auto bottom-0 h-[95dvh] w-full translate-x-0 translate-y-0 overflow-hidden rounded-t-2xl rounded-b-none border-border/70 p-0 sm:bottom-auto sm:left-[50%] sm:right-auto sm:top-[50%] sm:h-auto sm:max-h-[90vh] sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:max-w-2xl lg:max-w-4xl"
         onInteractOutside={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
+        onKeyDown={handleKeyDown}
       >
-        {/* Main scrollable container */}
+        {/* Fully integrated scrollable container - NO fixed/sticky parts */}
         <div 
           ref={containerRef}
           className="flex h-full w-full flex-col overflow-y-auto sm:h-auto sm:max-h-[90vh] [scrollbar-width:thin] [-ms-overflow-style:auto] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:hover:bg-border/60"
         >
-          {/* Header - inside scrollable container */}
-          <div className="sticky top-0 z-10 border-b border-border/60 bg-gradient-to-b from-background via-background to-background/95 px-4 py-4 sm:px-6 sm:py-5 backdrop-blur-sm">
+          {/* HEADER - NO STICKY */}
+          <div className="border-b border-border/60 bg-gradient-to-b from-background via-background to-transparent px-4 py-4 sm:px-6 sm:py-5">
             <DialogHeader className="space-y-3 text-left">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
@@ -250,7 +276,7 @@ export function RepertorioManagerDialog({
             </div>
           </div>
 
-          {/* Editor Content - scrolls with everything */}
+          {/* EDITOR CONTENT - everything scrolls together */}
           <div className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
             <RepertorioEditor
               songs={draftSongs}
@@ -261,8 +287,8 @@ export function RepertorioManagerDialog({
             />
           </div>
 
-          {/* Footer - inside scrollable container, sticky at bottom */}
-          <div className="sticky bottom-0 z-10 border-t border-border/60 bg-gradient-to-t from-background via-background to-background/95 px-4 py-3 sm:px-6 sm:py-3 backdrop-blur-sm">
+          {/* FOOTER - NO STICKY */}
+          <div className="border-t border-border/60 bg-gradient-to-t from-background via-background to-transparent px-4 py-3 sm:px-6 sm:py-3">
             <div className="flex w-full flex-col gap-2 text-xs sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 flex-1">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">

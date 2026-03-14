@@ -183,7 +183,7 @@ const CerimonialistaLiveOverview = React.memo(function CerimonialistaLiveOvervie
       </div>
 
       {currentMoment && (
-        <div className="sticky top-2 z-20 sm:top-3 lg:top-4">
+        <div className="z-20">
           <div className={cn("glass-card border p-3 backdrop-blur-xl sm:p-4", currentMomentCardClass)}>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(230px,0.8fr)] lg:items-center">
               <div className="min-w-0">

@@ -363,7 +363,7 @@ const MusicaMomento = () => {
 
           {!showSavedState && currentStep === 2 && (
             <>
-              <div className="sticky top-3 z-20 rounded-[1.75rem] border border-border/70 bg-card/95 p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+              <div className="rounded-[1.75rem] border border-border/70 bg-card/90 p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:p5">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Passo 2 de 3</p>
                 <h2 className="mt-2 text-xl font-display font-black">Adicionar musicas</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -390,8 +390,6 @@ const MusicaMomento = () => {
                   </Button>
                 </div>
               </div>
-
-              <div className="rounded-[2.25rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
                 <RepertorioEditor
                   songs={draftSongs}
                   onChange={setDraftSongs}
