@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, Maximize, Mic, Minimize, Video, Volume2 } from 'lucide-react';
+import { Bell, Maximize, Mic, Minimize, PlayCircle, Video, Volume2 } from 'lucide-react';
 import { useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useClock } from '@/hooks/useClock';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -10,7 +10,10 @@ import { formatTimerMs } from '@/utils/time';
 import { calcularHorarioTermino, tipoMomentoLabel, type MomentoProgramacao } from '@/types/culto';
 import { useSessionRepertoire } from '@/features/repertorio/hooks';
 import { NextActionEnhanced } from '@/components/repertorio/NextActionEnhanced';
-import { sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
+import { SonoplastiaTaskList } from '@/components/repertorio/SonoplastiaTaskList';
+import { SonoplastiaMusicCompact } from '@/components/repertorio/SonoplastiaMusicCompact';
+import { UpcomingMomentsPreview } from '@/components/repertorio/UpcomingMomentsPreview';
+import { getSongMediaLabel, getSongPlaybackLabel, sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
 
 const SonoplastiaHeaderClock = memo(function SonoplastiaHeaderClock() {
   const { currentTime, formatTime } = useClock();
@@ -26,13 +29,112 @@ type SonoplastiaAlert = {
 const getMediaIcon = (tipo: string): ReactNode => {
   switch (tipo) {
     case 'audio':
-      return <Mic className="w-4 h-4" />;
+      return <Mic className="w-5 h-5" />;
     case 'video':
-      return <Video className="w-4 h-4" />;
+      return <Video className="w-5 h-5" />;
     default:
-      return <Volume2 className="w-4 h-4" />;
+      return <Volume2 className="w-5 h-5" />;
   }
 };
+
+const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
+  currentMoment,
+  songsByMomentId,
+}: {
+  currentMoment: MomentoProgramacao | null;
+  songsByMomentId: Record<string, MomentSong[]>;
+}) {
+  const { momentElapsedMs } = useCultoTimer();
+  const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
+  const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
+  const songs = useMemo(
+    () => currentMoment ? sortMomentSongs(songsByMomentId[currentMoment.id] ?? []) : [],
+    [currentMoment, songsByMomentId],
+  );
+
+  if (!currentMoment) {
+    return (
+      <div className="glass-card p-4 text-center text-muted-foreground">
+        <Volume2 className="mx-auto mb-2 h-8 w-8 opacity-30" />
+        <p className="text-sm">Aguardando inicio do culto</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass-card border border-muted-foreground/10 bg-muted/40 p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-status-executing animate-pulse" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-status-executing">Executando agora</span>
+      </div>
+
+      <div className="flex items-start gap-2">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+          {getMediaIcon(currentMoment.tipoMidia)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-display font-bold">{currentMoment.atividade}</h2>
+          <p className="truncate text-xs text-muted-foreground">{currentMoment.responsavel}</p>
+        </div>
+      </div>
+
+      {currentMoment.acaoSonoplastia && (
+        <div className="mt-2 rounded-lg border border-primary/20 bg-primary/10 p-2">
+          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">Acao</p>
+          <p className="text-xs font-medium">{currentMoment.acaoSonoplastia}</p>
+        </div>
+      )}
+
+      {/* Músicas do momento */}
+      {songs.length > 0 && (
+        <div className="mt-2 space-y-1 px-2 py-2 rounded-lg border border-border/50 bg-background/50">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Músicas</p>
+          <div className="space-y-0.5">
+            {songs.map((song, idx) => (
+              <div key={song.id} className="flex items-center gap-1 text-[11px]">
+                <span className="font-bold text-muted-foreground min-w-4">{idx + 1}</span>
+                <span className="truncate flex-1">{song.title || 'Sem título'}</span>
+                {song.has_media && <span className="px-1 py-0.5 rounded text-[9px] bg-primary/20 text-primary shrink-0">MIDIA</span>}
+                {song.has_playback && <span className="px-1 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-400 shrink-0">PLAY</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-2">
+        <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>Tipo: {tipoMomentoLabel(currentMoment.tipoMomento)}</span>
+          <span>
+            Midia:{' '}
+            {currentMoment.tipoMidia === 'nenhum'
+              ? 'Nenhuma'
+              : currentMoment.tipoMidia === 'audio'
+                ? 'Musica'
+                : 'Video'}
+          </span>
+        </div>
+        <div className="progress-bar h-2 rounded-full">
+          <div
+            className="progress-bar-fill rounded-full"
+            style={{
+              transform: `scaleX(${currentProgress / 100})`,
+              transformOrigin: 'left',
+              width: '100%',
+            }}
+          />
+        </div>
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+          <span>{currentMoment.horarioInicio}</span>
+          <span className="font-mono font-semibold text-foreground">
+            {formattedRemaining} restantes
+          </span>
+          <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const SonoplastiaAlertWatcher = memo(function SonoplastiaAlertWatcher({
   currentMoment,
@@ -149,18 +251,18 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
       />
 
       {/* HEADER COMPACTO */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/40 bg-card/50 backdrop-blur-sm px-4 py-2 shrink-0">
+      <div className="flex flex-col justify-between gap-2 border-b border-border/40 bg-card/50 backdrop-blur-sm px-3 py-2 shrink-0 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(30_90%_50%/0.2)] shrink-0">
             <Volume2 className="h-4 w-4 text-[hsl(30_90%_50%)]" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold font-display truncate">Sonoplastia</h1>
+            <h1 className="text-sm font-bold font-display truncate">Painel da Sonoplastia</h1>
             <p className="text-xs text-muted-foreground truncate">{culto.nome}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
           {!isMobile && (
             <button
               type="button"
@@ -177,142 +279,73 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
         </div>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL - GRID 4 COLUNAS */}
-      <div className="flex-1 overflow-hidden p-3">
-        <div className="grid gap-3 h-full auto-rows-max" style={{ gridTemplateColumns: 'minmax(280px, 0.9fr) minmax(280px, 0.9fr) minmax(280px, 1fr) minmax(240px, 0.8fr)' }}>
-          
-          {/* COLUNA 1: PRÓXIMA AÇÃO */}
-          <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden flex flex-col">
-            <NextActionEnhanced
-              currentMoment={currentMoment}
-              nextSoundAction={nextSoundAction}
+      {/* CONTEÚDO PRINCIPAL COMPACTO */}
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-2">
+        {/* Próxima Ação */}
+        <NextActionEnhanced
+          currentMoment={currentMoment}
+          nextSoundAction={nextSoundAction}
+          momentos={momentos}
+          currentIndex={currentIndex}
+          songsByMomentId={songsByMomentId}
+        />
+
+        {/* Ação Atual */}
+        <CurrentSoundMomentCard currentMoment={currentMoment} songsByMomentId={songsByMomentId} />
+
+        {/* Grid com 3 colunas */}
+        <div className="grid gap-2 lg:grid-cols-3">
+          {/* Tarefas - 2 colunas */}
+          <div className="lg:col-span-2">
+            <SonoplastiaTaskList
               momentos={momentos}
               currentIndex={currentIndex}
               songsByMomentId={songsByMomentId}
             />
           </div>
 
-          {/* COLUNA 2: AÇÃO ATUAL COMPACTA */}
-          <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
-            {!currentMoment ? (
-              <div className="flex flex-col items-center justify-center p-3 h-full text-center">
-                <Volume2 className="h-8 w-8 opacity-30 mb-2" />
-                <p className="text-xs text-muted-foreground">Aguardando</p>
-              </div>
-            ) : (
-              <div className="p-3 space-y-2">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="h-2 w-2 rounded-full bg-status-executing animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase text-status-executing">Executando</span>
-                </div>
-                
-                <div className="flex items-start gap-2">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm">
-                    {getMediaIcon(currentMoment.tipoMidia)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{currentMoment.atividade}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{currentMoment.responsavel}</p>
-                  </div>
-                </div>
-
-                {currentMoment.acaoSonoplastia && (
-                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-2">
-                    <p className="text-[9px] font-bold text-primary uppercase mb-0.5">Ação</p>
-                    <p className="text-xs font-semibold line-clamp-2">{currentMoment.acaoSonoplastia}</p>
-                  </div>
-                )}
-
-                <div className="bg-muted/50 rounded-lg p-2">
-                  <div className="flex items-center justify-between text-[10px] mb-1.5">
-                    <span className="font-mono">{currentMoment.horarioInicio}</span>
-                    <span className="font-bold">{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
-                  </div>
-                  <div className="progress-bar h-1.5 rounded-full mb-1">
-                    <div
-                      className="progress-bar-fill rounded-full"
-                      style={{
-                        transform: `scaleX(${useMomentProgress(currentMoment, Number.isFinite(safeMomentElapsedMs) ? safeMomentElapsedMs : 0).percent / 100})`,
-                        transformOrigin: 'left',
-                        width: '100%',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Músicas compactas */}
-                {useMemo(() => currentMoment ? sortMomentSongs(songsByMomentId[currentMoment.id] ?? []) : [], [currentMoment, songsByMomentId]).length > 0 && (
-                  <div className="border-t border-border/30 pt-2 mt-2">
-                    <p className="text-[9px] font-bold uppercase text-muted-foreground mb-1">Músicas</p>
-                    <div className="space-y-0.5 max-h-20 overflow-y-auto">
-                      {useMemo(() => currentMoment ? sortMomentSongs(songsByMomentId[currentMoment.id] ?? []) : [], [currentMoment, songsByMomentId]).map((song, idx) => (
-                        <div key={song.id} className="text-[9px] flex gap-1 items-center">
-                          <span className="font-bold text-muted-foreground min-w-4">{idx + 1}.</span>
-                          <span className="truncate flex-1">{song.title}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+          {/* Coluna lateral - 1 coluna */}
+          <div className="space-y-2">
+            <SonoplastiaMusicCompact
+              momentos={momentos}
+              currentIndex={currentIndex}
+              songsByMomentId={songsByMomentId}
+            />
+            <UpcomingMomentsPreview
+              momentos={momentos}
+              currentIndex={currentIndex}
+              completedMoments={new Set()}
+              songsByMomentId={songsByMomentId}
+            />
           </div>
+        </div>
 
-          {/* COLUNA 3: LISTA DE TAREFAS */}
-          <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
-            <div className="p-3 h-full flex flex-col">
-              <p className="text-[10px] font-bold uppercase text-muted-foreground mb-2 shrink-0">Próximos Momentos</p>
-              <div className="space-y-1.5 overflow-y-auto flex-1 pr-2 [scrollbar-width:thin]">
-                {momentos.slice(currentIndex + 1, currentIndex + 6).map((momento, idx) => (
-                  <div key={momento.id} className="bg-muted/30 rounded-lg p-2 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-start gap-2 mb-1">
-                      <span className="text-[10px] font-bold bg-primary/20 text-primary rounded px-1.5 min-w-fit shrink-0">{idx + 1}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold truncate">{momento.atividade}</p>
-                        <p className="text-[9px] text-muted-foreground truncate">{momento.responsavel}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1 text-[9px] text-muted-foreground flex-wrap">
-                      <span className="bg-black/20 px-1.5 py-0.5 rounded">{momento.horarioInicio}</span>
-                      {momento.tipoMidia !== 'nenhum' && (
-                        <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded font-semibold">{getMediaIcon(momento.tipoMidia)}</span>
-                      )}
-                    </div>
-                  </div>
+        {/* Alertas */}
+        <div className="glass-card p-3">
+          <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+            <Bell className="h-4 w-4 text-status-alert" />
+            <span className="text-status-alert">Alertas</span>
+          </h3>
+
+          {alerts.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">Nenhum alerta</p>
+          ) : (
+            <div className="max-h-32 space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+              <AnimatePresence>
+                {alerts.map((alert) => (
+                  <motion.div
+                    key={alert.id}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="rounded-lg border border-status-alert/20 bg-status-alert/10 p-2 text-sm"
+                  >
+                    <p className="text-sm">{alert.message}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{alert.time.toLocaleTimeString('pt-BR')}</p>
+                  </motion.div>
                 ))}
-              </div>
+              </AnimatePresence>
             </div>
-          </div>
-
-          {/* COLUNA 4: ALERTAS */}
-          <div className="rounded-xl border border-border/40 bg-card/40 overflow-hidden">
-            <div className="p-3 h-full flex flex-col">
-              <div className="flex items-center gap-1.5 mb-2 shrink-0">
-                <Bell className="h-3.5 w-3.5 text-status-alert" />
-                <p className="text-[10px] font-bold uppercase text-status-alert">Alertas</p>
-              </div>
-              <div className="space-y-1 overflow-y-auto flex-1 pr-2 [scrollbar-width:thin]">
-                {alerts.length === 0 ? (
-                  <p className="text-[9px] text-muted-foreground text-center py-3">Sem alertas</p>
-                ) : (
-                  <AnimatePresence>
-                    {alerts.slice(0, 8).map((alert) => (
-                      <motion.div
-                        key={alert.id}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="rounded-lg border border-status-alert/30 bg-status-alert/15 p-1.5 text-[9px]"
-                      >
-                        <p className="font-semibold line-clamp-2">{alert.message}</p>
-                        <p className="text-[8px] text-muted-foreground mt-0.5">{alert.time.toLocaleTimeString('pt-BR')}</p>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                )}
-              </div>
-            </div>
-          </div>
-
+          )}
         </div>
       </div>
     </div>
