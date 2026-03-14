@@ -10,7 +10,6 @@ import { formatTimerMs } from '@/utils/time';
 import { calcularHorarioTermino, tipoMomentoLabel, type MomentoProgramacao } from '@/types/culto';
 import { useSessionRepertoire } from '@/features/repertorio/hooks';
 import { NextActionEnhanced } from '@/components/repertorio/NextActionEnhanced';
-import { SonoplastiaTaskList } from '@/components/repertorio/SonoplastiaTaskList';
 import { SonoplastiaMusicCompact } from '@/components/repertorio/SonoplastiaMusicCompact';
 import { UpcomingMomentsPreview } from '@/components/repertorio/UpcomingMomentsPreview';
 import { getSongMediaLabel, getSongPlaybackLabel, sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
@@ -307,34 +306,24 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
           </div>
         </div>
 
-        {/* COLUNA DIREITA - Tarefas, Músicas e Próximos Momentos */}
+        {/* COLUNA DIREITA - Músicas com Destaque + Próximos Momentos */}
         <div className="flex flex-col gap-1.5 overflow-hidden flex-1">
-          {/* Tarefas */}
-          <div className="overflow-hidden flex-1 rounded-lg">
-            <SonoplastiaTaskList
+          {/* Músicas com Destaque (70%) */}
+          <div className="overflow-hidden rounded-lg" style={{ flex: '1.2' }}>
+            <SonoplastiaMusicCompact
               momentos={momentos}
-              currentIndex={currentIndex}
               songsByMomentId={songsByMomentId}
             />
           </div>
-
-          {/* Músicas Compactas + Preview */}
-          <div className="flex gap-1.5 overflow-hidden flex-1">
-            <div className="overflow-hidden flex-1 rounded-lg">
-              <SonoplastiaMusicCompact
-                momentos={momentos}
-                currentIndex={currentIndex}
-                songsByMomentId={songsByMomentId}
-              />
-            </div>
-            <div className="overflow-hidden flex-1 rounded-lg">
-              <UpcomingMomentsPreview
-                momentos={momentos}
-                currentIndex={currentIndex}
-                completedMoments={new Set()}
-                songsByMomentId={songsByMomentId}
-              />
-            </div>
+          
+          {/* Próximos Momentos (30%) */}
+          <div className="overflow-hidden rounded-lg flex-1">
+            <UpcomingMomentsPreview
+              momentos={momentos}
+              currentIndex={currentIndex}
+              completedMoments={new Set()}
+              songsByMomentId={songsByMomentId}
+            />
           </div>
         </div>
       </div>
