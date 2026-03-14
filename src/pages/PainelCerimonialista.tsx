@@ -483,6 +483,26 @@ function PainelCerimonialista() {
         description="Aplica aos comandos operacionais desta tela. Sem delay executa na hora."
       />
 
+      <div className="glass-card border border-border/60 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Modo de Execução</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {executionMode === 'manual' ? 'Controle manual dos momentos' : 'Avanço automático entre momentos'}
+            </p>
+          </div>
+          <select
+            value={executionMode}
+            onChange={(event) => handleExecutionModeChange(event.target.value)}
+            disabled={isCommandLocked}
+            className="w-full sm:w-48 rounded-xl border border-border bg-muted px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:pointer-events-none disabled:opacity-50"
+          >
+            <option value="manual">🔘 Manual</option>
+            <option value="automatico">⏱️ Automático</option>
+          </select>
+        </div>
+      </div>
+
       {(lastError || isCommandLocked) && (
         <div className={`glass-card border p-4 ${lastError ? 'border-destructive/30' : 'border-primary/20'}`}>
           <p className={`text-sm ${lastError ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -759,19 +779,6 @@ function PainelCerimonialista() {
                   ))}
                 </div>
               )}
-            </div>
-
-            <div className="glass-card border border-border/60 p-4 sm:p-5 md:col-span-2 xl:col-span-1">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Modo de execucao</h3>
-              <select
-                value={executionMode}
-                onChange={(event) => handleExecutionModeChange(event.target.value)}
-                disabled={isCommandLocked}
-                className="w-full rounded-xl border border-border bg-muted px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <option value="manual">Manual</option>
-                <option value="automatico">Automatico</option>
-              </select>
             </div>
           </div>
         </div>
