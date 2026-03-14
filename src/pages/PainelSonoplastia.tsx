@@ -12,6 +12,10 @@ import { useSessionRepertoire } from '@/features/repertorio/hooks';
 import { SonoplastiaMusicQueue } from '@/components/repertorio/SonoplastiaMusicQueue';
 import { SonoplastiaQueuePlaylist } from '@/components/repertorio/SonoplastiaQueuePlaylist';
 import { SonoplastiaFullMusicList } from '@/components/repertorio/SonoplastiaFullMusicList';
+import { NextActionEnhanced } from '@/components/repertorio/NextActionEnhanced';
+import { SonoplastiaTaskList } from '@/components/repertorio/SonoplastiaTaskList';
+import { SonoplastiaMusicCompact } from '@/components/repertorio/SonoplastiaMusicCompact';
+import { UpcomingMomentsPreview } from '@/components/repertorio/UpcomingMomentsPreview';
 import { getSongMediaLabel, getSongPlaybackLabel, sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
 
 const SonoplastiaHeaderClock = memo(function SonoplastiaHeaderClock() {
@@ -384,51 +388,66 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
         songsByMomentId={songsByMomentId}
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_320px]">
-        <div className="space-y-3">
-          <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} />
-          <SonoplastiaQueuePlaylist
+      <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Próxima Ação e Tarefas */}
+        <div className="lg:col-span-2 space-y-3">
+          <NextActionEnhanced
+            nextSoundAction={nextSoundAction}
             momentos={momentos}
-            currentMoment={currentMoment}
             currentIndex={currentIndex}
-            momentElapsedMs={safeMomentElapsedMs}
             songsByMomentId={songsByMomentId}
-            isPaused={isPaused}
           />
-          <SonoplastiaFullMusicList
+          <SonoplastiaTaskList
             momentos={momentos}
+            currentIndex={currentIndex}
             songsByMomentId={songsByMomentId}
           />
         </div>
 
+        {/* Coluna lateral - tarefas compactas */}
         <div className="space-y-3">
-          <div className="glass-card p-4 sm:p-5">
-            <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
-              <Bell className="h-4 w-4 text-status-alert" />
-              <span className="text-status-alert">Alertas</span>
-            </h3>
-
-            {alerts.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">Nenhum alerta</p>
-            ) : (
-              <div className="max-h-60 space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                <AnimatePresence>
-                  {alerts.map((alert) => (
-                    <motion.div
-                      key={alert.id}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="rounded-lg border border-status-alert/20 bg-status-alert/10 p-3 text-sm"
-                    >
-                      <p>{alert.message}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{alert.time.toLocaleTimeString('pt-BR')}</p>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
+          <SonoplastiaMusicCompact
+            momentos={momentos}
+            currentIndex={currentIndex}
+            songsByMomentId={songsByMomentId}
+          />
+          <UpcomingMomentsPreview
+            momentos={momentos}
+            currentIndex={currentIndex}
+            completedMoments={new Set()}
+            songsByMomentId={songsByMomentId}
+          />
         </div>
+      </div>
+
+      {/* Alertas */}
+      <div className="glass-card p-4 sm:p-5">
+        <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+          <Bell className="h-4 w-4 text-status-alert" />
+          <span className="text-status-alert">Alertas</span>
+        </h3>
+
+        {alerts.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">Nenhum alerta</p>
+        ) : (
+          <div className="max-h-60 space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <AnimatePresence>
+              {alerts.map((alert) => (
+                <motion.div
+                  key={alert.id}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="rounded-lg border border-status-alert/20 bg-status-alert/10 p-3 text-sm"
+                >
+                  <p>{alert.message}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{alert.time.toLocaleTimeString('pt-BR')}</p>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   );
