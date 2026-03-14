@@ -5,7 +5,6 @@ import { useSyncStore } from '@/contexts/SyncStoreContext';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { RepertorioEditor } from '@/components/repertorio/RepertorioEditor';
-import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
 import {
   buildEditableSongDraft,
   buildRepertoireSummary,
@@ -52,6 +51,18 @@ const MusicaMomento = () => {
     setDidInitStep(false);
     setCurrentStep(1);
   }, [token]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentStep]);
 
   const form = bundleQuery.data?.form ?? null;
   const songs = bundleQuery.data?.songs ?? [];
@@ -357,45 +368,37 @@ const MusicaMomento = () => {
 
           {currentStep === 3 && (
             <>
-              <div className="sticky top-3 z-20 rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.03))] p-4 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-primary">Passo 3 de 3</p>
-                <h2 className="mt-2 text-xl font-display font-black">Concluir repertorio</h2>
+              <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Resumo de tudo</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Este e o ultimo passo. Para concluir de verdade e enviar tudo para a programacao, sonoplastia e cerimonialista, voce precisa apertar em <span className="font-semibold text-foreground">Salvar repertorio</span>.
+                  Veja primeiro o status geral do repertorio antes de concluir.
                 </p>
-                <Button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={hasMomentPassed || saveMutation.isPending || !hasChanges}
-                  className="mt-4 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  {saveMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                  Salvar repertorio
-                </Button>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Se voce sair antes de salvar, as alteracoes nao serao concluidas.
-                </p>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.9fr)]">
-                <RepertorioStatusBadge summary={summary} />
-                <div className="rounded-[1.75rem] border border-border/70 bg-card/80 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Resumo rapido</p>
+                <div className="mt-4 rounded-[1.75rem] border border-border/70 bg-card/80 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Visao geral</p>
                   <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
                     <p>{songsCount} {songsCount === 1 ? 'musica pronta' : 'musicas prontas'}</p>
                     <p>{songsWithMediaCount} com midia</p>
                     <p>{songsWithPlaybackCount} com playback</p>
                   </div>
-                  {form.token && (
-                    <a
-                      href={window.location.href}
-                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Este link pode ser reutilizado ate o momento acontecer
-                    </a>
-                  )}
                 </div>
+              </div>
+
+              <div className="rounded-[1.75rem] border border-border/70 bg-card/80 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.45)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Resumo rapido</p>
+                <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
+                  <p>{songsCount} {songsCount === 1 ? 'musica pronta' : 'musicas prontas'}</p>
+                  <p>{songsWithMediaCount} com midia</p>
+                  <p>{songsWithPlaybackCount} com playback</p>
+                </div>
+                {form.token && (
+                  <a
+                    href={window.location.href}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Este link pode ser reutilizado ate o momento acontecer
+                  </a>
+                )}
               </div>
 
               <div className="rounded-[2rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
