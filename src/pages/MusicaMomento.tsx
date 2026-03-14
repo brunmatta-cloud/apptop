@@ -391,14 +391,15 @@ const MusicaMomento = () => {
                 </div>
               </div>
 
-              <RepertorioEditor
-                songs={draftSongs}
-                onChange={setDraftSongs}
-                disabled={hasMomentPassed || saveMutation.isPending}
-                helperText="Preencha o titulo, marque se a musica usa midia ou playback e siga para concluir. O envio so acontece quando voce apertar em Salvar repertorio."
-                emptyDescription="Comece adicionando a primeira musica deste momento. A interface foi pensada para ser simples no celular e clara para a equipe."
-                showBottomAddButton={false}
-              />
+              <div className="rounded-[2.25rem] border border-border/70 bg-card/85 p-5 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl sm:p-6">
+                <RepertorioEditor
+                  songs={draftSongs}
+                  onChange={setDraftSongs}
+                  disabled={hasMomentPassed || saveMutation.isPending}
+                  helperText="Preencha o titulo, marque se a musica usa midia ou playback e siga para concluir. O envio so acontece quando voce apertar em Salvar repertorio."
+                  emptyDescription="Comece adicionando a primeira musica deste momento. A interface foi pensada para ser simples no celular e clara para a equipe."
+                  showBottomAddButton={false}
+                />
 
                 <div className="mt-6 flex flex-col gap-3 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
                   <Button
@@ -419,6 +420,7 @@ const MusicaMomento = () => {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
+              </div>
             </>
           )}
 

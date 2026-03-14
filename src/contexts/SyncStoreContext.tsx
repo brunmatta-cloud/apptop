@@ -16,7 +16,7 @@ import {
   startCultoTransition,
   withMutationMetadata,
 } from '@/features/culto-sync/domain';
-import { getSessionState, sendSessionCommand, subscribeSessionState } from '@/features/culto-sync/service';
+import { getServerNow, getSessionState, sendSessionCommand, subscribeSessionState } from '@/features/culto-sync/service';
 import { LIVE_TICK_MS } from '@/utils/time';
 
 interface SyncStoreContextValue {
@@ -27,15 +27,40 @@ interface SyncStoreContextValue {
   runCommand: (actionKey: string, command: string, payload?: Record<string, unknown>) => Promise<void>;
 }
 
-const SyncStoreContext = createContext<SyncStoreContextValue | null>(null);
-const REFRESH_INTERVAL_MS = 500;
+type SyncCommandContextValue = Omit<SyncStoreContextValue, 'remoteState'>;
+
+const SyncCommandContext = createContext<SyncCommandContextValue | null>(null);
+let liveRemoteStateSnapshot: RemoteCultoState = defaultRemoteState;
+const getPerfNowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+let liveServerClockBaselineMs = Date.now();
+let liveServerPerfBaselineMs = getPerfNowMs();
+let liveServerBestRoundTripMs = Number.POSITIVE_INFINITY;
+const liveRemoteStateListeners = new Set<() => void>();
+
+const publishLiveRemoteState = (state: RemoteCultoState) => {
+  liveRemoteStateSnapshot = state;
+  liveRemoteStateListeners.forEach((listener) => listener());
+};
+
+const subscribeLiveRemoteState = (listener: () => void) => {
+  liveRemoteStateListeners.add(listener);
+  return () => {
+    liveRemoteStateListeners.delete(listener);
+  };
+};
+
+export const getLiveRemoteStateSnapshot = () => liveRemoteStateSnapshot;
+export const subscribeLiveRemoteStateStore = subscribeLiveRemoteState;
+export const getLiveServerNowMs = () => {
+  const elapsedMs = Math.max(0, getPerfNowMs() - liveServerPerfBaselineMs);
+  return liveServerClockBaselineMs + elapsedMs;
+};
+
+const REFRESH_INTERVAL_MS = 5000;
 const OFFLINE_GRACE_MS = 30000;
 const POST_COMMAND_REFRESH_DELAY_MS = LIVE_TICK_MS;
-
-// Global refs for live state access outside of hooks
-let globalRemoteStateRef: RemoteCultoState | null = null;
-let globalServerNowMsRef: number | null = null;
-const globalStateSubscribers = new Set<() => void>();
+const TIMER_COMMANDS = new Set(['start', 'resume', 'pause', 'advance', 'skip', 'back', 'finish']);
+const ENABLE_TIMER_FLOW_DEBUG = false;
 
 const createActorId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -48,6 +73,28 @@ const logSync = (scope: string, detail: Record<string, unknown> = {}) => {
   console.info(`[sync:${scope}]`, detail);
 };
 
+const logTimerFlow = (scope: string, detail: Record<string, unknown> = {}) => {
+  if (!ENABLE_TIMER_FLOW_DEBUG) return;
+  console.info(`[sync:${scope}]`, detail);
+};
+
+type ServerClockSample = {
+  midpointPerfMs: number;
+  serverNowMs?: number;
+  roundTripMs?: number;
+};
+
+type TimerFlowTrace = {
+  id: string;
+  command: string;
+  startedAtMs: number;
+  expectedRevision: number;
+  optimisticAppliedAtMs?: number;
+  rpcResolvedAtMs?: number;
+  realtimeAppliedAtMs?: number;
+  confirmRefreshAtMs?: number;
+};
+
 const getStateFingerprint = (state: RemoteCultoState) => JSON.stringify({
   revision: state.revision,
   updatedAt: state.updatedAt,
@@ -57,9 +104,13 @@ const getStateFingerprint = (state: RemoteCultoState) => JSON.stringify({
   currentIndex: state.currentIndex,
   executionMode: state.executionMode,
   timerStatus: state.timerStatus,
-  cultos: state.cultos,
-  allMomentos: state.allMomentos,
-  settings: state.settings,
+  currentCommand: state.currentCommand,
+  nextCommand: state.nextCommand,
+  currentStage: state.currentStage,
+  startedAt: state.startedAt,
+  momentStartedAt: state.momentStartedAt,
+  accumulatedMs: state.accumulatedMs,
+  momentAccumulatedMs: state.momentAccumulatedMs,
 });
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -88,6 +139,32 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   }
 
   return fallback;
+};
+
+const updateServerClockBaseline = (
+  state: RemoteCultoState,
+  receivedPerfMs: number,
+  calibrationSample?: ServerClockSample,
+) => {
+  const serverUpdatedAtMs = Date.parse(state.updatedAt);
+  const currentEstimatedServerNowMs = liveServerClockBaselineMs + Math.max(0, receivedPerfMs - liveServerPerfBaselineMs);
+  const calibratedServerNowMs = calibrationSample?.serverNowMs;
+  const calibratedPerfNowMs = calibrationSample?.midpointPerfMs;
+  const nextServerNowMs = Math.max(
+    Number.isFinite(calibratedServerNowMs) ? Number(calibratedServerNowMs) : Number.NEGATIVE_INFINITY,
+    Number.isFinite(serverUpdatedAtMs) ? serverUpdatedAtMs : Number.NEGATIVE_INFINITY,
+    currentEstimatedServerNowMs,
+  );
+
+  if (!Number.isFinite(nextServerNowMs) || nextServerNowMs <= 0) {
+    return;
+  }
+
+  liveServerClockBaselineMs = nextServerNowMs;
+  liveServerPerfBaselineMs = Number.isFinite(calibratedPerfNowMs) ? Number(calibratedPerfNowMs) : receivedPerfMs;
+  if (Number.isFinite(calibrationSample?.roundTripMs)) {
+    liveServerBestRoundTripMs = Math.min(liveServerBestRoundTripMs, Number(calibrationSample?.roundTripMs));
+  }
 };
 
 const didCommandTakeEffect = (command: string, state: RemoteCultoState) => {
@@ -176,11 +253,14 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const remoteStateRef = useRef<RemoteCultoState>(defaultRemoteState);
   const fingerprintRef = useRef(getStateFingerprint(defaultRemoteState));
   const autoAdvanceRevisionRef = useRef<number | null>(null);
+  const autoAdvanceTimeoutRef = useRef<number | null>(null);
   const realtimeStatusRef = useRef('CONNECTING');
   const lastSuccessfulSyncAtRef = useRef<number | null>(null);
   const consecutiveRefreshFailuresRef = useRef(0);
   const hasSuccessfulSyncRef = useRef(false);
-  const [remoteState, setRemoteState] = useState<RemoteCultoState>(defaultRemoteState);
+  const clockCalibrationInFlightRef = useRef<Promise<void> | null>(null);
+  const timerFlowTraceRef = useRef<TimerFlowTrace | null>(null);
+  const runCommandRef = useRef<SyncStoreContextValue['runCommand'] | null>(null);
   const [uiState, setUiState] = useState<UiSyncState>({
     isHydrating: true,
     isSubmitting: false,
@@ -205,12 +285,124 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUiState((current) => current.connectionStatus === resolved ? current : { ...current, connectionStatus: resolved });
   }, []);
 
-  const applyRemoteState = useCallback((next: RemoteCultoState, origin: string) => {
+  const sampleServerClockOnce = useCallback(async (): Promise<ServerClockSample | null> => {
+    const startedPerfMs = getPerfNowMs();
+
+    try {
+      const serverNowMs = await getServerNow();
+      const receivedPerfMs = getPerfNowMs();
+      const roundTripMs = Math.max(0, receivedPerfMs - startedPerfMs);
+      const midpointPerfMs = startedPerfMs + roundTripMs / 2;
+
+      return {
+        midpointPerfMs,
+        serverNowMs,
+        roundTripMs,
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const calibrateServerClock = useCallback((sampleCount = 4) => {
+    if (clockCalibrationInFlightRef.current) {
+      return clockCalibrationInFlightRef.current;
+    }
+
+    const calibrationPromise = (async () => {
+      const samples: ServerClockSample[] = [];
+
+      for (let index = 0; index < sampleCount; index += 1) {
+        const sample = await sampleServerClockOnce();
+        if (sample?.serverNowMs != null) {
+          samples.push(sample);
+        }
+      }
+
+      if (samples.length === 0) {
+        return;
+      }
+
+      const bestSample = samples.reduce((best, current) => {
+        if ((current.roundTripMs ?? Number.POSITIVE_INFINITY) < (best.roundTripMs ?? Number.POSITIVE_INFINITY)) {
+          return current;
+        }
+        return best;
+      }, samples[0]);
+
+      if ((bestSample.roundTripMs ?? Number.POSITIVE_INFINITY) > liveServerBestRoundTripMs) {
+        return;
+      }
+
+      updateServerClockBaseline(remoteStateRef.current, getPerfNowMs(), bestSample);
+    })()
+      .finally(() => {
+        clockCalibrationInFlightRef.current = null;
+      });
+
+    clockCalibrationInFlightRef.current = calibrationPromise;
+    return calibrationPromise;
+  }, [sampleServerClockOnce]);
+
+  const syncAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimeoutRef.current) {
+      window.clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
+
+    const current = remoteStateRef.current;
+    const currentMoment = getCurrentMoment(current);
+
+    if (
+      current.executionMode !== 'automatico' ||
+      current.timerStatus !== 'running' ||
+      !currentMoment
+    ) {
+      autoAdvanceRevisionRef.current = null;
+      return;
+    }
+
+    const snapshot = getTimerSnapshot(current, getLiveServerNowMs());
+    const remainingMs = Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs);
+
+    if (remainingMs > 0) {
+      autoAdvanceRevisionRef.current = null;
+      autoAdvanceTimeoutRef.current = window.setTimeout(() => {
+        const latest = remoteStateRef.current;
+        if (
+          latest.executionMode !== 'automatico' ||
+          latest.timerStatus !== 'running' ||
+          latest.revision !== current.revision
+        ) {
+          return;
+        }
+        runCommandRef.current?.('auto-advance', 'advance');
+      }, Math.max(50, remainingMs));
+      return;
+    }
+
+    if (autoAdvanceRevisionRef.current === current.revision) {
+      return;
+    }
+
+    autoAdvanceRevisionRef.current = current.revision;
+    runCommandRef.current?.('auto-advance', 'advance');
+  }, []);
+
+  const applyRemoteState = useCallback((
+    next: RemoteCultoState,
+    origin: string,
+    serverClockSample?: ServerClockSample,
+  ) => {
+    const receivedAtMs = Date.now();
+    const receivedPerfMs = getPerfNowMs();
     const nextFingerprint = getStateFingerprint(next);
     const currentFingerprint = fingerprintRef.current;
 
     if (next.revision < remoteStateRef.current.revision) {
-      logSync('stale-state-ignored', { origin, currentRevision: remoteStateRef.current.revision, nextRevision: next.revision });
+      if (origin !== 'safety-poll') {
+        logSync('stale-state-ignored', { origin, currentRevision: remoteStateRef.current.revision, nextRevision: next.revision });
+      }
       return;
     }
     if (
@@ -218,24 +410,63 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       next.updatedAt === remoteStateRef.current.updatedAt &&
       nextFingerprint === currentFingerprint
     ) {
-      logSync('duplicate-state-ignored', { origin, revision: next.revision, updatedAt: next.updatedAt });
+      if (origin !== 'safety-poll') {
+        logSync('duplicate-state-ignored', { origin, revision: next.revision, updatedAt: next.updatedAt });
+      }
       return;
     }
     if (next.revision === remoteStateRef.current.revision && next.updatedAt < remoteStateRef.current.updatedAt) {
-      logSync('outdated-state-ignored', { origin, revision: next.revision, currentUpdatedAt: remoteStateRef.current.updatedAt, nextUpdatedAt: next.updatedAt });
+      if (origin !== 'safety-poll') {
+        logSync('outdated-state-ignored', { origin, revision: next.revision, currentUpdatedAt: remoteStateRef.current.updatedAt, nextUpdatedAt: next.updatedAt });
+      }
       return;
     }
 
     remoteStateRef.current = next;
     fingerprintRef.current = nextFingerprint;
-    globalRemoteStateRef = next;
-    globalServerNowMsRef = Date.now();
-    setRemoteState(next);
+    updateServerClockBaseline(next, receivedPerfMs, serverClockSample);
+    publishLiveRemoteState(next);
+    syncAutoAdvance();
     logSync('state-applied', { origin, revision: next.revision, timerStatus: next.timerStatus, currentCommand: next.currentCommand });
-    
-    // Notify global subscribers
-    globalStateSubscribers.forEach(listener => listener());
-  }, []);
+
+    const activeTrace = timerFlowTraceRef.current;
+    if (activeTrace) {
+      const nowMs = receivedAtMs;
+      if (origin.endsWith(':optimistic') && activeTrace.optimisticAppliedAtMs == null) {
+        activeTrace.optimisticAppliedAtMs = nowMs;
+      }
+      if (origin.endsWith(':rpc') && activeTrace.rpcResolvedAtMs == null) {
+        activeTrace.rpcResolvedAtMs = nowMs;
+      }
+      if ((origin === 'realtime' || origin.endsWith(':confirm') || origin === 'realtime-subscribed') && activeTrace.realtimeAppliedAtMs == null) {
+        activeTrace.realtimeAppliedAtMs = nowMs;
+      }
+      if (origin.endsWith(':confirm')) {
+        activeTrace.confirmRefreshAtMs = nowMs;
+      }
+
+      logTimerFlow('timer-flow-state', {
+        id: activeTrace.id,
+        command: activeTrace.command,
+        origin,
+        currentRevision: next.revision,
+        timerStatus: next.timerStatus,
+        msFromCommand: nowMs - activeTrace.startedAtMs,
+        msToOptimistic: activeTrace.optimisticAppliedAtMs != null ? activeTrace.optimisticAppliedAtMs - activeTrace.startedAtMs : null,
+        msToRpc: activeTrace.rpcResolvedAtMs != null ? activeTrace.rpcResolvedAtMs - activeTrace.startedAtMs : null,
+        msToRealtime: activeTrace.realtimeAppliedAtMs != null ? activeTrace.realtimeAppliedAtMs - activeTrace.startedAtMs : null,
+        msToConfirm: activeTrace.confirmRefreshAtMs != null ? activeTrace.confirmRefreshAtMs - activeTrace.startedAtMs : null,
+      });
+
+      if (
+        (activeTrace.command === 'start' || activeTrace.command === 'resume') &&
+        next.timerStatus === 'running' &&
+        (origin.endsWith(':optimistic') || origin.endsWith(':rpc') || origin === 'realtime' || origin.endsWith(':confirm'))
+      ) {
+        (window as Window & { __timerFlowTrace?: TimerFlowTrace | null }).__timerFlowTrace = activeTrace;
+      }
+    }
+  }, [syncAutoAdvance]);
 
   const refreshFromServer = useCallback(async (reason = 'manual-refresh') => {
     try {
@@ -244,6 +475,9 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       consecutiveRefreshFailuresRef.current = 0;
       lastSuccessfulSyncAtRef.current = Date.now();
       applyRemoteState(next, reason);
+      if (reason === 'bootstrap' || reason === 'realtime-subscribed' || reason === 'realtime-reconnect') {
+        void calibrateServerClock();
+      }
       updateConnectionStatus();
       setUiState((current) => ({ ...current, isHydrating: false, lastError: null }));
     } catch (error) {
@@ -256,7 +490,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updateConnectionStatus();
       setUiState((current) => ({ ...current, isHydrating: false, lastError: message }));
     }
-  }, [applyRemoteState, updateConnectionStatus]);
+  }, [applyRemoteState, calibrateServerClock, updateConnectionStatus]);
 
   const runCommand = useCallback(async (actionKey: string, command: string, payload: Record<string, unknown> = {}) => {
     queueRef.current = queueRef.current
@@ -281,8 +515,26 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }));
 
         try {
-          const optimisticNowMs = Date.now();
+          const optimisticNowMs = getLiveServerNowMs();
           const optimisticNowIso = new Date(optimisticNowMs).toISOString();
+          const isTimerCommand = TIMER_COMMANDS.has(command);
+          if (TIMER_COMMANDS.has(command)) {
+            const trace: TimerFlowTrace = {
+              id: `${command}-${optimisticNowMs}`,
+              command,
+              startedAtMs: optimisticNowMs,
+              expectedRevision,
+            };
+            timerFlowTraceRef.current = trace;
+            (window as Window & { __timerFlowTrace?: TimerFlowTrace | null }).__timerFlowTrace = trace;
+            logTimerFlow('timer-flow-command', {
+              id: trace.id,
+              command,
+              expectedRevision,
+              timerStatusBefore: baseState.timerStatus,
+              currentIndexBefore: baseState.currentIndex,
+            });
+          }
           const optimisticState = getOptimisticTransitionState(
             baseState,
             command,
@@ -293,6 +545,13 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
           if (optimisticState) {
             applyRemoteState(optimisticState, `${command}:optimistic`);
+            if (isTimerCommand) {
+              setUiState((current) => ({
+                ...current,
+                isSubmitting: false,
+                pendingAction: null,
+              }));
+            }
           }
 
           const next = await sendSessionCommand({
@@ -306,6 +565,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           consecutiveRefreshFailuresRef.current = 0;
           lastSuccessfulSyncAtRef.current = Date.now();
           applyRemoteState(next, `${command}:rpc`);
+          void calibrateServerClock();
           updateConnectionStatus();
           window.setTimeout(() => {
             void refreshFromServer(`${command}:confirm`);
@@ -322,21 +582,34 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             actor: actorIdRef.current,
           });
           await refreshFromServer(`${command}:rollback`);
+          if (TIMER_COMMANDS.has(command)) {
+            logTimerFlow('timer-flow-error', {
+              id: timerFlowTraceRef.current?.id,
+              command,
+              msFromCommand: timerFlowTraceRef.current ? Date.now() - timerFlowTraceRef.current.startedAtMs : null,
+            });
+          }
           setUiState((current) => ({
             ...current,
             lastError: didCommandTakeEffect(command, remoteStateRef.current) ? null : message,
           }));
         } finally {
-          setUiState((current) => ({
-            ...current,
-            isSubmitting: false,
-            pendingAction: null,
-          }));
+          setUiState((current) => (
+            current.isSubmitting || current.pendingAction != null
+              ? {
+                  ...current,
+                  isSubmitting: false,
+                  pendingAction: null,
+                }
+              : current
+          ));
         }
       });
 
     return queueRef.current;
-  }, [applyRemoteState, refreshFromServer, uiState.isHydrating, updateConnectionStatus]);
+  }, [applyRemoteState, calibrateServerClock, refreshFromServer, uiState.isHydrating, updateConnectionStatus]);
+
+  runCommandRef.current = runCommand;
 
   useEffect(() => {
     void refreshFromServer('bootstrap');
@@ -366,57 +639,70 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [applyRemoteState, refreshFromServer, updateConnectionStatus]);
 
   useEffect(() => {
-    const current = remoteStateRef.current;
-    const currentMoment = getCurrentMoment(current);
-    if (
-      current.executionMode !== 'automatico' ||
-      current.timerStatus !== 'running' ||
-      !currentMoment
-    ) {
-      autoAdvanceRevisionRef.current = null;
-      return;
-    }
+    return () => {
+      if (autoAdvanceTimeoutRef.current) {
+        window.clearTimeout(autoAdvanceTimeoutRef.current);
+      }
+    };
+  }, []);
 
-    const snapshot = getTimerSnapshot(current);
-    const remainingMs = Math.max(0, currentMoment.duracao * 60 * 1000 - snapshot.momentElapsedMs);
-    if (remainingMs > 0) {
-      autoAdvanceRevisionRef.current = null;
-      const timeoutId = window.setTimeout(() => {
-        const latest = remoteStateRef.current;
-        if (
-          latest.executionMode !== 'automatico' ||
-          latest.timerStatus !== 'running' ||
-          latest.revision !== current.revision
-        ) {
-          return;
-        }
-        void runCommand('auto-advance', 'advance');
-      }, Math.max(50, remainingMs));
+  useEffect(() => {
+    const handleWake = () => {
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+      void calibrateServerClock();
+    };
 
-      return () => window.clearTimeout(timeoutId);
-    }
+    window.addEventListener('focus', handleWake);
+    document.addEventListener('visibilitychange', handleWake);
 
-    autoAdvanceRevisionRef.current = current.revision;
-    void runCommand('auto-advance', 'advance');
-  }, [remoteState, runCommand]);
+    return () => {
+      window.removeEventListener('focus', handleWake);
+      document.removeEventListener('visibilitychange', handleWake);
+    };
+  }, [calibrateServerClock]);
 
-  const value = useMemo<SyncStoreContextValue>(() => ({
-    remoteState,
+  const commandValue = useMemo<SyncCommandContextValue>(() => ({
     uiState,
     actorId: actorIdRef.current,
     refreshFromServer,
     runCommand,
-  }), [refreshFromServer, remoteState, runCommand, uiState]);
+  }), [refreshFromServer, runCommand, uiState]);
 
-  return <SyncStoreContext.Provider value={value}>{children}</SyncStoreContext.Provider>;
+  return (
+    <SyncCommandContext.Provider value={commandValue}>
+      {children}
+    </SyncCommandContext.Provider>
+  );
 };
 
 export const useSyncStore = () => {
-  const context = useContext(SyncStoreContext);
+  const context = useContext(SyncCommandContext);
   if (!context) {
     throw new Error('useSyncStore must be used within SyncStoreProvider');
   }
+  const remoteState = useLiveRemoteState();
+  return useMemo(() => ({
+    remoteState,
+    ...context,
+  }), [context, remoteState]);
+};
+
+export const useSyncCommands = () => {
+  const context = useContext(SyncCommandContext);
+  if (!context) {
+    throw new Error('useSyncCommands must be used within SyncStoreProvider');
+  }
   return context;
+};
+
+export const useLiveRemoteState = () => {
+  return React.useSyncExternalStore(
+    subscribeLiveRemoteState,
+    () => liveRemoteStateSnapshot,
+    () => liveRemoteStateSnapshot,
+  );
 };
 
 export const useCeremonySession = () => {
@@ -453,8 +739,8 @@ export const useCeremonySession = () => {
     setExecutionMode: (mode: ExecutionMode) => run('set-execution-mode', 'set_execution_mode', { mode }),
     setActiveCultoId: (id: string) => run('set-active-culto', 'set_active_culto', { id }),
     setCulto: (value: React.SetStateAction<Culto>) => {
-      const nextCulto = typeof value === 'function' ? value(culto) : value;
-      run('set-culto', 'set_culto', { id: nextCulto.id, culto: nextCulto as any });
+      const nextCulto = typeof value === 'function' ? value(culto as Culto) : value;
+      run('set-culto', 'set_culto', { id: nextCulto.id, culto: nextCulto });
     },
     setMomentos: (value: React.SetStateAction<MomentoProgramacao[]>) => {
       const nextMomentos = typeof value === 'function' ? value(momentos) : value;
@@ -491,38 +777,5 @@ export const useCeremonySession = () => {
       momentos: momentos.filter((momento) => momento.id !== id),
     }),
     updateSettings: (patch: Partial<CronometroSettings>) => run('patch-settings', 'patch_settings', { patch }),
-  };
-};
-
-// Live state access functions for use outside of hooks
-export const getLiveRemoteStateSnapshot = (): RemoteCultoState => {
-  if (!globalRemoteStateRef) {
-    return defaultRemoteState;
-  }
-  return globalRemoteStateRef;
-};
-
-export const getLiveServerNowMs = (): number => {
-  return globalServerNowMsRef ?? Date.now();
-};
-
-export const subscribeLiveRemoteStateStore = (listener: () => void): (() => void) => {
-  globalStateSubscribers.add(listener);
-  return () => {
-    globalStateSubscribers.delete(listener);
-  };
-};
-
-// Hook versions for use within components
-export const useLiveRemoteState = (): RemoteCultoState => {
-  const { remoteState } = useSyncStore();
-  return remoteState;
-};
-
-export const useSyncCommands = () => {
-  const { runCommand, actorId } = useSyncStore();
-  return {
-    runCommand,
-    actorId,
   };
 };
