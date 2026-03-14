@@ -421,7 +421,7 @@ const MusicaMomento = () => {
                   </Button>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {!showSavedState && currentStep === 3 && (
