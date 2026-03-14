@@ -1,7 +1,6 @@
 import { Music4 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  formatSongDurationShort,
   getRepertoireStatusTone,
   type RepertoireStatus,
   type RepertoireSummary,
@@ -74,13 +73,16 @@ export function RepertorioStatusBadge({
 
       <div className={cn(
         'grid gap-2 text-xs',
-        compact ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-3',
+        compact ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-4',
       )}>
         <span className="inline-flex items-center rounded-full bg-black/10 px-2.5 py-1.5">
           {summary.songsCount} {summary.songsCount === 1 ? 'musica' : 'musicas'}
         </span>
         <span className="inline-flex items-center rounded-full bg-black/10 px-2.5 py-1.5">
-          {formatSongDurationShort(summary.totalDurationSeconds)}
+          {summary.songsWithMediaCount} com midia
+        </span>
+        <span className="inline-flex items-center rounded-full bg-black/10 px-2.5 py-1.5">
+          {summary.songsWithPlaybackCount} com playback
         </span>
         <span className="inline-flex items-center rounded-full bg-black/10 px-2.5 py-1.5">
           {summary.hasLink ? 'Link ativo' : 'Sem link'}

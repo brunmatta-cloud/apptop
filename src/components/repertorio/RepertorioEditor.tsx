@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, GripVertical, Link2, MessageSquareText, Music4, Plus, Timer, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical, Link2, MessageSquareText, Music4, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   buildEditableSongDraft,
-  formatSongDuration,
   type EditableSongDraft,
 } from '@/features/repertorio/model';
 
@@ -34,7 +33,7 @@ export function RepertorioEditor({
   disabled = false,
   helperText,
   emptyTitle = 'Nenhuma musica adicionada ainda',
-  emptyDescription = 'Monte a ordem do repertorio, informe a duracao e inclua links do YouTube se quiser ajudar a sonoplastia.',
+  emptyDescription = 'Monte a ordem do repertorio, marque se cada musica usa midia ou playback e inclua links do YouTube se quiser ajudar a sonoplastia.',
   showBottomAddButton = true,
 }: RepertorioEditorProps) {
   const [draggingClientId, setDraggingClientId] = useState<string | null>(null);
@@ -162,22 +161,7 @@ export function RepertorioEditor({
                   </div>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tempo</p>
-                    <p className="mt-1 text-sm font-semibold">{formatSongDuration(song.durationSeconds.trim() ? Number(song.durationSeconds) : null)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">YouTube</p>
-                    <p className="mt-1 text-sm font-semibold">{song.youtubeUrl.trim() ? 'Link pronto' : 'Opcional'}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Observacoes</p>
-                    <p className="mt-1 text-sm font-semibold">{song.notes.trim() ? 'Preenchidas' : 'Opcional'}</p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   <label className="space-y-2">
                     <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Titulo</span>
                     <Input
@@ -188,22 +172,75 @@ export function RepertorioEditor({
                       className="h-12 rounded-2xl border-border/70 bg-muted/30"
                     />
                   </label>
-                  <label className="space-y-2">
-                    <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      <Timer className="h-3.5 w-3.5" />
-                      Duracao em segundos
-                    </span>
-                    <Input
-                      value={song.durationSeconds}
-                      disabled={disabled}
-                      onChange={(event) => updateSong(song.clientId, { durationSeconds: event.target.value.replace(/[^\d]/g, '') })}
-                      placeholder="252"
-                      className="h-12 rounded-2xl border-border/70 bg-muted/30"
-                    />
-                    <span className="block text-[11px] text-muted-foreground">
-                      {song.durationSeconds.trim() ? formatSongDuration(Number(song.durationSeconds)) : 'Opcional'}
-                    </span>
-                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Midia</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          aria-pressed={song.hasMedia}
+                          onClick={() => updateSong(song.clientId, { hasMedia: true })}
+                          className={cn(
+                            'h-12 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                            song.hasMedia
+                              ? 'border-primary/40 bg-primary/12 text-primary'
+                              : 'border-border/70 bg-muted/30 text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          Com midia
+                        </button>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          aria-pressed={!song.hasMedia}
+                          onClick={() => updateSong(song.clientId, { hasMedia: false })}
+                          className={cn(
+                            'h-12 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                            !song.hasMedia
+                              ? 'border-primary/40 bg-primary/12 text-primary'
+                              : 'border-border/70 bg-muted/30 text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          Sem midia
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Playback</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          aria-pressed={song.hasPlayback}
+                          onClick={() => updateSong(song.clientId, { hasPlayback: true })}
+                          className={cn(
+                            'h-12 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                            song.hasPlayback
+                              ? 'border-primary/40 bg-primary/12 text-primary'
+                              : 'border-border/70 bg-muted/30 text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          Com playback
+                        </button>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          aria-pressed={!song.hasPlayback}
+                          onClick={() => updateSong(song.clientId, { hasPlayback: false })}
+                          className={cn(
+                            'h-12 rounded-2xl border px-3 text-sm font-semibold transition-colors',
+                            !song.hasPlayback
+                              ? 'border-primary/40 bg-primary/12 text-primary'
+                              : 'border-border/70 bg-muted/30 text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          Sem playback
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

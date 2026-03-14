@@ -233,14 +233,11 @@ export const useSaveMomentRepertoireByTokenMutation = (token: string | undefined
 };
 
 export const useRepertoireDraftStats = (songs: EditableSongDraft[]) => useMemo(() => {
-  const filledSongs = songs.filter((song) => song.title.trim().length > 0 || song.durationSeconds.trim().length > 0 || song.youtubeUrl.trim().length > 0 || song.notes.trim().length > 0);
-  const totalDurationSeconds = filledSongs.reduce((sum, song) => {
-    const next = Number(song.durationSeconds);
-    return Number.isFinite(next) ? sum + Math.max(0, next) : sum;
-  }, 0);
+  const filledSongs = songs.filter((song) => song.title.trim().length > 0 || song.youtubeUrl.trim().length > 0 || song.notes.trim().length > 0 || song.hasMedia || song.hasPlayback);
 
   return {
     songsCount: filledSongs.length,
-    totalDurationSeconds,
+    songsWithMediaCount: filledSongs.filter((song) => song.hasMedia).length,
+    songsWithPlaybackCount: filledSongs.filter((song) => song.hasPlayback).length,
   };
 }, [songs]);

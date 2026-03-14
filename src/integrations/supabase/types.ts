@@ -215,6 +215,8 @@ export type Database = {
           created_by: string | null
           culto_id: string
           duration_seconds: number | null
+          has_media: boolean
+          has_playback: boolean
           id: string
           momento_id: string
           notes: string | null
@@ -229,6 +231,8 @@ export type Database = {
           created_by?: string | null
           culto_id: string
           duration_seconds?: number | null
+          has_media?: boolean
+          has_playback?: boolean
           id?: string
           momento_id: string
           notes?: string | null
@@ -243,6 +247,8 @@ export type Database = {
           created_by?: string | null
           culto_id?: string
           duration_seconds?: number | null
+          has_media?: boolean
+          has_playback?: boolean
           id?: string
           momento_id?: string
           notes?: string | null

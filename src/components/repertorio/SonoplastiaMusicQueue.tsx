@@ -1,7 +1,7 @@
 import { ExternalLink, Music4, PlayCircle, TimerReset, Youtube } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MomentSong } from '@/features/repertorio/model';
-import { formatSongDuration, formatSongDurationShort, isMusicMoment, sortMomentSongs } from '@/features/repertorio/model';
+import { getSongMediaLabel, getSongPlaybackLabel, isMusicMoment, sortMomentSongs } from '@/features/repertorio/model';
 import type { MomentoProgramacao } from '@/types/culto';
 import { formatTimerMs } from '@/utils/time';
 
@@ -213,7 +213,8 @@ export function SonoplastiaMusicQueue({
   }
 
   const queueSongs = sortMomentSongs(songsByMomentId[queueMoment.id] ?? []);
-  const queueTotalDurationSeconds = queueSongs.reduce((sum, song) => sum + (song.duration_seconds ?? 0), 0);
+  const queueSongsWithMediaCount = queueSongs.filter((song) => song.has_media).length;
+  const queueSongsWithPlaybackCount = queueSongs.filter((song) => song.has_playback).length;
 
   return (
     <div className="glass-card p-4 sm:p-5">
@@ -239,18 +240,25 @@ export function SonoplastiaMusicQueue({
           <div className="rounded-2xl border border-border/70 bg-card/75 px-3 py-2 text-right">
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Musica destaque</p>
             <p className="mt-1 font-semibold text-foreground">{activeSong.title || 'Sem titulo'}</p>
-            <p className="text-xs text-muted-foreground">{formatSongDuration(activeSong.duration_seconds)}</p>
+            <div className="mt-2 flex flex-wrap justify-end gap-1.5 text-[11px] text-muted-foreground">
+              <span className="rounded-full bg-muted/50 px-2.5 py-1">{getSongMediaLabel(activeSong.has_media)}</span>
+              <span className="rounded-full bg-muted/50 px-2.5 py-1">{getSongPlaybackLabel(activeSong.has_playback)}</span>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="mt-4 grid gap-2 sm:grid-cols-4">
           <div className="rounded-2xl border border-border/60 bg-card/75 px-3 py-2.5">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Fila</p>
             <p className="mt-1 text-sm font-semibold">{queueSongs.length} {queueSongs.length === 1 ? 'musica' : 'musicas'}</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-card/75 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Duracao total</p>
-            <p className="mt-1 text-sm font-semibold">{formatSongDurationShort(queueTotalDurationSeconds)}</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Com midia</p>
+            <p className="mt-1 text-sm font-semibold">{queueSongsWithMediaCount}</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card/75 px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Playback</p>
+            <p className="mt-1 text-sm font-semibold">{queueSongsWithPlaybackCount}</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-card/75 px-3 py-2.5">
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Entrada</p>
@@ -268,7 +276,8 @@ export function SonoplastiaMusicQueue({
               <p className="text-lg font-display font-black">{activeSong.title || 'Musica sem titulo'}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="rounded-full bg-muted/50 px-2.5 py-1">#{activeSong.position + 1}</span>
-                <span className="rounded-full bg-muted/50 px-2.5 py-1">{formatSongDuration(activeSong.duration_seconds)}</span>
+                <span className="rounded-full bg-muted/50 px-2.5 py-1">{getSongMediaLabel(activeSong.has_media)}</span>
+                <span className="rounded-full bg-muted/50 px-2.5 py-1">{getSongPlaybackLabel(activeSong.has_playback)}</span>
                 {isPaused && currentMomentIsMusic ? (
                   <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-300">Cronometro pausado</span>
                 ) : null}
@@ -289,7 +298,8 @@ export function SonoplastiaMusicQueue({
                 <p className="text-lg font-display font-black">{nextSong.title || 'Musica sem titulo'}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span className="rounded-full bg-muted/50 px-2.5 py-1">#{nextSong.position + 1}</span>
-                  <span className="rounded-full bg-muted/50 px-2.5 py-1">{formatSongDuration(nextSong.duration_seconds)}</span>
+                  <span className="rounded-full bg-muted/50 px-2.5 py-1">{getSongMediaLabel(nextSong.has_media)}</span>
+                  <span className="rounded-full bg-muted/50 px-2.5 py-1">{getSongPlaybackLabel(nextSong.has_playback)}</span>
                   {remainingMsForCurrentSong != null ? (
                     <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-300">
                       em {formatTimerMs(Math.max(0, remainingMsForCurrentSong))}
@@ -325,7 +335,8 @@ export function SonoplastiaMusicQueue({
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{item.song.title || 'Musica sem titulo'}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatSongDuration(item.song.duration_seconds)}</span>
+                        <span>{getSongMediaLabel(item.song.has_media)}</span>
+                        <span>{getSongPlaybackLabel(item.song.has_playback)}</span>
                         {item.etaMs != null && item.etaMs > 0 ? (
                           <span>em {formatTimerMs(item.etaMs)}</span>
                         ) : null}

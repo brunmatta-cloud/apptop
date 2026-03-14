@@ -70,7 +70,7 @@ export function RepertorioManagerDialog({
   const [draftSongs, setDraftSongs] = useState<EditableSongDraft[]>([]);
   const ensureFormMutation = useEnsureMomentSongFormMutation();
   const saveMutation = useSaveMomentRepertoireMutation();
-  const { songsCount, totalDurationSeconds } = useRepertoireDraftStats(draftSongs);
+  const { songsCount, songsWithMediaCount, songsWithPlaybackCount } = useRepertoireDraftStats(draftSongs);
 
   useEffect(() => {
     if (!open) {
@@ -145,7 +145,7 @@ export function RepertorioManagerDialog({
         onInteractOutside={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <div className="flex h-full max-h-[92dvh] flex-col overflow-hidden sm:max-h-[95vh]">
+        <div className="flex h-full max-h-[92dvh] flex-col overflow-hidden overscroll-contain sm:max-h-[95vh]">
           <div className="shrink-0 border-b border-border/60 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.02))] px-4 py-4 sm:px-7 sm:py-5">
             <DialogHeader className="space-y-3 text-left">
               <div className="flex flex-wrap items-center gap-3">
@@ -176,7 +176,7 @@ export function RepertorioManagerDialog({
             </DialogHeader>
 
             <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
                   <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Responsavel</p>
                   <p className="mt-1 truncate text-sm font-semibold">{momento.responsavel || 'Nao informado'}</p>
@@ -190,8 +190,12 @@ export function RepertorioManagerDialog({
                   <p className="mt-1 text-sm font-semibold">{songsCount}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Duracao</p>
-                  <p className="mt-1 text-sm font-semibold">{Math.floor(totalDurationSeconds / 60)} min</p>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Com midia</p>
+                  <p className="mt-1 text-sm font-semibold">{songsWithMediaCount}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Playback</p>
+                  <p className="mt-1 text-sm font-semibold">{songsWithPlaybackCount}</p>
                 </div>
               </div>
               <RepertorioStatusBadge summary={summary} />
@@ -219,12 +223,12 @@ export function RepertorioManagerDialog({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24 sm:px-7 sm:py-5 sm:pb-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-24 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:px-7 sm:py-5 sm:pb-6">
             <RepertorioEditor
               songs={draftSongs}
               onChange={setDraftSongs}
               disabled={saveMutation.isPending}
-              helperText="Preencha primeiro o titulo. Duracao, YouTube e observacoes ajudam a operacao, mas sao opcionais."
+              helperText="Preencha o titulo, marque se a musica usa midia ou playback e salve. Link do YouTube e observacoes seguem opcionais."
               showBottomAddButton={false}
             />
           </div>

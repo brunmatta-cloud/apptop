@@ -17,6 +17,8 @@ export interface RepertoireSummary {
   description: string;
   songsCount: number;
   totalDurationSeconds: number;
+  songsWithMediaCount: number;
+  songsWithPlaybackCount: number;
   hasLink: boolean;
   isMusicMoment: boolean;
 }
@@ -25,7 +27,8 @@ export interface EditableSongDraft {
   id?: string;
   clientId: string;
   title: string;
-  durationSeconds: string;
+  hasMedia: boolean;
+  hasPlayback: boolean;
   youtubeUrl: string;
   notes: string;
 }
@@ -87,7 +90,8 @@ export const buildEditableSongDraft = (song?: Partial<MomentSong>): EditableSong
   id: song?.id,
   clientId: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `song-${Math.random().toString(36).slice(2, 10)}`,
   title: song?.title ?? '',
-  durationSeconds: Number.isFinite(song?.duration_seconds) && song?.duration_seconds != null ? String(song.duration_seconds) : '',
+  hasMedia: Boolean(song?.has_media),
+  hasPlayback: Boolean(song?.has_playback),
   youtubeUrl: song?.youtube_url ?? '',
   notes: song?.notes ?? '',
 });
@@ -97,11 +101,12 @@ export const sanitizeSongDraftsForSave = (songs: EditableSongDraft[]) => (
     .map((song) => ({
       id: song.id,
       title: song.title.trim(),
-      duration_seconds: song.durationSeconds.trim() === '' ? null : Math.max(0, Number(song.durationSeconds)),
+      has_media: song.hasMedia,
+      has_playback: song.hasPlayback,
       youtube_url: song.youtubeUrl.trim() || null,
       notes: song.notes.trim() || null,
     }))
-    .filter((song) => song.title.length > 0 || song.duration_seconds != null || song.youtube_url || song.notes)
+    .filter((song) => song.title.length > 0 || song.has_media || song.has_playback || song.youtube_url || song.notes)
 );
 
 export const buildRepertoireSummary = ({
@@ -120,6 +125,8 @@ export const buildRepertoireSummary = ({
       description: 'Este momento nao usa repertorio musical.',
       songsCount: 0,
       totalDurationSeconds: 0,
+      songsWithMediaCount: 0,
+      songsWithPlaybackCount: 0,
       hasLink: false,
       isMusicMoment: false,
     };
@@ -128,6 +135,8 @@ export const buildRepertoireSummary = ({
   const sortedSongs = sortMomentSongs(songs);
   const songsCount = sortedSongs.length;
   const totalDurationSeconds = sortedSongs.reduce((sum, song) => sum + (song.duration_seconds ?? 0), 0);
+  const songsWithMediaCount = sortedSongs.filter((song) => song.has_media).length;
+  const songsWithPlaybackCount = sortedSongs.filter((song) => song.has_playback).length;
   const hasLink = Boolean(form?.token);
 
   if (songsCount === 0) {
@@ -137,6 +146,8 @@ export const buildRepertoireSummary = ({
       description: hasLink ? 'O link ja foi gerado, mas a equipe ainda nao preencheu o repertorio.' : 'Nenhuma musica foi cadastrada para este momento.',
       songsCount,
       totalDurationSeconds,
+      songsWithMediaCount,
+      songsWithPlaybackCount,
       hasLink,
       isMusicMoment: true,
     };
@@ -152,6 +163,8 @@ export const buildRepertoireSummary = ({
       description: 'Musicas organizadas e prontas para uso nas telas operacionais.',
       songsCount,
       totalDurationSeconds,
+      songsWithMediaCount,
+      songsWithPlaybackCount,
       hasLink,
       isMusicMoment: true,
     };
@@ -163,6 +176,8 @@ export const buildRepertoireSummary = ({
     description: 'Existe repertorio salvo, mas faltam titulos ou a ordem precisa ser revisada.',
     songsCount,
     totalDurationSeconds,
+    songsWithMediaCount,
+    songsWithPlaybackCount,
     hasLink,
     isMusicMoment: true,
   };
@@ -182,3 +197,7 @@ export const getRepertoireStatusTone = (status: RepertoireStatus) => {
       return 'border-border bg-muted/40 text-muted-foreground';
   }
 };
+
+export const getSongMediaLabel = (hasMedia?: boolean | null) => hasMedia ? 'Com midia' : 'Sem midia';
+
+export const getSongPlaybackLabel = (hasPlayback?: boolean | null) => hasPlayback ? 'Com playback' : 'Sem playback';
