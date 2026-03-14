@@ -392,13 +392,13 @@ const MusicaMomento = () => {
               </div>
 
               <RepertorioEditor
-                  songs={draftSongs}
-                  onChange={setDraftSongs}
-                  disabled={hasMomentPassed || saveMutation.isPending}
-                  helperText="Preencha o titulo, marque se a musica usa midia ou playback e siga para concluir. O envio so acontece quando voce apertar em Salvar repertorio."
-                  emptyDescription="Comece adicionando a primeira musica deste momento. A interface foi pensada para ser simples no celular e clara para a equipe."
-                  showBottomAddButton={false}
-                />
+                songs={draftSongs}
+                onChange={setDraftSongs}
+                disabled={hasMomentPassed || saveMutation.isPending}
+                helperText="Preencha o titulo, marque se a musica usa midia ou playback e siga para concluir. O envio so acontece quando voce apertar em Salvar repertorio."
+                emptyDescription="Comece adicionando a primeira musica deste momento. A interface foi pensada para ser simples no celular e clara para a equipe."
+                showBottomAddButton={false}
+              />
 
                 <div className="mt-6 flex flex-col gap-3 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
                   <Button

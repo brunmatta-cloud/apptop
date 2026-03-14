@@ -26,7 +26,7 @@ export const useLiveTimerSnapshot = () => {
 
   return useMemo(() => {
     return remoteState.timerStatus === 'running'
-      ? getTimerSnapshot(remoteState as any, nowMs)
-      : getTimerSnapshot(remoteState as any);
+      ? getTimerSnapshot(remoteState, nowMs)
+      : getTimerSnapshot(remoteState);
   }, [nowMs, remoteState, remoteState.timerStatus]);
 };

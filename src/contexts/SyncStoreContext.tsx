@@ -453,7 +453,7 @@ export const useCeremonySession = () => {
     setExecutionMode: (mode: ExecutionMode) => run('set-execution-mode', 'set_execution_mode', { mode }),
     setActiveCultoId: (id: string) => run('set-active-culto', 'set_active_culto', { id }),
     setCulto: (value: React.SetStateAction<Culto>) => {
-      const nextCulto = typeof value === 'function' ? (value as (prev: Culto) => Culto)(culto) : value;
+      const nextCulto = typeof value === 'function' ? value(culto) : value;
       run('set-culto', 'set_culto', { id: nextCulto.id, culto: nextCulto as any });
     },
     setMomentos: (value: React.SetStateAction<MomentoProgramacao[]>) => {
