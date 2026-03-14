@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, ExternalLink, Link2, Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -68,6 +68,7 @@ export function RepertorioManagerDialog({
   summary,
 }: RepertorioManagerDialogProps) {
   const [draftSongs, setDraftSongs] = useState<EditableSongDraft[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
   const ensureFormMutation = useEnsureMomentSongFormMutation();
   const saveMutation = useSaveMomentRepertoireMutation();
   const { songsCount, songsWithMediaCount, songsWithPlaybackCount } = useRepertoireDraftStats(draftSongs);
@@ -94,6 +95,25 @@ export function RepertorioManagerDialog({
 
   const addSong = () => {
     setDraftSongs((current) => [...current, buildEditableSongDraft()]);
+  };
+
+  const generateLink = async () => {
+    try {
+      const ensured = resolvedForm ?? await ensureFormMutation.mutateAsync({
+        cultoId: momento.cultoId,
+        momentoId: momento.id,
+      });
+      toast({
+        title: 'Link gerado com sucesso',
+        description: 'Agora voce pode copiar e compartilhar o link com a equipe.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Nao foi possivel gerar o link',
+        description: error instanceof Error ? error.message : 'Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const copyLink = async () => {
@@ -145,9 +165,13 @@ export function RepertorioManagerDialog({
         onInteractOutside={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[90vh]">
-          {/* Header */}
-          <div className="relative shrink-0 border-b border-border/60 bg-gradient-to-b from-primary/5 to-transparent px-4 py-4 sm:px-6 sm:py-5">
+        {/* Main scrollable container */}
+        <div 
+          ref={containerRef}
+          className="flex h-full w-full flex-col overflow-y-auto sm:h-auto sm:max-h-[90vh] [scrollbar-width:thin] [-ms-overflow-style:auto] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:hover:bg-border/60"
+        >
+          {/* Header - inside scrollable container */}
+          <div className="sticky top-0 z-10 border-b border-border/60 bg-gradient-to-b from-background via-background to-background/95 px-4 py-4 sm:px-6 sm:py-5 backdrop-blur-sm">
             <DialogHeader className="space-y-3 text-left">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
@@ -226,8 +250,8 @@ export function RepertorioManagerDialog({
             </div>
           </div>
 
-          {/* Editor Content */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [-ms-overflow-style:auto] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:hover:bg-border/60 sm:px-6 sm:py-5">
+          {/* Editor Content - scrolls with everything */}
+          <div className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
             <RepertorioEditor
               songs={draftSongs}
               onChange={setDraftSongs}
@@ -237,14 +261,25 @@ export function RepertorioManagerDialog({
             />
           </div>
 
-          {/* Footer */}
-          <DialogFooter className="relative shrink-0 border-t border-border/60 bg-card/95 px-4 py-3 sm:px-6 sm:py-3">
-            <div className="flex w-full flex-col gap-2 text-xs sm:gap-3 sm:flex-row sm:items-center">
+          {/* Footer - inside scrollable container, sticky at bottom */}
+          <div className="sticky bottom-0 z-10 border-t border-border/60 bg-gradient-to-t from-background via-background to-background/95 px-4 py-3 sm:px-6 sm:py-3 backdrop-blur-sm">
+            <div className="flex w-full flex-col gap-2 text-xs sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 flex-1">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
                   <Sparkles className="h-3 w-3 text-primary" />
                   <span className="hidden sm:inline">Sync real</span>
                 </span>
+                {!resolvedForm?.token && (
+                  <button
+                    type="button"
+                    onClick={generateLink}
+                    disabled={ensureFormMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                  >
+                    {ensureFormMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
+                    <span className="hidden sm:inline">Gerar link</span>
+                  </button>
+                )}
                 {resolvedForm?.token && (
                   <button
                     type="button"
@@ -258,7 +293,7 @@ export function RepertorioManagerDialog({
                 )}
               </div>
             </div>
-          </DialogFooter>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

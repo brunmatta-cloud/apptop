@@ -165,13 +165,19 @@ const NextSoundActionCard = memo(function NextSoundActionCard({
 const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
   currentMoment,
   isPaused,
+  songsByMomentId,
 }: {
   currentMoment: MomentoProgramacao | null;
   isPaused: boolean;
+  songsByMomentId: Record<string, MomentSong[]>;
 }) {
   const { momentElapsedMs } = useCultoTimer();
   const safeMomentElapsedMs = Number.isFinite(momentElapsedMs) ? momentElapsedMs : 0;
   const { percent: currentProgress, formattedRemaining } = useMomentProgress(currentMoment, safeMomentElapsedMs);
+  const songs = useMemo(
+    () => currentMoment ? sortMomentSongs(songsByMomentId[currentMoment.id] ?? []) : [],
+    [currentMoment, songsByMomentId],
+  );
 
   if (!currentMoment) {
     return (
@@ -203,6 +209,23 @@ const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
         <div className="mt-4 rounded-lg border border-primary/20 bg-primary/10 p-3">
           <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">Acao</p>
           <p className="text-sm font-medium">{currentMoment.acaoSonoplastia}</p>
+        </div>
+      )}
+
+      {/* Músicas do momento */}
+      {songs.length > 0 && (
+        <div className="mt-4 space-y-2 px-3 py-3 rounded-lg border border-border/50 bg-background/50">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Músicas deste momento</p>
+          <div className="space-y-1.5">
+            {songs.map((song, idx) => (
+              <div key={song.id} className="flex items-center gap-1.5 text-xs">
+                <span className="font-bold text-muted-foreground min-w-4">{idx + 1}</span>
+                <span className="truncate flex-1">{song.title || 'Sem título'}</span>
+                {song.has_media && <span className="px-1.5 py-0.5 rounded text-[10px] bg-primary/20 text-primary shrink-0">MIDIA</span>}
+                {song.has_playback && <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 shrink-0">PLAY</span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -380,25 +403,18 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
         </div>
       </div>
 
-      <NextSoundActionCard
-        currentMoment={currentMoment}
+      <NextActionEnhanced
         nextSoundAction={nextSoundAction}
         momentos={momentos}
         currentIndex={currentIndex}
         songsByMomentId={songsByMomentId}
       />
 
-      <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} />
+      <CurrentSoundMomentCard currentMoment={currentMoment} isPaused={isPaused} songsByMomentId={songsByMomentId} />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Próxima Ação e Tarefas */}
+        {/* Tarefas e lista de músicas */}
         <div className="lg:col-span-2 space-y-3">
-          <NextActionEnhanced
-            nextSoundAction={nextSoundAction}
-            momentos={momentos}
-            currentIndex={currentIndex}
-            songsByMomentId={songsByMomentId}
-          />
           <SonoplastiaTaskList
             momentos={momentos}
             currentIndex={currentIndex}

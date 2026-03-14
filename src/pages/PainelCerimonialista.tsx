@@ -19,6 +19,7 @@ import { CommandDelayControl } from '@/components/culto/CommandDelayControl';
 import { useSessionRepertoire } from '@/features/repertorio/hooks';
 import { isMusicMoment } from '@/features/repertorio/model';
 import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
+import { MusicStatusInline } from '@/components/repertorio/MusicStatusInline';
 
 const emptyCultoFallback = {
   nome: 'Culto carregando...',
@@ -713,8 +714,8 @@ function PainelCerimonialista() {
                         </p>
                         <p className="truncate text-xs text-muted-foreground">{momento.responsavel}</p>
                         {repertoireSummary && (
-                          <div className="mt-2 max-w-lg">
-                            <RepertorioStatusBadge summary={repertoireSummary} compact />
+                          <div className="mt-1 flex items-center gap-2">
+                            <MusicStatusInline summary={repertoireSummary} />
                           </div>
                         )}
                       </div>
@@ -749,8 +750,8 @@ function PainelCerimonialista() {
                         <span className="block break-words text-sm">{momento.atividade}</span>
                         <span className="block truncate text-xs text-muted-foreground">{momento.responsavel}</span>
                         {isMusicMoment(momento) && (
-                          <div className="mt-2 max-w-md">
-                            <RepertorioStatusBadge summary={getSummaryForMoment(momento)} compact />
+                          <div className="mt-1">
+                            <MusicStatusInline summary={getSummaryForMoment(momento)} />
                           </div>
                         )}
                       </div>
