@@ -317,7 +317,7 @@ export function SonoplastiaMusicQueue({
       </div>
 
       <div className="mt-4 space-y-2">
-        {queueItems.slice(0, 5).map((item) => {
+        {queueItems.map((item) => {
           const tone = getQueueItemTone(item.state);
 
           return (

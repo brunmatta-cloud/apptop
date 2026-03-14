@@ -141,121 +141,133 @@ export function RepertorioManagerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="left-0 right-0 top-auto bottom-0 h-[95dvh] w-full translate-x-0 translate-y-0 overflow-hidden rounded-t-2xl rounded-b-none border-border/70 p-0 sm:bottom-auto sm:left-[50%] sm:right-auto sm:top-[50%] sm:h-auto sm:max-h-[90vh] sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:max-w-2xl lg:max-w-4xl"
+        className="left-0 right-0 top-auto bottom-0 h-dvh max-h-[95dvh] w-full translate-x-0 translate-y-0 overflow-hidden rounded-t-[2rem] rounded-b-none border-border/70 p-0 sm:bottom-auto sm:left-[50%] sm:right-auto sm:top-[50%] sm:h-auto sm:max-h-[90vh] sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[2rem] sm:max-w-[min(98vw,80rem)]"
         onInteractOutside={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
       >
         <div className="flex h-full w-full flex-col overflow-hidden sm:h-auto sm:max-h-[90vh]">
-          {/* Header */}
-          <div className="relative shrink-0 border-b border-border/60 bg-gradient-to-b from-primary/5 to-transparent px-4 py-4 sm:px-6 sm:py-5">
+          <div className="relative shrink-0 border-b border-border/60 bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(15,23,42,0.02))] px-4 py-4 sm:px-6 sm:py-5">
             <DialogHeader className="space-y-3 text-left">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                  Playlist
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-2xl border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                  Playlist do momento
                 </div>
                 {resolvedForm?.token && (
                   <a
                     href={linkUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <Link2 className="h-3 w-3" />
-                    Link pronto
-                    <ExternalLink className="h-3 w-3" />
+                    <Link2 className="h-3.5 w-3.5" />
+                    Link externo pronto
+                    <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
               </div>
               <div>
-                <DialogTitle className="max-w-2xl text-xl font-display font-bold sm:text-2xl">
+                <DialogTitle className="pr-10 text-2xl font-display font-black sm:text-3xl">
                   {momento.atividade}
                 </DialogTitle>
-                <DialogDescription className="mt-1 text-xs sm:text-sm text-muted-foreground">
-                  Gerencie o repertorio sem sair da programacao.
+                <DialogDescription className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                  Adicione e salve as musicas deste momento sem sair da programacao.
                 </DialogDescription>
               </div>
             </DialogHeader>
 
-            {/* Info Cards */}
-            <div className="mt-4 space-y-3">
-              <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
-                <div className="rounded-lg border border-border/60 bg-card/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsavel</p>
-                  <p className="mt-0.5 truncate text-xs font-semibold">{momento.responsavel || 'Nao'}</p>
+            <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Responsavel</p>
+                  <p className="mt-1 truncate text-sm font-semibold">{momento.responsavel || 'Nao informado'}</p>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-card/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ministerio</p>
-                  <p className="mt-0.5 truncate text-xs font-semibold">{momento.ministerio || 'Louvor'}</p>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Minis.</p>
+                  <p className="mt-1 truncate text-sm font-semibold">{momento.ministerio || 'Louvor'}</p>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-card/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Musicas</p>
-                  <p className="mt-0.5 text-xs font-semibold">{songsCount}</p>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Musicas</p>
+                  <p className="mt-1 text-sm font-semibold">{songsCount}</p>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-card/60 px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Com midia</p>
-                  <p className="mt-0.5 text-xs font-semibold">{songsWithMediaCount}</p>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Com midia</p>
+                  <p className="mt-1 text-sm font-semibold">{songsWithMediaCount}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Playback</p>
+                  <p className="mt-1 text-sm font-semibold">{songsWithPlaybackCount}</p>
                 </div>
               </div>
+              <RepertorioStatusBadge summary={summary} />
+            </div>
 
-              {/* Status Badge and Action Buttons */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <RepertorioStatusBadge summary={summary} />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={addSong}
-                    disabled={saveMutation.isPending}
-                    className="flex-1 h-9 rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:flex-none sm:px-3"
-                    size="sm"
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Adicionar
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saveMutation.isPending || !hasChanges}
-                    className="flex-1 h-9 rounded-lg bg-foreground text-xs font-semibold text-background hover:bg-foreground/90 sm:flex-none sm:px-3"
-                    size="sm"
-                  >
-                    {saveMutation.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-                    Salvar
-                  </Button>
-                </div>
-              </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                onClick={addSong}
+                disabled={saveMutation.isPending}
+                className="h-12 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar musica
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={saveMutation.isPending || !hasChanges}
+                className="h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90"
+              >
+                {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Salvar repertorio
+              </Button>
             </div>
           </div>
 
-          {/* Editor Content */}
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [-ms-overflow-style:auto] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/40 [&::-webkit-scrollbar-thumb]:hover:bg-border/60 sm:px-6 sm:py-5">
             <RepertorioEditor
               songs={draftSongs}
               onChange={setDraftSongs}
               disabled={saveMutation.isPending}
-              helperText="Edite as musicas, marque midia e playback. YouTube e observacoes sao opcionais."
+              helperText="Preencha o titulo, marque se a musica usa midia ou playback e salve. Link do YouTube e observacoes seguem opcionais."
               showBottomAddButton={false}
             />
           </div>
 
-          {/* Footer */}
-          <DialogFooter className="relative shrink-0 border-t border-border/60 bg-card/95 px-4 py-3 sm:px-6 sm:py-3">
-            <div className="flex w-full flex-col gap-2 text-xs sm:gap-3 sm:flex-row sm:items-center">
-              <div className="flex flex-wrap items-center gap-2 flex-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
-                  <Sparkles className="h-3 w-3 text-primary" />
-                  <span className="hidden sm:inline">Sync real</span>
+          <DialogFooter className="relative shrink-0 border-t border-border/60 bg-card/95 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex w-full flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Mudancas sincronizadas em tempo real
                 </span>
                 {resolvedForm?.token && (
-                  <button
-                    type="button"
-                    onClick={copyLink}
-                    disabled={!resolvedForm.token}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                  >
-                    <Copy className="h-3 w-3" />
-                    <span className="hidden sm:inline">Copiar link</span>
-                  </button>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1.5">
+                    <Link2 className="h-4 w-4 text-primary" />
+                    Link pronto para o louvor
+                  </span>
                 )}
+              </div>
+
+              <div className="grid gap-2 sm:flex sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={copyLink}
+                  disabled={ensureFormMutation.isPending || saveMutation.isPending}
+                  className="rounded-2xl"
+                >
+                  {ensureFormMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+                  Copiar link do louvor
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saveMutation.isPending || !hasChanges}
+                  className="rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Salvar repertorio
+                </Button>
               </div>
             </div>
           </DialogFooter>
