@@ -397,7 +397,7 @@ const Configuracoes = () => {
       </div>
 
       <Tabs defaultValue="aparencia" className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
-        <div className="space-y-4">
+        <div className="space-y-4 xl:sticky xl:top-6">
           <TabsList className="grid h-auto w-full grid-cols-1 gap-2 rounded-[1.5rem] border border-border/70 bg-card/70 p-3">
             {settingsSections.map((section) => {
               const Icon = section.icon;
