@@ -2,7 +2,7 @@ import React from 'react';
 import type { Culto, ExecutionMode, ModeradorCallStatus, MomentStatus, MomentoProgramacao } from '@/types/culto';
 import type { ConnectionStatus, RemoteCultoState } from '@/features/culto-sync/domain';
 import { getActiveCulto, getActiveMomentos, getCurrentMoment, getMomentStatus, getNextMoment } from '@/features/culto-sync/domain';
-import { getLiveRemoteStateSnapshot, subscribeLiveRemoteStateStore, useLiveRemoteState, useSyncCommands } from '@/contexts/SyncStoreContext';
+import { useSyncStore, getLiveRemoteStateSnapshot, subscribeLiveRemoteStateStore, useLiveRemoteState } from '@/contexts/SyncStoreContext';
 import { disposeGlobalTimerStore, initializeGlobalTimerStore, useGlobalTimerSnapshot } from '@/features/culto-sync/globalTimerStore';
 
 interface CultoContextType {
@@ -277,7 +277,7 @@ const usePinnedRemoteStateForView = (remoteState: RemoteCultoState) => {
 };
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { uiState, runCommand } = useSyncCommands();
+  const { uiState, runCommand } = useSyncStore();
 
   React.useEffect(() => {
     initializeGlobalTimerStore();
@@ -460,7 +460,7 @@ export const useLiveCultoView = () => {
 };
 
 export const useCultoControls = () => {
-  const { uiState, runCommand } = useSyncCommands();
+  const { uiState, runCommand } = useSyncStore();
 
   const run = React.useCallback((actionKey: string, command: string, payload?: Record<string, unknown>) => {
     void runCommand(actionKey, command, payload);
