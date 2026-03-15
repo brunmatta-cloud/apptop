@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2,
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2, Music, Film, Headphones, MonitorPlay,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +27,10 @@ const navItems: NavItem[] = [
   { to: '/cronometro-controle', label: 'Controle Timer', icon: SlidersHorizontal },
   { to: '/foco', label: 'Modo Foco', icon: Focus },
   { to: '/artes', label: 'Gerador de Artes', icon: Image },
+  { to: '/media/audio', label: 'Biblioteca Musicas', icon: Music },
+  { to: '/media', label: 'Biblioteca Midia', icon: Film },
+  { to: '/media-control', label: 'Controle de Midia', icon: Headphones },
+  { to: '/displays', label: 'Displays', icon: MonitorPlay },
   { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
   // Admin & Debug
   { to: '/pessoas', label: 'Cadastro de Pessoas', icon: Users2, isAdmin: true },
@@ -69,7 +73,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     };
   }, [isMobile]);
 
-  if (location.pathname === '/foco' || location.pathname === '/cronometro' || location.pathname.startsWith('/musica/')) {
+  if (location.pathname === '/foco' || location.pathname === '/cronometro' || location.pathname.startsWith('/musica/') || location.pathname.startsWith('/display/')) {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
 

@@ -31,6 +31,15 @@ const MusicaEquipe = React.lazy(() => import("./pages/MusicaEquipe"));
 const CadastroPessoas = React.lazy(() => import("./pages/CadastroPessoas"));
 const DebugTokens = React.lazy(() => import("./pages/DebugTokens"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
+const UploadMusica = React.lazy(() => import("./pages/UploadMusica"));
+const UploadMedia = React.lazy(() => import("./pages/UploadMedia"));
+const BibliotecaMusicas = React.lazy(() => import("./pages/BibliotecaMusicas"));
+const BibliotecaMedia = React.lazy(() => import("./pages/BibliotecaMedia"));
+const MediaControl = React.lazy(() => import("./pages/MediaControl"));
+const DisplayView = React.lazy(() => import("./pages/DisplayView"));
+const DisplayManager = React.lazy(() => import("./pages/DisplayManager"));
+const GerenciarBases = React.lazy(() => import("./pages/GerenciarBases"));
+const SlidesControl = React.lazy(() => import("./pages/SlidesControl"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,6 +94,23 @@ const App = () => (
                       <Route path="/debug-tokens" element={withPageGuard(<DebugTokens />, "A ferramenta de debug encontrou um erro.")} />
                       <Route path="/musica/:token" element={withPageGuard(<MusicaMomento />, "A pagina externa do repertorio falhou ao renderizar, mas o restante do app segue ativo.")} />
                       <Route path="/equipe-musica/:token" element={withPageGuard(<MusicaMomento />, "A pagina externa do repertorio falhou ao renderizar, mas o restante do app segue ativo.")} />
+
+                      {/* Media Library Routes */}
+                      <Route path="/media/upload" element={withPageGuard(<UploadMusica />, "A pagina de upload de musica encontrou um erro.")} />
+                      <Route path="/media/upload-media" element={withPageGuard(<UploadMedia />, "A pagina de upload de midia encontrou um erro.")} />
+                      <Route path="/media/audio" element={withPageGuard(<BibliotecaMusicas />, "A biblioteca de musicas encontrou um erro.")} />
+                      <Route path="/media/:tipo" element={withPageGuard(<BibliotecaMedia />, "A biblioteca de midia encontrou um erro.")} />
+                      <Route path="/media" element={withPageGuard(<BibliotecaMedia />, "A biblioteca de midia encontrou um erro.")} />
+                      <Route path="/media-control" element={withPageGuard(<MediaControl />, "O controle de midia encontrou um erro.")} />
+
+                      {/* Display Routes */}
+                      <Route path="/displays" element={withPageGuard(<DisplayManager />, "O gerenciador de displays encontrou um erro.")} />
+                      <Route path="/display/:tipo" element={withPageGuard(<DisplayView />, "O display encontrou um erro.")} />
+                      <Route path="/slides-control" element={withPageGuard(<SlidesControl />, "O passador de slides encontrou um erro.")} />
+
+                      {/* Settings Routes */}
+                      <Route path="/settings/bases" element={withPageGuard(<GerenciarBases />, "O gerenciamento de bases encontrou um erro.")} />
+
                       <Route path="*" element={withPageGuard(<NotFound />)} />
                     </Routes>
                   </Suspense>

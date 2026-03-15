@@ -7,7 +7,6 @@ import { useMomentSongBundleByToken, useEnsureMomentSongFormMutation, useSaveMom
 import { RepertorioEditor } from '@/components/repertorio/RepertorioEditor';
 import { buildEditableSongDraft, sanitizeSongDraftsForSave, sortMomentSongs } from '@/features/repertorio/model';
 import { toast } from '@/hooks/use-toast';
-import type { MomentoProgramacao } from '@/types/culto';
 import type { EditableSongDraft } from '@/features/repertorio/model';
 
 const MusicaEquipe = () => {
@@ -20,12 +19,12 @@ const MusicaEquipe = () => {
   const [selectedMomentId, setSelectedMomentId] = useState<string | null>(null);
 
   // For each moment, fetch the bundle
-  const selectedMoment = momentsQuery.data?.find(m => m.id === selectedMomentId) ?? momentsQuery.data?.[0];
+  const selectedMoment = momentsQuery.data?.find(m => m.moment_id === selectedMomentId) ?? momentsQuery.data?.[0];
   
   // Initialize selected moment on load
   useMemo(() => {
     if (!selectedMomentId && momentsQuery.data && momentsQuery.data.length > 0) {
-      setSelectedMomentId(momentsQuery.data[0].id);
+      setSelectedMomentId(momentsQuery.data[0].moment_id);
     }
   }, [momentsQuery.data, selectedMomentId]);
 
@@ -99,10 +98,10 @@ const MusicaEquipe = () => {
         <div className="flex gap-2 overflow-x-auto pb-2">
           {momentsQuery.data.map((momento, index) => (
             <button
-              key={momento.id}
-              onClick={() => setSelectedMomentId(momento.id)}
+              key={momento.moment_id}
+              onClick={() => setSelectedMomentId(momento.moment_id)}
               className={`px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all border-2 ${
-                selectedMomentId === momento.id
+                selectedMomentId === momento.moment_id
                   ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100'
                   : 'border-slate-600 bg-slate-700/50 text-slate-300 hover:border-cyan-400/50'
               }`}
@@ -129,8 +128,17 @@ const MusicaEquipe = () => {
   );
 };
 
+interface MomentData {
+  moment_id: string;
+  culto_id: string;
+  atividade: string;
+  horario_inicio: string;
+  responsavel: string;
+  form_token: string;
+}
+
 interface MomentEditorProps {
-  moment: MomentoProgramacao;
+  moment: MomentData;
   personName: string;
   personToken: string;
   remoteState: any;
@@ -156,8 +164,8 @@ function MomentEditor({ moment, personName, personToken, remoteState }: MomentEd
       try {
         setIsLoading(true);
         const form = await ensureMutation.mutateAsync({
-          cultoId: moment.cultoId,
-          momentoId: moment.id,
+          cultoId: moment.culto_id,
+          momentoId: moment.moment_id,
         });
         setMomentFormToken(form.token);
       } catch (error) {
@@ -173,7 +181,7 @@ function MomentEditor({ moment, personName, personToken, remoteState }: MomentEd
     };
 
     initForm();
-  }, [moment.id, moment.cultoId]);
+  }, [moment.moment_id, moment.culto_id]);
 
   // Load songs when bundle is available
   useEffect(() => {
@@ -243,18 +251,12 @@ function MomentEditor({ moment, personName, personToken, remoteState }: MomentEd
         <div className="grid gap-2 sm:grid-cols-2 text-sm">
           <div className="flex gap-2">
             <span className="text-slate-400">⏰</span>
-            <span className="text-slate-300 font-semibold">{moment.horarioInicio} ({moment.duracao} min)</span>
+            <span className="text-slate-300 font-semibold">{moment.horario_inicio}</span>
           </div>
-          {moment.ministerio && (
+          {moment.responsavel && (
             <div className="flex gap-2">
               <span className="text-slate-400">🏛️</span>
-              <span className="text-slate-300 font-semibold">{moment.ministerio}</span>
-            </div>
-          )}
-          {moment.observacao && (
-            <div className="flex gap-2 sm:col-span-2">
-              <span className="text-slate-400">📝</span>
-              <span className="text-slate-300">{moment.observacao}</span>
+              <span className="text-slate-300 font-semibold">{moment.responsavel}</span>
             </div>
           )}
         </div>

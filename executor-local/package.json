@@ -1,0 +1,14 @@
+{
+  "name": "7flow-executor-local",
+  "version": "1.0.0",
+  "description": "7Flow Local Executor — Node.js agent for heartbeat, job polling, media download, inventory updates",
+  "main": "executor.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node executor.mjs",
+    "dev": "node --watch executor.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
