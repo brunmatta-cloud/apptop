@@ -107,10 +107,12 @@ const EditorProgramacao = () => {
               />
             )}
           </div>
-          <ResponsavelSelector 
-            value={formData.responsavel}
-            onChange={(value) => setFormData({ ...formData, responsavel: value })}
-          />
+          <div>
+            <ResponsavelSelector 
+              value={formData.responsavel}
+              onChange={(value) => setFormData({ ...formData, responsavel: value })}
+            />
+          </div>
           <div><label className={labelClass}>Ministério</label><input className={inputClass} value={formData.ministerio} onChange={e => setFormData({ ...formData, ministerio: e.target.value })} /></div>
           <div><label className={labelClass}>Função</label><input className={inputClass} value={formData.funcao} onChange={e => setFormData({ ...formData, funcao: e.target.value })} /></div>
           <div><label className={labelClass}>Horário Início</label><input type="time" className={inputClass} value={formData.horarioInicio} onChange={e => setFormData({ ...formData, horarioInicio: e.target.value })} /></div>
