@@ -66,7 +66,7 @@ export default function DebugTokens() {
         const { data, error } = await supabase
           .from('people')
           .select('*')
-          .limit(5);
+          .limit(50);
 
         testResults['list_people'] = {
           status: error ? `❌ ${error.message}` : `✅ Retornou ${data?.length || 0} pessoas`,

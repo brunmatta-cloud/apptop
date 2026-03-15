@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2, Music, Film, Headphones, MonitorPlay, BarChart3, Edit, Presentation, Server,
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2, Music, Film, Headphones, MonitorPlay, BarChart3, Edit, Presentation, Server, Wifi, WifiOff,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCulto } from '@/contexts/CultoContext';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem {
@@ -39,6 +40,26 @@ const navItems: NavItem[] = [
   { to: '/debug-tokens', label: 'Debug Tokens', icon: Bug, isAdmin: true },
   { to: '/settings/bases', label: 'Gerenciar Bases', icon: Server, isAdmin: true },
 ];
+
+const CONNECTION_LABELS: Record<string, { label: string; color: string; icon: typeof Wifi }> = {
+  online: { label: 'Conectado', color: 'text-green-500', icon: Wifi },
+  connecting: { label: 'Conectando...', color: 'text-yellow-500', icon: Wifi },
+  degraded: { label: 'Conexão instável', color: 'text-amber-500', icon: Wifi },
+  offline: { label: 'Offline', color: 'text-red-500', icon: WifiOff },
+};
+
+const ConnectionIndicator = memo(function ConnectionIndicator() {
+  const { connectionStatus } = useCulto();
+  const config = CONNECTION_LABELS[connectionStatus] || CONNECTION_LABELS.connecting;
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+      <span className={`font-medium ${config.color}`}>{config.label}</span>
+    </div>
+  );
+});
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -159,7 +180,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
             <div className="px-4 pb-4">
               <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/40 px-3 py-3 text-xs text-muted-foreground">
-                Recolha o menu para ganhar mais espaco na area principal.
+                <ConnectionIndicator />
               </div>
             </div>
           </aside>

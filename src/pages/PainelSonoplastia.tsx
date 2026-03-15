@@ -247,7 +247,7 @@ const AudioPlaybackStrip = memo(function AudioPlaybackStrip({ sessionId }: { ses
         ) : (
           <button
             type="button"
-            onClick={() => AudioCommands.pause(sessionId)}
+            onClick={() => AudioCommands.play(sessionId, audioState.current_song_id ?? '')}
             className="h-6 w-6 flex items-center justify-center rounded bg-green-500/30 hover:bg-green-500/50 transition-colors"
             title="Continuar"
           >

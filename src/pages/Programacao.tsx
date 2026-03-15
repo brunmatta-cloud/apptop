@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
-import { calcularHorarioTermino } from '@/types/culto';
+import { calcularHorarioTermino, createEmptyMomento, createEmptyCulto } from '@/types/culto';
 import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown, Link2, Music4, Users2, Check } from 'lucide-react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
 import { exportarProgramacao } from '@/utils/exportProgramacao';
-import { exportarProgramacaoImagem } from '@/utils/exportProgramacaoImagem';
 import { useMomentProgress } from '@/hooks/useMomentProgress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
@@ -12,39 +11,11 @@ import { RepertorioManagerDialog } from '@/components/repertorio/RepertorioManag
 import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
 import { useEnsureMomentSongFormMutation, useSessionRepertoire } from '@/features/repertorio/hooks';
 import { isMusicMoment } from '@/features/repertorio/model';
-import { usePeople, usePersonTokens } from '@/features/repertorio/hooks-people';
+import { usePeople } from '@/features/repertorio/hooks-people';
+import { supabase } from '@/integrations/supabase/client';
 import ResponsavelSelector from '@/components/ResponsavelSelector';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
-
-const emptyMomento = (cultoId: string, ordem: number): MomentoProgramacao => ({
-  id: crypto.randomUUID(),
-  cultoId,
-  ordem,
-  bloco: '',
-  horarioInicio: '19:00',
-  duracao: 5,
-  atividade: '',
-  responsavel: '',
-  ministerio: '',
-  funcao: '',
-  fotoUrl: '',
-  tipoMomento: 'nenhum',
-  tipoMidia: 'nenhum',
-  acaoSonoplastia: '',
-  observacao: '',
-  antecedenciaChamada: 10,
-  chamado: false,
-});
-
-const emptyCulto = (): Culto => ({
-  id: crypto.randomUUID(),
-  nome: '',
-  data: new Date().toISOString().split('T')[0],
-  horarioInicial: '19:00',
-  duracaoPrevista: 90,
-  status: 'planejado',
-});
 
 const ExecutingMomentProgress = ({ momento }: { momento: MomentoProgramacao }) => {
   const { currentMoment } = useLiveCultoView();
@@ -111,7 +82,7 @@ const Programacao = () => {
   const openAddMomento = () => {
     if (!viewingCultoId || !viewingCulto) return;
 
-    const novoMomento = emptyMomento(viewingCultoId, momentos.length);
+    const novoMomento = createEmptyMomento(viewingCultoId, momentos.length);
 
     if (momentos.length > 0) {
       const ultimoMomento = momentos[momentos.length - 1];
@@ -144,7 +115,7 @@ const Programacao = () => {
   };
 
   const openAddCulto = () => {
-    setEditingCulto(emptyCulto());
+    setEditingCulto(createEmptyCulto());
     setShowCultoForm(true);
   };
 
@@ -209,13 +180,29 @@ const Programacao = () => {
           return;
         }
 
-        // Usar o hook para buscar tokens da pessoa
-        // Por enquanto vou usar a abordagem de pedir ao usuário
-        toast({
-          title: 'Ir para Cadastro de Pessoas',
-          description: `Verifique o link de "${pessoa.name}" na página "Cadastro de Pessoas".`,
-        });
-        return;
+        // Buscar token existente ou gerar um novo
+        const { data: tokens } = await supabase
+          .from('person_access_tokens')
+          .select('token')
+          .eq('person_id', pessoa.id)
+          .eq('is_active', true)
+          .limit(1);
+
+        let token = tokens?.[0]?.token;
+
+        if (!token) {
+          const { generateSecureToken } = await import('@/types/people');
+          const newToken = generateSecureToken();
+          const { data: created, error: insertError } = await supabase
+            .from('person_access_tokens')
+            .insert([{ person_id: pessoa.id, token: newToken, is_active: true }])
+            .select('token')
+            .single();
+          if (insertError) throw insertError;
+          token = created.token;
+        }
+
+        link = `${window.location.origin}/equipe-musica/${token}`;
       }
 
       if (navigator.clipboard?.writeText) {
@@ -403,7 +390,7 @@ const Programacao = () => {
               {momentos.length > 0 && (
                 <>
                   <button
-                    onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
+                    onClick={async () => { const { exportarProgramacaoImagem } = await import('@/utils/exportProgramacaoImagem'); exportarProgramacaoImagem(viewingCulto, momentos); }}
                     className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
                   >
                     <ImageDown className="w-4 h-4" /> Imagem
@@ -426,7 +413,7 @@ const Programacao = () => {
         {isMobile && momentos.length > 0 && (
           <div className="mb-4 grid grid-cols-3 gap-2">
             <button
-              onClick={() => exportarProgramacaoImagem(viewingCulto, momentos)}
+              onClick={async () => { const { exportarProgramacaoImagem } = await import('@/utils/exportProgramacaoImagem'); exportarProgramacaoImagem(viewingCulto, momentos); }}
               className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-3 py-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80"
             >
               <ImageDown className="h-4 w-4" /> Imagem

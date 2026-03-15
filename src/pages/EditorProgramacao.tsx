@@ -1,19 +1,14 @@
 import { useState } from 'react';
 import { useCulto } from '@/contexts/CultoContext';
 import type { MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
-import { calcularHorarioTermino } from '@/types/culto';
+import { calcularHorarioTermino, createEmptyMomento } from '@/types/culto';
 import { Plus, Trash2, Edit2, Save, X, Settings } from 'lucide-react';
 import ResponsavelSelector from '@/components/ResponsavelSelector';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 const TIPOS_MIDIA: TipoMidia[] = ['audio', 'video', 'nenhum'];
 
-const emptyMomento = (cultoId: string, ordem: number): MomentoProgramacao => ({
-  id: crypto.randomUUID(), cultoId, ordem, bloco: '', horarioInicio: '09:00', duracao: 5,
-  atividade: '', responsavel: '', ministerio: '', funcao: '', fotoUrl: '',
-  tipoMomento: 'nenhum', tipoMidia: 'nenhum', acaoSonoplastia: '', observacao: '',
-  antecedenciaChamada: 10, chamado: false,
-});
+
 
 const EditorProgramacao = () => {
   const { culto, setCulto, momentos, addMomento, updateMomento, removeMomento } = useCulto();
@@ -35,7 +30,7 @@ const EditorProgramacao = () => {
     setShowAdd(true);
     setEditingId(null);
     setNewBlocoMode(false);
-    const novo = emptyMomento(culto.id, momentos.length);
+    const novo = createEmptyMomento(culto.id, momentos.length);
     if (bloco) {
       const blocoMomentos = momentos.filter(m => m.bloco === bloco);
       const last = blocoMomentos[blocoMomentos.length - 1];

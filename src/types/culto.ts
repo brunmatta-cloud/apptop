@@ -97,3 +97,38 @@ export function statusLabel(status: MomentStatus): string {
   };
   return labels[status];
 }
+
+// Factory functions for creating new entities with consistent defaults.
+
+export function createEmptyMomento(cultoId: string, ordem: number, horarioInicio = '19:00'): MomentoProgramacao {
+  return {
+    id: crypto.randomUUID(),
+    cultoId,
+    ordem,
+    bloco: '',
+    horarioInicio,
+    duracao: 5,
+    atividade: '',
+    responsavel: '',
+    ministerio: '',
+    funcao: '',
+    fotoUrl: '',
+    tipoMomento: 'nenhum',
+    tipoMidia: 'nenhum',
+    acaoSonoplastia: '',
+    observacao: '',
+    antecedenciaChamada: 10,
+    chamado: false,
+  };
+}
+
+export function createEmptyCulto(): Culto {
+  return {
+    id: crypto.randomUUID(),
+    nome: '',
+    data: new Date().toISOString().split('T')[0],
+    horarioInicial: '19:00',
+    duracaoPrevista: 90,
+    status: 'planejado',
+  };
+}
