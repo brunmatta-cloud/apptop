@@ -3,6 +3,7 @@ import { useCulto } from '@/contexts/CultoContext';
 import type { MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
 import { calcularHorarioTermino } from '@/types/culto';
 import { Plus, Trash2, Edit2, Save, X, Settings } from 'lucide-react';
+import ResponsavelSelector from '@/components/ResponsavelSelector';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 const TIPOS_MIDIA: TipoMidia[] = ['audio', 'video', 'nenhum'];
@@ -106,7 +107,10 @@ const EditorProgramacao = () => {
               />
             )}
           </div>
-          <div><label className={labelClass}>Responsável</label><input className={inputClass} value={formData.responsavel} onChange={e => setFormData({ ...formData, responsavel: e.target.value })} /></div>
+          <ResponsavelSelector 
+            value={formData.responsavel}
+            onChange={(value) => setFormData({ ...formData, responsavel: value })}
+          />
           <div><label className={labelClass}>Ministério</label><input className={inputClass} value={formData.ministerio} onChange={e => setFormData({ ...formData, ministerio: e.target.value })} /></div>
           <div><label className={labelClass}>Função</label><input className={inputClass} value={formData.funcao} onChange={e => setFormData({ ...formData, funcao: e.target.value })} /></div>
           <div><label className={labelClass}>Horário Início</label><input type="time" className={inputClass} value={formData.horarioInicio} onChange={e => setFormData({ ...formData, horarioInicio: e.target.value })} /></div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useCulto, useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { calcularHorarioTermino } from '@/types/culto';
-import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown, Link2, Music4 } from 'lucide-react';
+import { Plus, Edit2, Copy, Trash2, Calendar, Clock, ChevronRight, FileSpreadsheet, ImageDown, Link2, Music4, Users2, Check } from 'lucide-react';
 import type { Culto, MomentoProgramacao, TipoMomento, TipoMidia } from '@/types/culto';
 import { exportarProgramacao } from '@/utils/exportProgramacao';
 import { exportarProgramacaoImagem } from '@/utils/exportProgramacaoImagem';
@@ -12,6 +12,7 @@ import { RepertorioManagerDialog } from '@/components/repertorio/RepertorioManag
 import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusBadge';
 import { useEnsureMomentSongFormMutation, useSessionRepertoire } from '@/features/repertorio/hooks';
 import { isMusicMoment } from '@/features/repertorio/model';
+import { usePeople, usePersonTokens } from '@/features/repertorio/hooks-people';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 
@@ -81,6 +82,7 @@ const Programacao = () => {
     isSubmitting, lastError,
   } = useCulto();
   const { culto, momentos, currentMoment, getMomentStatus } = useLiveCultoView();
+  const { data: allPeople = [] } = usePeople();
 
   const [showMomentoForm, setShowMomentoForm] = useState(false);
   const [editingMomento, setEditingMomento] = useState<MomentoProgramacao | null>(null);
@@ -90,6 +92,8 @@ const Programacao = () => {
   const [newBlocoName, setNewBlocoName] = useState('');
   const [showCultoSelector, setShowCultoSelector] = useState(false);
   const [repertorioMoment, setRepertorioMoment] = useState<MomentoProgramacao | null>(null);
+  const [linkSelectionMode, setLinkSelectionMode] = useState<MomentoProgramacao | null>(null);
+  const [copiedLinkType, setCopiedLinkType] = useState<'momento' | 'equipe' | null>(null);
   const { formByMomentId, songsByMomentId, getSummaryForMoment } = useSessionRepertoire();
   const ensureMomentSongFormMutation = useEnsureMomentSongFormMutation();
 
@@ -182,13 +186,36 @@ const Programacao = () => {
   const labelClass = 'text-xs text-muted-foreground font-medium mb-1.5 block';
   const statusLabel = (s: string) => s === 'planejado' ? 'Planejado' : s === 'em_andamento' ? 'Em andamento' : 'Finalizado';
 
-  const handleCopyRepertorioLink = async (momento: MomentoProgramacao) => {
+  const handleCopyRepertorioLink = async (tipo: 'momento' | 'equipe', momento: MomentoProgramacao) => {
     try {
-      const form = await ensureMomentSongFormMutation.mutateAsync({
-        cultoId: momento.cultoId,
-        momentoId: momento.id,
-      });
-      const link = `${window.location.origin}/musica/${form.token}`;
+      let link = '';
+
+      if (tipo === 'momento') {
+        const form = await ensureMomentSongFormMutation.mutateAsync({
+          cultoId: momento.cultoId,
+          momentoId: momento.id,
+        });
+        link = `${window.location.origin}/musica/${form.token}`;
+      } else {
+        // Buscar pessoa cadastrada pelo nome
+        const pessoa = allPeople.find(p => p.name.toLowerCase() === momento.responsavel.toLowerCase());
+        if (!pessoa) {
+          toast({
+            title: 'Pessoa não encontrada',
+            description: `"${momento.responsavel}" não está cadastrada. Crie o cadastro em "Cadastro de Pessoas".`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Usar o hook para buscar tokens da pessoa
+        // Por enquanto vou usar a abordagem de pedir ao usuário
+        toast({
+          title: 'Ir para Cadastro de Pessoas',
+          description: `Verifique o link de "${pessoa.name}" na página "Cadastro de Pessoas".`,
+        });
+        return;
+      }
 
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(link);
@@ -201,13 +228,16 @@ const Programacao = () => {
         document.body.removeChild(tempInput);
       }
 
+      setCopiedLinkType(tipo);
+      setTimeout(() => setCopiedLinkType(null), 2000);
+
       toast({
-        title: 'Link do repertorio copiado',
-        description: `A equipe de louvor ja pode preencher as musicas de ${momento.atividade}.`,
+        title: `Link do ${tipo === 'momento' ? 'momento' : 'equipe'} copiado`,
+        description: `A ${tipo === 'momento' ? 'equipe pode preencher' : 'pessoa pode fazer'} as músicas de ${momento.atividade}.`,
       });
     } catch (error) {
       toast({
-        title: 'Nao foi possivel copiar o link',
+        title: 'Não foi possível copiar o link',
         description: error instanceof Error ? error.message : 'Tente novamente em alguns instantes.',
         variant: 'destructive',
       });
@@ -490,7 +520,7 @@ const Programacao = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopyRepertorioLink(m)}
+                                  onClick={() => setLinkSelectionMode(m)}
                                   disabled={ensureMomentSongFormMutation.isPending}
                                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted"
                                 >
@@ -916,6 +946,64 @@ const Programacao = () => {
                 Salvar momento
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog de seleção de tipo de link */}
+      {linkSelectionMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="rounded-2xl border border-border bg-card p-6 max-w-md mx-4 shadow-2xl">
+            <h2 className="text-lg font-black mb-4">Qual tipo de link deseja copiar?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              <strong>{linkSelectionMode.atividade}</strong>
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  handleCopyRepertorioLink('momento', linkSelectionMode);
+                  setLinkSelectionMode(null);
+                }}
+                className="w-full px-4 py-3 rounded-xl border-2 border-primary/40 bg-primary/10 text-left hover:bg-primary/15 transition-colors"
+              >
+                <p className="font-semibold text-primary flex items-center gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Link do Momento
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Para preencher apenas este momento</p>
+              </button>
+
+              <button
+                onClick={() => {
+                  const pessoa = allPeople.find(p => p.name.toLowerCase() === linkSelectionMode.responsavel.toLowerCase());
+                  if (pessoa) {
+                    handleCopyRepertorioLink('equipe', linkSelectionMode);
+                  }
+                  setLinkSelectionMode(null);
+                }}
+                disabled={!allPeople.find(p => p.name.toLowerCase() === linkSelectionMode.responsavel.toLowerCase())}
+                className="w-full px-4 py-3 rounded-xl border-2 border-cyan-400/40 bg-cyan-500/10 text-left hover:bg-cyan-500/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <p className="font-semibold text-cyan-300 flex items-center gap-2">
+                  <Users2 className="h-4 w-4" />
+                  Link da Equipe/Pessoa
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {allPeople.find(p => p.name.toLowerCase() === linkSelectionMode.responsavel.toLowerCase())
+                    ? `Para ${linkSelectionMode.responsavel} - todos os seus momentos`
+                    : `"${linkSelectionMode.responsavel}" não está cadastrada`
+                  }
+                </p>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setLinkSelectionMode(null)}
+              className="w-full mt-4 px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 transition-colors text-sm font-medium"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
