@@ -68,35 +68,35 @@ export const NextActionEnhanced = memo(function NextActionEnhanced({
 
   return (
     <div className={cn(
-      'rounded-lg transition-all duration-300 border-2 p-2.5 h-full flex flex-col overflow-hidden',
+      'rounded-2xl transition-all duration-300 border-2 p-3 h-full flex flex-col overflow-hidden backdrop-blur-sm',
       isUrgent 
-        ? 'bg-gradient-to-br from-red-600/40 via-orange-500/35 to-red-700/40 border-red-400/70 shadow-lg shadow-red-600/30' 
-        : 'bg-gradient-to-br from-cyan-600/35 via-blue-600/30 to-indigo-700/35 border-cyan-400/60 shadow-lg shadow-cyan-600/25'
+        ? 'bg-gradient-to-br from-red-600/50 via-orange-500/45 to-red-700/50 border-red-400/80 shadow-2xl shadow-red-600/40' 
+        : 'bg-gradient-to-br from-cyan-600/45 via-blue-600/40 to-indigo-700/45 border-cyan-400/70 shadow-2xl shadow-cyan-600/35'
     )}>
       {/* HEADER */}
-      <div className="flex items-start justify-between gap-2 mb-1.5 pb-1.5 border-b border-white/20">
+      <div className="flex items-start justify-between gap-2 mb-2 pb-2 border-b-2 border-white/30">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            {showAlert && <AlertCircle className="h-4 w-4 text-yellow-300 animate-pulse shrink-0" />}
-            <span className={cn('text-[11px] font-black uppercase tracking-tight', isUrgent ? 'text-yellow-200' : 'text-cyan-100')}>
-              {isUrgent ? '⚠ ATENÇÃO!' : '▶▶ PRÓXIMO A EXECUTAR'}
+          <div className="flex items-center gap-1.5 mb-1">
+            {showAlert && <AlertCircle className="h-5 w-5 text-yellow-300 animate-pulse shrink-0" />}
+            <span className={cn('text-xs font-black uppercase tracking-wider', isUrgent ? 'text-yellow-100 drop-shadow-lg' : 'text-cyan-50 drop-shadow-lg')}>
+              {isUrgent ? '🚨 EM BREVE!' : '▶▶ PRÓXIMO A EXECUTAR'}
             </span>
           </div>
-          <h3 className="font-display font-black text-sm line-clamp-2 text-white leading-tight">{nextSoundAction.atividade}</h3>
-          <p className="text-[10px] text-slate-100 line-clamp-1 font-semibold">{nextSoundAction.responsavel}</p>
+          <h3 className="font-display font-black text-base line-clamp-2 text-white leading-tight drop-shadow-md">{nextSoundAction.atividade}</h3>
+          <p className="text-xs text-white/90 line-clamp-1 font-bold mt-0.5">{nextSoundAction.responsavel}</p>
         </div>
 
-        {/* TIMER */}
+        {/* TIMER GRANDE E DESTACADO */}
         <div className={cn(
-          'text-center px-2.5 py-2 rounded-xl shrink-0 font-mono flex flex-col items-center justify-center min-w-fit',
+          'text-center px-3.5 py-2.5 rounded-2xl shrink-0 font-mono flex flex-col items-center justify-center min-w-fit border-2',
           isUrgent 
-            ? 'bg-yellow-300/90 text-red-900 shadow-lg shadow-yellow-500/40' 
-            : 'bg-white/90 text-blue-900 shadow-lg shadow-white/30'
+            ? 'bg-gradient-to-b from-yellow-300 to-amber-300 text-red-900 shadow-2xl shadow-yellow-500/50 border-yellow-200' 
+            : 'bg-gradient-to-b from-white to-slate-100 text-blue-900 shadow-2xl shadow-white/40 border-white/50'
         )}>
-          <p className={cn('font-black leading-none', isUrgent ? 'text-2xl' : 'text-lg')}>
+          <p className={cn('font-black leading-none tracking-tight', isUrgent ? 'text-3xl' : 'text-2xl')}>
             {Number.isFinite(remainingMsUntilNext) ? formatTimerMs(remainingMsUntilNext) : '--:--'}
           </p>
-          <p className="text-[9px] font-black uppercase mt-0.5 opacity-90">
+          <p className="text-[10px] font-black uppercase mt-1 opacity-80">
             {isUrgent ? 'SECS' : 'ATÉ'}
           </p>
         </div>

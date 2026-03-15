@@ -71,66 +71,66 @@ const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
   }
 
   return (
-    <div className="glass-card border border-status-executing/40 bg-status-executing/15 p-3 h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-status-executing/30">
-        <span className="h-3 w-3 rounded-full bg-status-executing animate-pulse" />
-        <span className="text-xs font-black uppercase text-status-executing tracking-wide">Executando Agora</span>
+    <div className="glass-card border-2 border-cyan-400/40 bg-gradient-to-br from-cyan-900/30 via-blue-900/25 to-slate-900/20 p-4 h-full flex flex-col shadow-2xl shadow-cyan-600/20 rounded-2xl backdrop-blur-sm">
+      <div className="flex items-center gap-2.5 mb-3 pb-3 border-b-2 border-cyan-400/30">
+        <span className="h-4 w-4 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-400/60" />
+        <span className="text-sm font-black uppercase text-cyan-300 tracking-wider drop-shadow-lg">▶ Executando Agora</span>
       </div>
 
-      <div className="flex items-start gap-2 mb-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-executing/20 text-sm font-bold">
+      <div className="flex items-start gap-3 mb-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/40 to-blue-500/40 text-lg font-bold border border-cyan-400/50 shadow-lg">
           {getMediaIcon(currentMoment.tipoMidia)}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-black leading-tight text-white">{currentMoment.atividade}</h2>
-          <p className="truncate text-xs text-status-executing/80 font-semibold">{currentMoment.responsavel}</p>
+          <h2 className="truncate text-base font-black leading-tight text-white drop-shadow-lg">{currentMoment.atividade}</h2>
+          <p className="truncate text-xs text-cyan-300/80 font-bold mt-1">{currentMoment.responsavel}</p>
         </div>
       </div>
 
       {currentMoment.acaoSonoplastia && (
-        <div className="mb-2 rounded-lg border border-primary/30 bg-primary/15 p-2">
-          <p className="text-[10px] font-bold uppercase text-primary mb-0.5 tracking-wide">Ação</p>
-          <p className="text-sm font-semibold text-white line-clamp-2">{currentMoment.acaoSonoplastia}</p>
+        <div className="mb-3 rounded-xl border-2 border-cyan-400/40 bg-cyan-500/20 backdrop-blur-sm p-2.5 shadow-lg">
+          <p className="text-[10px] font-black uppercase text-cyan-200 mb-1 tracking-wide drop-shadow">Ação</p>
+          <p className="text-sm font-bold text-white line-clamp-2">{currentMoment.acaoSonoplastia}</p>
         </div>
       )}
 
       {/* Músicas do momento */}
       {songs.length > 0 && (
-        <div className="mb-2 space-y-1 px-2 py-2 rounded-lg border border-border/50 bg-background/50">
-          <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-wide mb-1">Músicas ({songs.length})</p>
-          <div className="space-y-1">
+        <div className="mb-3 space-y-1.5 px-3 py-2.5 rounded-xl border-2 border-blue-400/30 bg-blue-500/15 backdrop-blur-sm">
+          <p className="text-xs font-black uppercase text-blue-200 tracking-wider mb-2 drop-shadow">♪ Músicas ({songs.length})</p>
+          <div className="space-y-1.5">
             {songs.map((song, idx) => (
-              <div key={song.id} className="flex items-center gap-1.5 text-xs group">
-                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-bold text-white transition-all ${
+              <div key={song.id} className="flex items-center gap-2 text-xs group">
+                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-md transition-all ${
                   playedSongIndices.has(idx)
-                    ? 'bg-green-500/70 text-white'
-                    : 'bg-primary/60 group-hover:bg-primary/80'
+                    ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-green-600/40'
+                    : 'bg-gradient-to-br from-blue-500 to-blue-600 group-hover:shadow-lg shadow-blue-600/40'
                 }`}>
                   {playedSongIndices.has(idx) ? '✓' : idx + 1}
                 </div>
                 <span className={`truncate flex-1 font-semibold transition-all ${
                   playedSongIndices.has(idx)
-                    ? 'text-muted-foreground line-through opacity-60'
-                    : 'text-foreground'
+                    ? 'text-slate-400 line-through opacity-60'
+                    : 'text-white'
                 }`}>
                   {song.title || 'Sem título'}
                 </span>
-                {song.has_media && <span className="px-1.5 py-0.5 rounded text-[9px] bg-primary/30 text-primary shrink-0 font-bold">M</span>}
-                {song.has_playback && <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/30 text-emerald-300 shrink-0 font-bold">P</span>}
+                {song.has_media && <span className="px-2 py-1 rounded-lg text-[8px] bg-purple-500/40 text-purple-200 shrink-0 font-bold border border-purple-400/50">🎨</span>}
+                {song.has_playback && <span className="px-2 py-1 rounded-lg text-[8px] bg-emerald-500/40 text-emerald-200 shrink-0 font-bold border border-emerald-400/50">▶</span>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="mt-auto pt-2 border-t border-status-executing/30">
-        <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground gap-1 font-semibold">
+      <div className="mt-auto pt-3 border-t-2 border-cyan-400/30">
+        <div className="mb-2 flex items-center justify-between text-xs text-white/80 gap-1 font-bold">
           <span>{tipoMomentoLabel(currentMoment.tipoMomento)}</span>
           <span>{currentMoment.tipoMidia === 'nenhum' ? 'Nenhuma' : currentMoment.tipoMidia === 'audio' ? 'Música' : 'Vídeo'}</span>
         </div>
-        <div className="progress-bar h-2 rounded-full mb-1.5 bg-muted/30">
+        <div className="progress-bar h-2.5 rounded-full mb-2 bg-slate-700/60 border border-cyan-400/30 overflow-hidden shadow-inner">
           <div
-            className="progress-bar-fill rounded-full bg-status-executing"
+            className="progress-bar-fill h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/50"
             style={{
               transform: `scaleX(${currentProgress / 100})`,
               transformOrigin: 'left',
@@ -138,9 +138,9 @@ const CurrentSoundMomentCard = memo(function CurrentSoundMomentCard({
             }}
           />
         </div>
-        <div className="flex justify-between text-[11px] text-muted-foreground font-bold">
+        <div className="flex justify-between text-xs text-white/80 font-bold">
           <span>{currentMoment.horarioInicio}</span>
-          <span className="font-mono text-status-executing text-sm">
+          <span className="font-mono text-base font-black text-cyan-300 drop-shadow-lg">
             {formattedRemaining}
           </span>
           <span>{calcularHorarioTermino(currentMoment.horarioInicio, currentMoment.duracao)}</span>
@@ -288,7 +288,7 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
       {/* CONTEÚDO PRINCIPAL - LAYOUT OTIMIZADO */}
       <div className="flex-1 overflow-hidden flex gap-1.5 p-2">
         {/* COLUNA ESQUERDA - Próxima Ação e Ação Atual */}
-        <div className="flex flex-col gap-1.5 overflow-hidden" style={{ width: '48%' }}>
+        <div className="flex flex-col gap-1.5 overflow-hidden" style={{ width: '32%' }}>
           {/* Próxima Ação */}
           <div className="overflow-hidden flex-1 rounded-lg">
             <NextActionEnhanced
@@ -306,17 +306,17 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
           </div>
         </div>
 
-        {/* COLUNA DIREITA - Músicas com Destaque + Próximos Momentos */}
+        {/* COLUNA DIREITA - Músicas e Próximos Momentos em Modo Vertical */}
         <div className="flex flex-col gap-1.5 overflow-hidden flex-1">
-          {/* Músicas com Destaque (70%) */}
-          <div className="overflow-hidden rounded-lg" style={{ flex: '1.2' }}>
+          {/* Músicas da Programação (55%) */}
+          <div className="overflow-hidden rounded-lg" style={{ flex: '1.1' }}>
             <SonoplastiaMusicCompact
               momentos={momentos}
               songsByMomentId={songsByMomentId}
             />
           </div>
           
-          {/* Próximos Momentos (30%) */}
+          {/* Próximos Momentos (45%) */}
           <div className="overflow-hidden rounded-lg flex-1">
             <UpcomingMomentsPreview
               momentos={momentos}
