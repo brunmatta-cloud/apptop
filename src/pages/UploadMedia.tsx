@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useUploadMedia } from '@/domains/platform/hooks';
+import { toast } from '@/hooks/use-toast';
 import type { MediaType, UploadStep } from '@/domains/platform/types';
 
 const TYPE_OPTIONS: { value: MediaType; label: string; icon: React.ReactNode; accept: string; desc: string }[] = [
@@ -48,9 +49,31 @@ export default function UploadMedia() {
 
   const currentTypeConfig = TYPE_OPTIONS.find((t) => t.value === mediaType)!;
 
+  const ALLOWED_TYPES: Record<MediaType, string[]> = {
+    video: ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm'],
+    slides: ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/pdf', 'application/vnd.ms-powerpoint'],
+    image: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/gif'],
+  };
+  const ALLOWED_EXT: Record<MediaType, RegExp> = {
+    video: /\.(mp4|mov|avi|mkv|webm)$/i,
+    slides: /\.(pptx|ppt|pdf|key)$/i,
+    image: /\.(jpe?g|png|svg|webp|gif)$/i,
+  };
+  const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
+
+    if (!ALLOWED_TYPES[mediaType].includes(selected.type) && !selected.name.match(ALLOWED_EXT[mediaType])) {
+      toast({ title: 'Tipo de arquivo não permitido', description: `Envie apenas ${currentTypeConfig.desc}.`, variant: 'destructive' });
+      return;
+    }
+    if (selected.size > MAX_FILE_SIZE) {
+      toast({ title: 'Arquivo muito grande', description: 'O tamanho máximo é 200MB.', variant: 'destructive' });
+      return;
+    }
+
     setFile(selected);
     if (!title) {
       setTitle(selected.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '));

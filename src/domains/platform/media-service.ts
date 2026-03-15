@@ -8,8 +8,10 @@ import type {
   Song, MediaItem, MediaSyncJob, MediaType,
   UploadStatus, AvailabilityStatus, SyncJobStatus,
 } from './types';
+import { logger } from '@/lib/logger';
 
-const LOG_PREFIX = '[7Flow:Media]';
+const log = logger.scoped('Media');
+
 const DEFAULT_ORG = '00000000-0000-0000-0000-000000000000';
 
 // -------------------------------------------------------
@@ -42,7 +44,7 @@ export async function listSongs(
 
   const { data, error, count } = await query;
   if (error) {
-    console.error(`${LOG_PREFIX} listSongs error`, error);
+    log.error(`listSongs error`, error);
     return { data: [], count: 0 };
   }
   return { data: (data ?? []) as Song[], count: count ?? 0 };
@@ -79,7 +81,7 @@ export async function createSong(song: Partial<Song>): Promise<Song> {
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} createSong error`, error);
+    log.error(`createSong error`, error);
     throw new Error(`Falha ao cadastrar música: ${error.message}`);
   }
   return data as Song;
@@ -94,7 +96,7 @@ export async function updateSong(id: string, updates: Partial<Song>): Promise<So
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} updateSong error`, error);
+    log.error(`updateSong error`, error);
     throw new Error(`Falha ao atualizar música: ${error.message}`);
   }
   return data as Song;
@@ -103,7 +105,7 @@ export async function updateSong(id: string, updates: Partial<Song>): Promise<So
 export async function deleteSong(id: string): Promise<boolean> {
   const { error } = await supabase.from('songs').delete().eq('id', id);
   if (error) {
-    console.error(`${LOG_PREFIX} deleteSong error`, error);
+    log.error(`deleteSong error`, error);
     throw new Error(`Falha ao excluir música: ${error.message}`);
   }
   return true;
@@ -162,7 +164,7 @@ export async function listMediaItems(
 
   const { data, error, count } = await query;
   if (error) {
-    console.error(`${LOG_PREFIX} listMediaItems error`, error);
+    log.error(`listMediaItems error`, error);
     return { data: [], count: 0 };
   }
   return { data: (data ?? []) as MediaItem[], count: count ?? 0 };
@@ -190,7 +192,7 @@ export async function createMediaItem(item: Partial<MediaItem>): Promise<MediaIt
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} createMediaItem error`, error);
+    log.error(`createMediaItem error`, error);
     throw new Error(`Falha ao registrar mídia: ${error.message}`);
   }
   return data as MediaItem;
@@ -205,7 +207,7 @@ export async function updateMediaItem(id: string, updates: Partial<MediaItem>): 
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} updateMediaItem error`, error);
+    log.error(`updateMediaItem error`, error);
     throw new Error(`Falha ao atualizar mídia: ${error.message}`);
   }
   return data as MediaItem;
@@ -214,7 +216,7 @@ export async function updateMediaItem(id: string, updates: Partial<MediaItem>): 
 export async function deleteMediaItem(id: string): Promise<boolean> {
   const { error } = await supabase.from('media_items').delete().eq('id', id);
   if (error) {
-    console.error(`${LOG_PREFIX} deleteMediaItem error`, error);
+    log.error(`deleteMediaItem error`, error);
     throw new Error(`Falha ao excluir mídia: ${error.message}`);
   }
   return true;
@@ -260,7 +262,7 @@ export async function uploadSong(
   try {
     // Step 1: Upload file to storage
     onProgress?.('uploading', 10);
-    console.log(`${LOG_PREFIX} Uploading ${safeName} to ${bucket}/${storagePath}`);
+    console.log(`Uploading ${safeName} to ${bucket}/${storagePath}`);
 
     const { error: uploadError } = await supabase.storage
       .from(bucket)
@@ -270,7 +272,7 @@ export async function uploadSong(
       });
 
     if (uploadError) {
-      console.error(`${LOG_PREFIX} Upload failed`, uploadError);
+      log.error(`Upload failed`, uploadError);
       return { ok: false, error: uploadError.message, step: 'uploading' };
     }
 
@@ -313,12 +315,12 @@ export async function uploadSong(
       .single();
 
     if (jobError) {
-      console.warn(`${LOG_PREFIX} Sync job creation failed (song still registered)`, jobError);
+      log.warn(`Sync job creation failed (song still registered)`, jobError);
     }
 
     onProgress?.('available', 100);
 
-    console.log(`${LOG_PREFIX} Upload complete: ${song.title} (${song.id})`);
+    console.log(`Upload complete: ${song.title} (${song.id})`);
 
     return {
       ok: true,
@@ -326,7 +328,7 @@ export async function uploadSong(
       job: jobData as MediaSyncJob | undefined,
     };
   } catch (err) {
-    console.error(`${LOG_PREFIX} Upload unexpected error`, err);
+    log.error(`Upload unexpected error`, err);
     return { ok: false, error: err instanceof Error ? err.message : 'Unknown error', step: 'uploading' };
   }
 }

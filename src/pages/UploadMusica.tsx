@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useUploadSong } from '@/domains/platform/hooks';
+import { toast } from '@/hooks/use-toast';
 import type { UploadStep } from '@/domains/platform/types';
 
 const STEP_LABELS: Record<UploadStep, string> = {
@@ -47,9 +48,24 @@ export default function UploadMusica() {
   const [file, setFile] = useState<File | null>(null);
   const [duration, setDuration] = useState<number | undefined>();
 
+  const ALLOWED_AUDIO_TYPES = [
+    'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac',
+    'audio/aac', 'audio/mp4', 'audio/x-m4a', 'audio/webm',
+  ];
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
+
+    if (!ALLOWED_AUDIO_TYPES.includes(selected.type) && !selected.name.match(/\.(mp3|wav|ogg|flac|aac|m4a|weba)$/i)) {
+      toast({ title: 'Tipo de arquivo não permitido', description: 'Envie apenas MP3, WAV, OGG, FLAC, AAC ou M4A.', variant: 'destructive' });
+      return;
+    }
+    if (selected.size > MAX_FILE_SIZE) {
+      toast({ title: 'Arquivo muito grande', description: 'O tamanho máximo é 50MB.', variant: 'destructive' });
+      return;
+    }
 
     setFile(selected);
 

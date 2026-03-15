@@ -269,6 +269,7 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     connectionStatus: 'connecting',
   });
   const queueRef = useRef(Promise.resolve());
+  const commandCooldownRef = useRef<Record<string, number>>({});
 
   const updateConnectionStatus = useCallback((nextStatus?: string) => {
     if (nextStatus) {
@@ -493,6 +494,15 @@ export const SyncStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [applyRemoteState, calibrateServerClock, updateConnectionStatus]);
 
   const runCommand = useCallback(async (actionKey: string, command: string, payload: Record<string, unknown> = {}) => {
+    const COMMAND_COOLDOWN_MS = 300;
+    const now = Date.now();
+    const lastFired = commandCooldownRef.current[command] ?? 0;
+    if (now - lastFired < COMMAND_COOLDOWN_MS) {
+      logSync('command-throttled', { command, actionKey, cooldownMs: COMMAND_COOLDOWN_MS });
+      return;
+    }
+    commandCooldownRef.current[command] = now;
+
     queueRef.current = queueRef.current
       .catch(() => undefined)
       .then(async () => {

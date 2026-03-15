@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Upload, Music, MoreVertical, Play, ListPlus, Trash2,
-  Clock, Tag, Filter, ArrowUpDown, Loader2,
+  Clock, Tag, Filter, ArrowUpDown, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,17 +54,25 @@ export default function BibliotecaMusicas() {
   const [orderBy, setOrderBy] = useState<'title' | 'usage_count' | 'created_at'>('title');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Song | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const debouncedSearch = useDebounce(searchTerm);
 
-  const { data: result, isLoading } = useSongs({
+  // Reset page when filters change
+  React.useEffect(() => { setPage(0); }, [debouncedSearch, selectedTag, orderBy]);
 
+  const { data: result, isLoading, isFetching } = useSongs({
     search: debouncedSearch || undefined,
     tags: selectedTag ? [selectedTag] : undefined,
     orderBy,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
   });
 
   const songs = result?.data ?? [];
+  const totalCount = result?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const deleteMutation = useDeleteSong();
 
@@ -91,7 +99,7 @@ export default function BibliotecaMusicas() {
             <Music className="h-6 w-6" /> Biblioteca de Músicas
           </h1>
           <p className="text-sm text-muted-foreground">
-            {songs.length} música{songs.length !== 1 ? 's' : ''} na biblioteca
+            {totalCount} música{totalCount !== 1 ? 's' : ''} na biblioteca
           </p>
         </div>
         <Button onClick={() => navigate('/media/upload')}>
@@ -251,6 +259,36 @@ export default function BibliotecaMusicas() {
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} de {totalCount}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || isFetching}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {page + 1} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1 || isFetching}
+            >
+              Próxima <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
 

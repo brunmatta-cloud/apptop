@@ -12,19 +12,21 @@ import type {
   PlayerCommand,
   CommandStatus,
 } from './types';
+import { logger } from '@/lib/logger';
+
+const log = logger.scoped('Command');
 
 // -------------------------------------------------------
 // Logger for operational diagnostics
 // -------------------------------------------------------
 
-const LOG_PREFIX = '[7Flow:Command]';
 
 function logCommand(action: string, data?: Record<string, unknown>) {
-  console.log(`${LOG_PREFIX} ${action}`, data ?? '');
+  console.log(`${action}`, data ?? '');
 }
 
 function logError(action: string, error: unknown) {
-  console.error(`${LOG_PREFIX} ERROR ${action}`, error);
+  log.error(`ERROR ${action}`, error);
 }
 
 // -------------------------------------------------------

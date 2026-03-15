@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Search, Upload, Video, Image, Presentation, MoreVertical,
   Play, Trash2, Clock, Filter, ArrowUpDown, Loader2, FileType,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,17 +60,26 @@ export default function BibliotecaMedia() {
   const [searchTerm, setSearchTerm] = useState('');
   const [orderBy, setOrderBy] = useState<'title' | 'usage_count' | 'created_at'>('created_at');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const mediaType: MediaType | undefined = activeType === 'all' ? undefined : activeType as MediaType;
 
-  const { data: result, isLoading } = useMediaItems({
+  // Reset page when filters change
+  React.useEffect(() => { setPage(0); }, [searchTerm, selectedTag, orderBy, activeType]);
+
+  const { data: result, isLoading, isFetching } = useMediaItems({
     type: mediaType,
     search: searchTerm || undefined,
     tags: selectedTag ? [selectedTag] : undefined,
     orderBy,
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
   });
 
   const items = result?.data ?? [];
+  const totalCount = result?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -88,7 +98,7 @@ export default function BibliotecaMedia() {
             {config.icon} Biblioteca de Mídia
           </h1>
           <p className="text-sm text-muted-foreground">
-            {items.length} ite{items.length !== 1 ? 'ns' : 'm'} {activeType !== 'all' ? `(${config.label})` : ''}
+            {totalCount} ite{totalCount !== 1 ? 'ns' : 'm'} {activeType !== 'all' ? `(${config.label})` : ''}
           </p>
         </div>
         <Button onClick={() => navigate('/media/upload-media')}>
@@ -252,6 +262,36 @@ export default function BibliotecaMedia() {
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} de {totalCount}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || isFetching}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {page + 1} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1 || isFetching}
+            >
+              Próxima <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

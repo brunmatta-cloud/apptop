@@ -9,8 +9,10 @@ import type {
   DisplayOutput, DisplayState, PlayerState,
   DisplayType, DisplayMode, PlayerType, PlayerStatus,
 } from './types';
+import { logger } from '@/lib/logger';
 
-const LOG_PREFIX = '[7Flow:Display]';
+const log = logger.scoped('Display');
+
 
 // -------------------------------------------------------
 // DISPLAY OUTPUTS
@@ -24,7 +26,7 @@ export async function listDisplayOutputs(session_id: string): Promise<DisplayOut
     .order('name');
 
   if (error) {
-    console.error(`${LOG_PREFIX} listDisplayOutputs error`, error);
+    log.error(`listDisplayOutputs error`, error);
     return [];
   }
   return (data ?? []) as DisplayOutput[];
@@ -42,7 +44,7 @@ export async function createDisplayOutput(
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} createDisplayOutput error`, error);
+    log.error(`createDisplayOutput error`, error);
     return null;
   }
 
@@ -106,7 +108,7 @@ export async function updateDisplayState(
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} updateDisplayState error`, error);
+    log.error(`updateDisplayState error`, error);
     return null;
   }
   return data as DisplayState;
@@ -184,7 +186,7 @@ export async function upsertPlayerState(
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} upsertPlayerState error`, error);
+    log.error(`upsertPlayerState error`, error);
     return null;
   }
   return data as unknown as PlayerState;

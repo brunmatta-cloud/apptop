@@ -159,6 +159,9 @@ export function useGeneratePersonToken() {
       try {
         const token = generateSecureToken();
 
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
         const { data, error } = await supabase
           .from('person_access_tokens')
           .insert([
@@ -166,6 +169,7 @@ export function useGeneratePersonToken() {
               person_id: personId,
               token,
               is_active: true,
+              expires_at: expiresAt.toISOString(),
             },
           ])
           .select()

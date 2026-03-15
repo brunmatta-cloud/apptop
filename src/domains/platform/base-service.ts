@@ -7,8 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import type {
   Base, Executor, ExecutorMediaInventory, Session,
 } from './types';
+import { logger } from '@/lib/logger';
 
-const LOG_PREFIX = '[7Flow:Base]';
+const log = logger.scoped('Base');
+
 const DEFAULT_ORG = '00000000-0000-0000-0000-000000000000';
 
 // -------------------------------------------------------
@@ -23,7 +25,7 @@ export async function listBases(organization_id = DEFAULT_ORG): Promise<Base[]> 
     .order('name');
 
   if (error) {
-    console.error(`${LOG_PREFIX} listBases error`, error);
+    log.error(`listBases error`, error);
     return [];
   }
   return (data ?? []) as Base[];
@@ -60,7 +62,7 @@ export async function createBase(base: Partial<Base>): Promise<Base> {
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} createBase error`, error);
+    log.error(`createBase error`, error);
     throw new Error(`Falha ao criar base: ${error.message}`);
   }
   return data as Base;
@@ -75,7 +77,7 @@ export async function updateBase(id: string, updates: Partial<Base>): Promise<Ba
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} updateBase error`, error);
+    log.error(`updateBase error`, error);
     throw new Error(`Falha ao atualizar base: ${error.message}`);
   }
   return data as Base;
@@ -84,7 +86,7 @@ export async function updateBase(id: string, updates: Partial<Base>): Promise<Ba
 export async function deleteBase(id: string): Promise<boolean> {
   const { error } = await supabase.from('bases').delete().eq('id', id);
   if (error) {
-    console.error(`${LOG_PREFIX} deleteBase error`, error);
+    log.error(`deleteBase error`, error);
     throw new Error(`Falha ao excluir base: ${error.message}`);
   }
   return true;
@@ -101,11 +103,11 @@ export async function setActiveBase(session_id: string, base_id: string | null):
     .eq('id', session_id);
 
   if (error) {
-    console.error(`${LOG_PREFIX} setActiveBase error`, error);
+    log.error(`setActiveBase error`, error);
     return false;
   }
 
-  console.log(`${LOG_PREFIX} Active base set to ${base_id} for session ${session_id}`);
+  console.log(`Active base set to ${base_id} for session ${session_id}`);
   return true;
 }
 
@@ -190,7 +192,7 @@ export async function registerExecutor(executor: Partial<Executor>): Promise<Exe
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} registerExecutor error`, error);
+    log.error(`registerExecutor error`, error);
     return null;
   }
   return data as Executor;

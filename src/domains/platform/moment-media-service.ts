@@ -6,8 +6,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { MomentSongV2, MomentMedia, Song, MediaItem } from './types';
+import { logger } from '@/lib/logger';
 
-const LOG_PREFIX = '[7Flow:MomentMedia]';
+const log = logger.scoped('MomentMedia');
+
 
 // -------------------------------------------------------
 // MOMENT SONGS (moment_songs_v2)
@@ -25,7 +27,7 @@ export async function listMomentSongs(momentId: string): Promise<MomentSongWithD
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error(`${LOG_PREFIX} listMomentSongs error`, error);
+    log.error(`listMomentSongs error`, error);
     return [];
   }
   return (data ?? []) as unknown as MomentSongWithDetails[];
@@ -41,7 +43,7 @@ export async function listMomentSongsBatch(momentIds: string[]): Promise<Record<
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error(`${LOG_PREFIX} listMomentSongsBatch error`, error);
+    log.error(`listMomentSongsBatch error`, error);
     return {};
   }
 
@@ -67,7 +69,7 @@ export async function addSongToMoment(momentId: string, songId: string, sortOrde
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} addSongToMoment error`, error);
+    log.error(`addSongToMoment error`, error);
     throw new Error(`Falha ao vincular música ao momento: ${error.message}`);
   }
   return data as MomentSongV2;
@@ -81,7 +83,7 @@ export async function removeSongFromMoment(momentId: string, songId: string): Pr
     .eq('song_id', songId);
 
   if (error) {
-    console.error(`${LOG_PREFIX} removeSongFromMoment error`, error);
+    log.error(`removeSongFromMoment error`, error);
     throw new Error(`Falha ao desvincular música: ${error.message}`);
   }
 }
@@ -118,7 +120,7 @@ export async function listMomentMedia(momentId: string): Promise<MomentMediaWith
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error(`${LOG_PREFIX} listMomentMedia error`, error);
+    log.error(`listMomentMedia error`, error);
     return [];
   }
   return (data ?? []) as unknown as MomentMediaWithDetails[];
@@ -134,7 +136,7 @@ export async function listMomentMediaBatch(momentIds: string[]): Promise<Record<
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error(`${LOG_PREFIX} listMomentMediaBatch error`, error);
+    log.error(`listMomentMediaBatch error`, error);
     return {};
   }
 
@@ -166,7 +168,7 @@ export async function addMediaToMoment(
     .single();
 
   if (error) {
-    console.error(`${LOG_PREFIX} addMediaToMoment error`, error);
+    log.error(`addMediaToMoment error`, error);
     throw new Error(`Falha ao vincular mídia ao momento: ${error.message}`);
   }
   return data as MomentMedia;
@@ -180,7 +182,7 @@ export async function removeMediaFromMoment(momentId: string, mediaItemId: strin
     .eq('media_item_id', mediaItemId);
 
   if (error) {
-    console.error(`${LOG_PREFIX} removeMediaFromMoment error`, error);
+    log.error(`removeMediaFromMoment error`, error);
     throw new Error(`Falha ao desvincular mídia: ${error.message}`);
   }
 }

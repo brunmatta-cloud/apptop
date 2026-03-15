@@ -23,17 +23,20 @@ export function useSongs(options?: {
   search?: string;
   tags?: string[];
   limit?: number;
+  offset?: number;
   orderBy?: 'title' | 'usage_count' | 'created_at';
 }) {
   return useQuery({
-    queryKey: ['songs', options?.search, options?.tags, options?.orderBy],
+    queryKey: ['songs', options?.search, options?.tags, options?.orderBy, options?.offset, options?.limit],
     queryFn: () => MediaService.listSongs(undefined, {
       search: options?.search,
       tags: options?.tags,
-      limit: options?.limit ?? 100,
+      limit: options?.limit ?? 50,
+      offset: options?.offset,
       orderBy: options?.orderBy,
     }),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -133,18 +136,21 @@ export function useMediaItems(options?: {
   search?: string;
   tags?: string[];
   limit?: number;
+  offset?: number;
   orderBy?: 'title' | 'usage_count' | 'created_at';
 }) {
   return useQuery({
-    queryKey: ['media-items', options?.type, options?.search, options?.tags, options?.orderBy],
+    queryKey: ['media-items', options?.type, options?.search, options?.tags, options?.orderBy, options?.offset, options?.limit],
     queryFn: () => MediaService.listMediaItems(undefined, {
       type: options?.type,
       search: options?.search,
       tags: options?.tags,
-      limit: options?.limit ?? 100,
+      limit: options?.limit ?? 50,
+      offset: options?.offset,
       orderBy: options?.orderBy,
     }),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 

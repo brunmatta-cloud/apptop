@@ -1217,6 +1217,12 @@ export type Database = {
           form_token: string
         }[]
       }
+      increment_song_usage: {
+        Args: {
+          song_uuid: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
