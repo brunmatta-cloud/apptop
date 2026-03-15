@@ -40,6 +40,7 @@ const DisplayView = React.lazy(() => import("./pages/DisplayView"));
 const DisplayManager = React.lazy(() => import("./pages/DisplayManager"));
 const GerenciarBases = React.lazy(() => import("./pages/GerenciarBases"));
 const SlidesControl = React.lazy(() => import("./pages/SlidesControl"));
+const EditorProgramacao = React.lazy(() => import("./pages/EditorProgramacao"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,7 +82,7 @@ const App = () => (
                       <Route path="/chamada" element={withPageGuard(<PainelChamada />)} />
                       <Route path="/confirmacao" element={withPageGuard(<ListaConfirmacao />)} />
                       <Route path="/programacao" element={withPageGuard(<Programacao />)} />
-                      <Route path="/editor" element={withPageGuard(<Programacao />)} />
+                      <Route path="/editor" element={withPageGuard(<EditorProgramacao />, "O editor de programacao encontrou um erro.")} />
                       <Route path="/linha-do-tempo" element={withPageGuard(<LinhaDoTempo />)} />
                       <Route path="/moderador" element={withPageGuard(<Moderador />)} />
                       <Route path="/artes" element={withPageGuard(<GeradorArtes />)} />
@@ -93,7 +94,7 @@ const App = () => (
                       <Route path="/pessoas" element={withPageGuard(<CadastroPessoas />)} />
                       <Route path="/debug-tokens" element={withPageGuard(<DebugTokens />, "A ferramenta de debug encontrou um erro.")} />
                       <Route path="/musica/:token" element={withPageGuard(<MusicaMomento />, "A pagina externa do repertorio falhou ao renderizar, mas o restante do app segue ativo.")} />
-                      <Route path="/equipe-musica/:token" element={withPageGuard(<MusicaMomento />, "A pagina externa do repertorio falhou ao renderizar, mas o restante do app segue ativo.")} />
+                      <Route path="/equipe-musica/:token" element={withPageGuard(<MusicaEquipe />, "A pagina da equipe musical falhou ao renderizar, mas o restante do app segue ativo.")} />
 
                       {/* Media Library Routes */}
                       <Route path="/media/upload" element={withPageGuard(<UploadMusica />, "A pagina de upload de musica encontrou um erro.")} />

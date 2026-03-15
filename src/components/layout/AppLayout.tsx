@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2, Music, Film, Headphones, MonitorPlay,
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2, Music, Film, Headphones, MonitorPlay, BarChart3, Edit, Presentation, Server,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,10 +31,13 @@ const navItems: NavItem[] = [
   { to: '/media', label: 'Biblioteca Midia', icon: Film },
   { to: '/media-control', label: 'Controle de Midia', icon: Headphones },
   { to: '/displays', label: 'Displays', icon: MonitorPlay },
+  { to: '/slides-control', label: 'Passador Slides', icon: Presentation },
+  { to: '/estatisticas', label: 'Estatisticas', icon: BarChart3 },
   { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
   // Admin & Debug
   { to: '/pessoas', label: 'Cadastro de Pessoas', icon: Users2, isAdmin: true },
   { to: '/debug-tokens', label: 'Debug Tokens', icon: Bug, isAdmin: true },
+  { to: '/settings/bases', label: 'Gerenciar Bases', icon: Server, isAdmin: true },
 ];
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
