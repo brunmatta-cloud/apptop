@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UsersPlus, X, Settings, User } from 'lucide-react';
+import { UserPlus, X, Settings, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePeople, useCreatePerson } from '@/features/repertorio/hooks-people';
 import type { CreatePersonInput } from '@/types/people';
@@ -101,7 +101,7 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
         <div className="glass-card p-4 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-3 mb-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm flex items-center gap-2">
-              <UsersPlus className="w-4 h-4 text-primary" />
+              <UserPlus className="w-4 h-4 text-primary" />
               Cadastrar Nova Pessoa
             </h3>
             <button
@@ -259,7 +259,7 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
                         }}
                         className="w-full px-3 py-2 rounded-md bg-gradient-to-r from-primary/20 to-primary/10 hover:from-primary/30 hover:to-primary/20 text-primary text-sm font-medium flex items-center justify-center gap-2 transition-all border border-primary/30"
                       >
-                        <UsersPlus className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
                         Cadastrar Primeira Pessoa
                       </button>
                     </div>
@@ -277,7 +277,7 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
                         }}
                         className="w-full px-3 py-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                       >
-                        <UsersPlus className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
                         Cadastrar Nova Pessoa
                       </button>
                     </div>
@@ -310,7 +310,7 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
                         }}
                         className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-t border-border/50 transition-colors text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-2"
                       >
-                        <UsersPlus className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
                         Cadastrar Nova Pessoa
                       </button>
                     </>

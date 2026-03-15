@@ -13,6 +13,7 @@ import { RepertorioStatusBadge } from '@/components/repertorio/RepertorioStatusB
 import { useEnsureMomentSongFormMutation, useSessionRepertoire } from '@/features/repertorio/hooks';
 import { isMusicMoment } from '@/features/repertorio/model';
 import { usePeople, usePersonTokens } from '@/features/repertorio/hooks-people';
+import ResponsavelSelector from '@/components/ResponsavelSelector';
 
 const TIPOS_MOMENTO: TipoMomento[] = ['musica_ao_vivo', 'playback', 'video', 'vinheta', 'oracao', 'fala', 'aviso', 'fundo_musical', 'nenhum'];
 
@@ -784,12 +785,9 @@ const Programacao = () => {
                 />
               </div>
               <div>
-                <label className={labelClass}>Responsavel</label>
-                <input
+                <ResponsavelSelector
                   value={editingMomento.responsavel}
-                  onChange={(e) => setEditingMomento({ ...editingMomento, responsavel: e.target.value })}
-                  className={inputClass}
-                  placeholder="Nome do participante"
+                  onChange={(value) => setEditingMomento({ ...editingMomento, responsavel: value })}
                 />
               </div>
               <div>
