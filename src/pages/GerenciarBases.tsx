@@ -80,6 +80,9 @@ export default function GerenciarBases() {
           supports_displays: true,
         });
       },
+      onSettled: () => {
+        // Always stop loading even on error
+      },
     });
   }, [newBase, createBase]);
 
@@ -87,6 +90,7 @@ export default function GerenciarBases() {
     if (!deleteTarget) return;
     deleteBase.mutate(deleteTarget.id, {
       onSuccess: () => setDeleteTarget(null),
+      onError: () => setDeleteTarget(null),
     });
   }, [deleteTarget, deleteBase]);
 

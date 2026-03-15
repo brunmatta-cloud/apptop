@@ -59,7 +59,7 @@ export async function getSong(id: string): Promise<Song | null> {
   return data as Song;
 }
 
-export async function createSong(song: Partial<Song>): Promise<Song | null> {
+export async function createSong(song: Partial<Song>): Promise<Song> {
   const { data, error } = await supabase
     .from('songs')
     .insert({
@@ -80,12 +80,12 @@ export async function createSong(song: Partial<Song>): Promise<Song | null> {
 
   if (error) {
     console.error(`${LOG_PREFIX} createSong error`, error);
-    return null;
+    throw new Error(`Falha ao cadastrar música: ${error.message}`);
   }
   return data as Song;
 }
 
-export async function updateSong(id: string, updates: Partial<Song>): Promise<Song | null> {
+export async function updateSong(id: string, updates: Partial<Song>): Promise<Song> {
   const { data, error } = await supabase
     .from('songs')
     .update(updates)
@@ -95,7 +95,7 @@ export async function updateSong(id: string, updates: Partial<Song>): Promise<So
 
   if (error) {
     console.error(`${LOG_PREFIX} updateSong error`, error);
-    return null;
+    throw new Error(`Falha ao atualizar música: ${error.message}`);
   }
   return data as Song;
 }
@@ -104,24 +104,27 @@ export async function deleteSong(id: string): Promise<boolean> {
   const { error } = await supabase.from('songs').delete().eq('id', id);
   if (error) {
     console.error(`${LOG_PREFIX} deleteSong error`, error);
-    return false;
+    throw new Error(`Falha ao excluir música: ${error.message}`);
   }
   return true;
 }
 
 export async function incrementSongUsage(id: string): Promise<void> {
-  // Direct SQL increment via raw update
-  const { data: song } = await supabase
-    .from('songs')
-    .select('usage_count')
-    .eq('id', id)
-    .single();
-
-  if (song) {
-    await supabase
+  // Atomic increment via RPC; falls back to direct update if RPC not available
+  const { error: rpcError } = await supabase.rpc('increment_song_usage', { song_uuid: id });
+  if (rpcError) {
+    // Fallback: direct increment (less safe but functional)
+    const { data: song } = await supabase
       .from('songs')
-      .update({ usage_count: (song.usage_count ?? 0) + 1 })
-      .eq('id', id);
+      .select('usage_count')
+      .eq('id', id)
+      .single();
+    if (song) {
+      await supabase
+        .from('songs')
+        .update({ usage_count: (song.usage_count ?? 0) + 1 })
+        .eq('id', id);
+    }
   }
 }
 
@@ -165,7 +168,7 @@ export async function listMediaItems(
   return { data: (data ?? []) as MediaItem[], count: count ?? 0 };
 }
 
-export async function createMediaItem(item: Partial<MediaItem>): Promise<MediaItem | null> {
+export async function createMediaItem(item: Partial<MediaItem>): Promise<MediaItem> {
   const { data, error } = await supabase
     .from('media_items')
     .insert({
@@ -188,12 +191,12 @@ export async function createMediaItem(item: Partial<MediaItem>): Promise<MediaIt
 
   if (error) {
     console.error(`${LOG_PREFIX} createMediaItem error`, error);
-    return null;
+    throw new Error(`Falha ao registrar mídia: ${error.message}`);
   }
   return data as MediaItem;
 }
 
-export async function updateMediaItem(id: string, updates: Partial<MediaItem>): Promise<MediaItem | null> {
+export async function updateMediaItem(id: string, updates: Partial<MediaItem>): Promise<MediaItem> {
   const { data, error } = await supabase
     .from('media_items')
     .update(updates)
@@ -203,7 +206,7 @@ export async function updateMediaItem(id: string, updates: Partial<MediaItem>): 
 
   if (error) {
     console.error(`${LOG_PREFIX} updateMediaItem error`, error);
-    return null;
+    throw new Error(`Falha ao atualizar mídia: ${error.message}`);
   }
   return data as MediaItem;
 }
@@ -212,7 +215,7 @@ export async function deleteMediaItem(id: string): Promise<boolean> {
   const { error } = await supabase.from('media_items').delete().eq('id', id);
   if (error) {
     console.error(`${LOG_PREFIX} deleteMediaItem error`, error);
-    return false;
+    throw new Error(`Falha ao excluir mídia: ${error.message}`);
   }
   return true;
 }
@@ -287,12 +290,6 @@ export async function uploadSong(
       upload_status: 'uploaded' as UploadStatus,
       uploaded_by: 'web',
     });
-
-    if (!song) {
-      // Cleanup storage on failure
-      await supabase.storage.from(bucket).remove([storagePath]);
-      return { ok: false, error: 'Failed to create song record', step: 'registering' };
-    }
 
     onProgress?.('creating_job', 70);
 
@@ -400,11 +397,6 @@ export async function uploadMediaItem(
       file_size_bytes: input.file.size,
       mime_type: input.file.type,
     });
-
-    if (!item) {
-      await supabase.storage.from(bucket).remove([storagePath]);
-      return { ok: false, error: 'Failed to create media record' };
-    }
 
     // Create sync job
     onProgress?.('creating_job', 80);

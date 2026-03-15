@@ -9,6 +9,7 @@ export * from './types';
 export * as MediaService from './media-service';
 export * as BaseService from './base-service';
 export * as DisplayService from './display-service';
+export * as MomentMediaService from './moment-media-service';
 export {
   sendPlatformCommand,
   sendAndProcessCommand,
@@ -44,3 +45,16 @@ export {
   useDisplayState,
   useSongSearch,
 } from './hooks';
+
+// Moment-Media Hooks
+export {
+  useMomentSongs,
+  useMomentSongsBatch,
+  useAddSongToMoment,
+  useRemoveSongFromMoment,
+  useReorderMomentSongs,
+  useMomentMedia,
+  useMomentMediaBatch,
+  useAddMediaToMoment,
+  useRemoveMediaFromMoment,
+} from './moment-media-hooks';

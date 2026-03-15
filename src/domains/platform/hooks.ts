@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useRef, useState } from 'react';
+import { toast } from '@/hooks/use-toast';
 import * as MediaService from './media-service';
 import * as BaseService from './base-service';
 import * as DisplayService from './display-service';
@@ -53,8 +54,8 @@ export function useUploadSong() {
   });
 
   const mutation = useMutation({
-    mutationFn: (input: MediaService.UploadSongInput) =>
-      MediaService.uploadSong(input, (step, percent) => {
+    mutationFn: async (input: MediaService.UploadSongInput) => {
+      const result = await MediaService.uploadSong(input, (step, percent) => {
         const messages: Record<string, string> = {
           uploading: 'Enviando arquivo...',
           registering: 'Cadastrando música...',
@@ -66,11 +67,15 @@ export function useUploadSong() {
           percent,
           message: messages[step] ?? step,
         });
-      }),
-    onSuccess: (result) => {
-      if (result.ok) {
-        queryClient.invalidateQueries({ queryKey: ['songs'] });
+      });
+      if (!result.ok) {
+        setProgress({ step: 'error', percent: 0, message: result.error ?? 'Falha no upload' });
+        throw new Error(result.error ?? 'Falha no upload');
       }
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] });
     },
     onError: () => {
       setProgress({ step: 'error', percent: 0, message: 'Falha no upload' });
@@ -90,6 +95,9 @@ export function useCreateSong() {
   return useMutation({
     mutationFn: (song: Partial<Song>) => MediaService.createSong(song),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['songs'] }),
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao cadastrar música', description: err.message, variant: 'destructive' });
+    },
   });
 }
 
@@ -99,6 +107,9 @@ export function useUpdateSong() {
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Song> }) =>
       MediaService.updateSong(id, updates),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['songs'] }),
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao atualizar música', description: err.message, variant: 'destructive' });
+    },
   });
 }
 
@@ -107,6 +118,9 @@ export function useDeleteSong() {
   return useMutation({
     mutationFn: (id: string) => MediaService.deleteSong(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['songs'] }),
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao excluir música', description: err.message, variant: 'destructive' });
+    },
   });
 }
 
@@ -143,8 +157,8 @@ export function useUploadMedia() {
   });
 
   const mutation = useMutation({
-    mutationFn: (input: MediaService.UploadMediaInput) =>
-      MediaService.uploadMediaItem(input, (step, percent) => {
+    mutationFn: async (input: MediaService.UploadMediaInput) => {
+      const result = await MediaService.uploadMediaItem(input, (step, percent) => {
         const messages: Record<string, string> = {
           uploading: 'Enviando arquivo...',
           registering: 'Registrando mídia...',
@@ -156,8 +170,17 @@ export function useUploadMedia() {
           percent,
           message: messages[step] ?? step,
         });
-      }),
+      });
+      if (!result.ok) {
+        setProgress({ step: 'error', percent: 0, message: result.error ?? 'Falha no upload' });
+        throw new Error(result.error ?? 'Falha no upload');
+      }
+      return result;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['media-items'] }),
+    onError: (err: Error) => {
+      toast({ title: 'Erro no upload de mídia', description: err.message, variant: 'destructive' });
+    },
   });
 
   const reset = useCallback(() => {
@@ -184,7 +207,13 @@ export function useCreateBase() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (base: Partial<Base>) => BaseService.createBase(base),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bases'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bases'] });
+      toast({ title: 'Base criada com sucesso' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao criar base', description: err.message, variant: 'destructive' });
+    },
   });
 }
 
@@ -193,7 +222,12 @@ export function useUpdateBase() {
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Base> }) =>
       BaseService.updateBase(id, updates),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bases'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bases'] });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao atualizar base', description: err.message, variant: 'destructive' });
+    },
   });
 }
 
@@ -201,7 +235,13 @@ export function useDeleteBase() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => BaseService.deleteBase(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bases'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bases'] });
+      toast({ title: 'Base excluída' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao excluir base', description: err.message, variant: 'destructive' });
+    },
   });
 }
 

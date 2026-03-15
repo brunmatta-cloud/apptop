@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, Maximize, Mic, Minimize, PlayCircle, Video, Volume2 } from 'lucide-react';
+import { Bell, Maximize, Mic, Minimize, Pause, Play, PlayCircle, SkipForward, Square, Video, Volume2 } from 'lucide-react';
 import { useCultoTimer, useLiveCultoView } from '@/contexts/CultoContext';
 import { useClock } from '@/hooks/useClock';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,6 +13,10 @@ import { NextActionEnhanced } from '@/components/repertorio/NextActionEnhanced';
 import { SonoplastiaMusicCompact } from '@/components/repertorio/SonoplastiaMusicCompact';
 import { UpcomingMomentsPreview } from '@/components/repertorio/UpcomingMomentsPreview';
 import { getSongMediaLabel, getSongPlaybackLabel, sortMomentSongs, type MomentSong } from '@/features/repertorio/model';
+import { usePlayerStates } from '@/domains/platform/hooks';
+import { AudioCommands } from '@/domains/platform/command-service';
+import { useSyncStore } from '@/contexts/SyncStoreContext';
+import type { PlayerState } from '@/domains/platform/types';
 
 const SonoplastiaHeaderClock = memo(function SonoplastiaHeaderClock() {
   const { currentTime, formatTime } = useClock();
@@ -203,10 +207,83 @@ const SonoplastiaAlertWatcher = memo(function SonoplastiaAlertWatcher({
   return null;
 });
 
+// Mini audio player strip showing current playback from Platform
+const AudioPlaybackStrip = memo(function AudioPlaybackStrip({ sessionId }: { sessionId: string }) {
+  const { data: playerStates } = usePlayerStates(sessionId);
+  const audioState = useMemo(() => playerStates?.find((p: PlayerState) => p.player_type === 'audio') ?? null, [playerStates]);
+
+  if (!audioState || audioState.status === 'idle' || audioState.status === 'stopped') return null;
+
+  const currentSong = audioState.queue_json?.[0];
+  const progressPercent = audioState.duration_seconds > 0
+    ? Math.min(100, (audioState.current_time_seconds / audioState.duration_seconds) * 100)
+    : 0;
+
+  const formatTime = (s: number) => {
+    const min = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${min}:${String(sec).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex items-center gap-2 border-t border-green-400/30 bg-gradient-to-r from-green-900/30 to-emerald-900/20 px-3 py-1.5 shrink-0">
+      <div className={`h-2 w-2 rounded-full shrink-0 ${audioState.status === 'playing' ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`} />
+      <span className="text-xs font-bold text-green-200 truncate flex-1">
+        {currentSong?.title ?? 'Reproduzindo...'}
+      </span>
+      <span className="text-[10px] font-mono text-green-300/80 shrink-0">
+        {formatTime(audioState.current_time_seconds)} / {formatTime(audioState.duration_seconds)}
+      </span>
+      <div className="flex items-center gap-1 shrink-0">
+        {audioState.status === 'playing' ? (
+          <button
+            type="button"
+            onClick={() => AudioCommands.pause(sessionId)}
+            className="h-6 w-6 flex items-center justify-center rounded bg-green-500/30 hover:bg-green-500/50 transition-colors"
+            title="Pausar"
+          >
+            <Pause className="h-3 w-3 text-green-200" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => AudioCommands.pause(sessionId)}
+            className="h-6 w-6 flex items-center justify-center rounded bg-green-500/30 hover:bg-green-500/50 transition-colors"
+            title="Continuar"
+          >
+            <Play className="h-3 w-3 text-green-200" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => AudioCommands.next(sessionId)}
+          className="h-6 w-6 flex items-center justify-center rounded bg-blue-500/30 hover:bg-blue-500/50 transition-colors"
+          title="Próxima"
+        >
+          <SkipForward className="h-3 w-3 text-blue-200" />
+        </button>
+        <button
+          type="button"
+          onClick={() => AudioCommands.stop(sessionId)}
+          className="h-6 w-6 flex items-center justify-center rounded bg-red-500/30 hover:bg-red-500/50 transition-colors"
+          title="Parar"
+        >
+          <Square className="h-3 w-3 text-red-200" />
+        </button>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-900/50">
+        <div className="h-full bg-green-400 transition-all" style={{ width: `${progressPercent}%` }} />
+      </div>
+    </div>
+  );
+});
+
 const PainelSonoplastia = memo(function PainelSonoplastia() {
   const { culto, momentos, currentIndex, currentMoment } = useLiveCultoView();
   const { momentElapsedMs } = useCultoTimer();
   const { songsByMomentId } = useSessionRepertoire();
+  const { remoteState } = useSyncStore();
+  const sessionId = remoteState.sessionId;
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const pageRef = useRef<HTMLDivElement | null>(null);
@@ -327,6 +404,9 @@ const PainelSonoplastia = memo(function PainelSonoplastia() {
           </div>
         </div>
       </div>
+
+      {/* AUDIO PLAYER STRIP */}
+      <AudioPlaybackStrip sessionId={sessionId} />
     </div>
   );
 });

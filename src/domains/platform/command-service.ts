@@ -201,18 +201,6 @@ export async function logSessionEvent(
   }
 }
 
-function categorizeEvent(eventType: string): string {
-  if (eventType.startsWith('SESSION_') || eventType.startsWith('MOMENT_')) return 'session';
-  if (eventType.startsWith('AUDIO_') || eventType.startsWith('SONG_')) return 'audio';
-  if (eventType.startsWith('VIDEO_')) return 'video';
-  if (eventType.startsWith('SLIDE')) return 'slides';
-  if (eventType.startsWith('DISPLAY_')) return 'display';
-  if (eventType.startsWith('MODERATOR_')) return 'moderator';
-  if (eventType.startsWith('EXECUTOR_') || eventType.startsWith('MEDIA_')) return 'execution';
-  if (eventType.startsWith('BASE_')) return 'base';
-  return 'system';
-}
-
 // -------------------------------------------------------
 // Convenience: Session Commands
 // -------------------------------------------------------

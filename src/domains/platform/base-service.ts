@@ -40,7 +40,7 @@ export async function getBase(id: string): Promise<Base | null> {
   return data as Base;
 }
 
-export async function createBase(base: Partial<Base>): Promise<Base | null> {
+export async function createBase(base: Partial<Base>): Promise<Base> {
   const { data, error } = await supabase
     .from('bases')
     .insert({
@@ -61,12 +61,12 @@ export async function createBase(base: Partial<Base>): Promise<Base | null> {
 
   if (error) {
     console.error(`${LOG_PREFIX} createBase error`, error);
-    return null;
+    throw new Error(`Falha ao criar base: ${error.message}`);
   }
   return data as Base;
 }
 
-export async function updateBase(id: string, updates: Partial<Base>): Promise<Base | null> {
+export async function updateBase(id: string, updates: Partial<Base>): Promise<Base> {
   const { data, error } = await supabase
     .from('bases')
     .update(updates)
@@ -76,14 +76,18 @@ export async function updateBase(id: string, updates: Partial<Base>): Promise<Ba
 
   if (error) {
     console.error(`${LOG_PREFIX} updateBase error`, error);
-    return null;
+    throw new Error(`Falha ao atualizar base: ${error.message}`);
   }
   return data as Base;
 }
 
 export async function deleteBase(id: string): Promise<boolean> {
   const { error } = await supabase.from('bases').delete().eq('id', id);
-  return !error;
+  if (error) {
+    console.error(`${LOG_PREFIX} deleteBase error`, error);
+    throw new Error(`Falha ao excluir base: ${error.message}`);
+  }
+  return true;
 }
 
 // -------------------------------------------------------
