@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { UsersPlus, Search, X } from 'lucide-react';
+import { UsersPlus, Search, X, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { usePeople, useCreatePerson, useGeneratePersonToken } from '@/features/repertorio/hooks-people';
 import type { CreatePersonInput } from '@/types/people';
 import { toast } from '@/hooks/use-toast';
@@ -11,6 +12,7 @@ interface ResponsavelSelectorProps {
 }
 
 export default function ResponsavelSelector({ value, onChange, disabled = false }: ResponsavelSelectorProps) {
+  const navigate = useNavigate();
   const { data: people = [], isLoading } = usePeople();
   const createMutation = useCreatePerson();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -72,7 +74,22 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
   const labelClass = "text-xs text-muted-foreground font-medium mb-1 block";
 
   return (
-    <div className="relative">
+    <didiv className="flex items-center justify-between mb-1">
+        <label className={labelClass}>Responsável</label>
+        <button
+          type="button"
+          onClick={() => navigate('/configuracoes?tab=pe-2 border-primary/30 bg-primary/5 space-y-3 mb-2">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <UsersPlus className="w-4 h-4 text-primary" />
+              Cadastrar Nova Pessoa
+            ems-center gap-1 px-2 py-1 rounded hover:bg-muted/50 transition-colors"
+          title="Gerenciar cadastro de pessoas"
+        >
+          <Settings className="w-3 h-3" />
+          Gerenciar Pessoas
+        </button>
+      </div
       <label className={labelClass}>Responsável</label>
       
       {showNewPersonForm ? (
@@ -124,9 +141,9 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
             </div>
             <div>
               <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                value={newPersonData.email || ''}
+              <inputgradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 text-sm font-medium disabled:opacity-50 transition-all"
+            >
+              {createMutation.isPending ? '⏳ Criando...' : '✅
                 onChange={(e) => setNewPersonData({ ...newPersonData, email: e.target.value })}
                 placeholder="joao@email.com"
                 className={inputClass}
@@ -160,28 +177,56 @@ export default function ResponsavelSelector({ value, onChange, disabled = false 
         <div className="relative">
           <div className="relative flex items-center gap-1">
             <div className="relative flex-1">
-              <input
-                type="text"
-                value={showDropdown ? searchTerm : value}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  if (!showDropdown) setShowDropdown(true);
-                }}
-                onFocus={() => setShowDropdown(true)}
-                placeholder={showDropdown ? 'Buscar pessoa...' : 'Selecionar responsável...'}
-                disabled={disabled}
-                className={`${inputClass} ${showDropdown ? 'rounded-b-none' : ''}`}
-              />
-              {showDropdown && (
-                <div className="absolute top-full left-0 right-0 border border-t-0 border-border rounded-b-md bg-card shadow-lg z-50 max-h-60 overflow-y-auto">
-                  {isLoading ? (
-                    <div className="p-3 text-center text-sm text-muted-foreground">
+              <input4 text-center text-sm text-muted-foreground">
                       Carregando pessoas...
                     </div>
                   ) : filtered.length === 0 ? (
-                    <div className="p-3 text-center text-sm text-muted-foreground">
-                      {searchTerm ? 'Nenhuma pessoa encontrada' : 'Sem pessoas cadastradas'}
-                    </div>
+                    <div className="p-4 space-y-2">
+                      <div className="text-center text-sm text-muted-foreground">
+                        {searchTerm ? 'Nenhuma pessoa encontrada' : 'Sem pessoas cadastradas'}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDropdown(false);
+                          setShowNewPersonForm(true);
+                          setSearchTerm('');
+                        }}
+                        className="w-full px-3 py-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <UsersPlus className="w-4 h-4" />
+                        Cadastrar primeira pessoa
+                      </button>
+                  {filtered.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDropdown(false);
+                        setShowNewPersonForm(true);
+                        setSearchTerm('');
+                      }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-muted/50 border-t border-border/50 transition-colors text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-2"
+                    >
+                      <UsersPlus className="w-4 h-4" />
+                      ➕ Cadastrar nova pessoa
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            {showDropdown && (
+              <div className="absolute top-0 right-0 -mr-10 flex items-center gap-1 text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => navigate('/configuracoes?tab=pessoas')}
+                  disabled={disabled}
+                  className="p-2 rounded-md bg-muted hover:bg-muted/80 text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                  title="Gerenciar todas as pessoas"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
+            )}/div>
                   ) : (
                     filtered.map((person) => (
                       <button
