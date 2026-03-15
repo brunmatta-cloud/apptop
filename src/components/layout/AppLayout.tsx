@@ -1,12 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck,
+  LayoutDashboard, Radio, Volume2, List, Settings, Image, Focus, Menu, X, ChevronRight, Users, Clock, Timer, SlidersHorizontal, ShieldCheck, PanelLeftClose, PanelLeftOpen, ClipboardCheck, Bug, Users2,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { LucideIcon } from 'lucide-react';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  isAdmin?: boolean;
+}
+
+const navItems: NavItem[] = [
   { to: '/', label: 'Painel', icon: LayoutDashboard },
   { to: '/programacao', label: 'Programacao', icon: List },
   { to: '/cerimonialista', label: 'Cerimonialista', icon: Radio },
@@ -20,6 +28,9 @@ const navItems = [
   { to: '/foco', label: 'Modo Foco', icon: Focus },
   { to: '/artes', label: 'Gerador de Artes', icon: Image },
   { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
+  // Admin & Debug
+  { to: '/pessoas', label: 'Cadastro de Pessoas', icon: Users2, isAdmin: true },
+  { to: '/debug-tokens', label: 'Debug Tokens', icon: Bug, isAdmin: true },
 ];
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -96,7 +107,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
             <nav className="flex-1 overflow-y-auto px-3 pb-4">
               <div className="space-y-0.5">
-                {navItems.map((item) => (
+                {navItems.filter((item) => !item.isAdmin).map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
@@ -113,6 +124,30 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
                   </NavLink>
                 ))}
               </div>
+              
+              {navItems.some((item) => item.isAdmin) && (
+                <>
+                  <div className="my-3 h-px bg-sidebar-border" />
+                  <div className="space-y-0.5">
+                    {navItems.filter((item) => item.isAdmin).map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={({ isActive }) => (
+                          `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all opacity-75 ${
+                            isActive
+                              ? 'bg-primary/15 text-primary font-medium opacity-100'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground hover:opacity-100'
+                          }`
+                        )}
+                      >
+                        <item.icon className="h-[18px] w-[18px]" />
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </>
+              )}
             </nav>
 
             <div className="px-4 pb-4">
@@ -169,7 +204,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
                   className="h-full w-[88vw] max-w-[360px] border-r border-border bg-card shadow-2xl"
                 >
                   <nav className="h-full space-y-1 overflow-y-auto p-3 pb-8">
-                    {navItems.map((item) => (
+                    {navItems.filter((item) => !item.isAdmin).map((item) => (
                       <NavLink
                         key={item.to}
                         to={item.to}
@@ -187,6 +222,30 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
                         <ChevronRight className="ml-auto h-4 w-4 opacity-30" />
                       </NavLink>
                     ))}
+                    
+                    {navItems.some((item) => item.isAdmin) && (
+                      <>
+                        <div className="my-2 h-px bg-border" />
+                        {navItems.filter((item) => item.isAdmin).map((item) => (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            onClick={() => setMobileOpen(false)}
+                            className={({ isActive }) => (
+                              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors opacity-75 ${
+                                isActive
+                                  ? 'bg-primary/15 text-primary font-medium opacity-100'
+                                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:opacity-100'
+                              }`
+                            )}
+                          >
+                            <item.icon className="h-5 w-5" />
+                            {item.label}
+                            <ChevronRight className="ml-auto h-4 w-4 opacity-30" />
+                          </NavLink>
+                        ))}
+                      </>
+                    )}
                   </nav>
                 </motion.div>
               </motion.div>
