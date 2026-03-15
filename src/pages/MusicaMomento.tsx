@@ -17,8 +17,6 @@ import {
   useRepertoireDraftStats,
   useSaveMomentRepertoireByTokenMutation,
 } from '@/features/repertorio/hooks';
-import { usePersonByToken, useMomentsForPersonToken } from '@/features/repertorio/hooks-people';
-import type { Person } from '@/types/people';
 
 const worshipVerse = '"Servi ao Senhor com alegria." - Salmos 100:2';
 

@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSyncStore } from '@/contexts/SyncStoreContext';
 import type { Person, CreatePersonInput, UpdatePersonInput, PersonAccessToken } from '@/types/people';
 import { generateSecureToken } from '@/types/people';
 
@@ -257,32 +259,47 @@ export function usePersonByToken(token: string | null) {
 }
 
 /**
- * Hook para obter momentos de uma pessoa por token
+ * Hook para obter momentos de uma pessoa por token.
+ * Filtra momentos do SyncStore onde o campo 'responsavel' bate com o nome da pessoa.
  */
 export function useMomentsForPersonToken(token: string | null) {
   const personQuery = usePersonByToken(token);
+  const { remoteState } = useSyncStore();
 
-  return useQuery({
-    queryKey: ['moments-for-token', token, personQuery.data?.id],
-    queryFn: async () => {
-      if (!personQuery.data?.id) return [];
+  const data = useMemo(() => {
+    const personName = personQuery.data?.name;
+    if (!personName) return [];
 
-      try {
-        const { data, error } = await supabase.rpc('get_moments_for_person', {
-          person_id_param: personQuery.data.id,
-        });
+    const result: Array<{
+      moment_id: string;
+      culto_id: string;
+      atividade: string;
+      horario_inicio: string;
+      responsavel: string;
+      form_token: string;
+    }> = [];
 
-        if (error) {
-          console.error('Erro ao buscar momentos:', error);
-          return [];
+    for (const [cultoId, momentos] of Object.entries(remoteState.allMomentos)) {
+      for (const m of momentos) {
+        if (m.responsavel.toLowerCase() === personName.toLowerCase()) {
+          result.push({
+            moment_id: m.id,
+            culto_id: cultoId,
+            atividade: m.atividade,
+            horario_inicio: m.horarioInicio,
+            responsavel: m.responsavel,
+            form_token: '',
+          });
         }
-
-        return data || [];
-      } catch (err) {
-        console.error('Erro na requisição de momentos:', err);
-        return [];
       }
-    },
-    enabled: !!personQuery.data?.id,
-  });
+    }
+
+    return result;
+  }, [personQuery.data?.name, remoteState.allMomentos]);
+
+  return {
+    data: data.length > 0 ? data : personQuery.data ? data : undefined,
+    isLoading: personQuery.isLoading,
+    error: personQuery.error,
+  };
 }
