@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# 7Flow
 
 ## Project info
 
